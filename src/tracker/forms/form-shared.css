@@ -1,0 +1,258 @@
+.entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.form-input {
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-input:focus {
+  border-color: var(--color-accent);
+}
+
+/* Amount input */
+.amount-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-input);
+  padding: 0 12px;
+  transition: border-color 0.15s;
+}
+
+.amount-input-wrap:focus-within {
+  border-color: var(--color-accent);
+}
+
+.amount-symbol {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-right: 4px;
+}
+
+.amount-input {
+  border: none;
+  outline: none;
+  font-size: 24px;
+  font-weight: 600;
+  padding: 10px 4px;
+  width: 100%;
+  background: transparent;
+  color: var(--text-heading);
+}
+
+.amount-input::placeholder {
+  color: var(--text-ghost);
+}
+
+/* Hide number input spinners */
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.amount-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Direction toggle */
+.direction-toggle {
+  display: flex;
+  background: var(--bg-toggle);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.direction-btn {
+  flex: 1;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.direction-btn.active.expense {
+  background: var(--bg-surface);
+  color: var(--color-expense);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.direction-btn.active.income {
+  background: var(--bg-surface);
+  color: #2ecc71;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Category chips - horizontal scroll */
+.category-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.category-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  background: var(--bg-surface);
+  color: var(--text-body);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  min-height: 36px;
+}
+
+.category-chip.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.category-chip:hover:not(.active) {
+  border-color: var(--text-placeholder);
+}
+
+/* Submit button */
+.form-submit {
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+
+.form-submit:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mood selector */
+.mood-selector {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--bg-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.mood-btn.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.mood-emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.mood-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Workout toggle */
+.workout-toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.workout-toggle-btn {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-body);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.workout-toggle-btn.active.yes {
+  border-color: #2ecc71;
+  background: var(--bg-success-subtle);
+  color: var(--color-income);
+}
+
+.workout-toggle-btn.active.no {
+  border-color: var(--color-expense);
+  background: var(--bg-danger-subtle);
+  color: var(--color-expense);
+}
+
+/* Inline row */
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}

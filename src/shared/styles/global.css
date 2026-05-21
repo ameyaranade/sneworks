@@ -1,0 +1,216 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ─── CSS custom properties ─── */
+
+:root {
+  /* Surfaces */
+  --bg-body: #f5f5f5;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f8f8f8;
+  --bg-input: #ffffff;
+  --bg-muted: #f4f4f4;
+  --bg-chip: #f0f0f0;
+  --bg-toggle: #e8e8e8;
+  --bg-hover: #fafafa;
+  --bg-danger-subtle: #fdedec;
+  --bg-warning-subtle: #fef3e2;
+  --bg-success-subtle: #eafaf1;
+  --bg-accent-subtle: #e8f0fe;
+
+  /* Text */
+  --text-primary: #222222;
+  --text-body: #333333;
+  --text-secondary: #555555;
+  --text-tertiary: #666666;
+  --text-muted: #888888;
+  --text-faint: #999999;
+  --text-disabled: #aaaaaa;
+  --text-placeholder: #bbbbbb;
+  --text-ghost: #cccccc;
+  --text-heading: #1a1a2e;
+
+  /* Borders */
+  --border-strong: #dddddd;
+  --border-default: #e8e8e8;
+  --border-muted: #f0f0f0;
+  --border-faint: #eeeeee;
+
+  /* Brand */
+  --color-accent: #0066cc;
+  --color-accent-hover: #0055aa;
+  --color-accent-light: #e8f0fe;
+
+  /* Nav */
+  --nav-bg: #1a1a2e;
+  --nav-text: #ffffff;
+  --nav-link: #cccccc;
+
+  /* Status */
+  --color-expense: #e74c3c;
+  --color-expense-bg: #fef0f0;
+  --color-income: #27ae60;
+  --color-income-bg: #eafaf1;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.10);
+}
+
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg-body: #0f0f1e;
+  --bg-surface: #1a1a2e;
+  --bg-elevated: #1e1e34;
+  --bg-input: #1e1e34;
+  --bg-muted: #222238;
+  --bg-chip: #252542;
+  --bg-toggle: #252542;
+  --bg-hover: #20203a;
+  --bg-danger-subtle: #2c1515;
+  --bg-warning-subtle: #2a1d0e;
+  --bg-success-subtle: #142819;
+  --bg-accent-subtle: #142040;
+
+  /* Text */
+  --text-primary: #e8e8f2;
+  --text-body: #d0d0e8;
+  --text-secondary: #a0a0c0;
+  --text-tertiary: #8888a8;
+  --text-muted: #6a6a8e;
+  --text-faint: #5c5c7e;
+  --text-disabled: #4e4e70;
+  --text-placeholder: #404068;
+  --text-ghost: #363660;
+  --text-heading: #e8e8f2;
+
+  /* Borders */
+  --border-strong: #2c2c4a;
+  --border-default: #252542;
+  --border-muted: #1e1e34;
+  --border-faint: #1a1a2e;
+
+  /* Brand */
+  --color-accent: #5599ff;
+  --color-accent-hover: #4488ee;
+  --color-accent-light: #142040;
+
+  /* Nav */
+  --nav-bg: #0a0a18;
+  --nav-text: #ffffff;
+  --nav-link: #aaaaaa;
+
+  /* Status */
+  --color-expense: #ff6b5b;
+  --color-expense-bg: #2c1515;
+  --color-income: #5dca80;
+  --color-income-bg: #142819;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* ─── Base styles ─── */
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Remove table spacing */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+td {
+  padding: 0;
+  margin: 0;
+}
+
+/* Shared game header bar */
+.game-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.status-label {
+  font-weight: 600;
+}
+
+/* Shared button styles */
+.btn-new {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--text-body);
+  color: var(--bg-surface);
+  cursor: pointer;
+}
+
+.btn-new:hover {
+  background-color: var(--text-primary);
+}
+
+.btn-back {
+  padding: 8px 14px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-back:hover {
+  color: var(--color-accent-hover);
+}
+
+/* Shared empty state */
+.empty-text {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--text-disabled);
+  margin: 0;
+}
+
+/* Page title shared across tracker pages */
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+/* ─── Shimmer skeleton ─── */
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton-block {
+  background: linear-gradient(
+    90deg,
+    var(--bg-chip) 25%,
+    var(--bg-muted) 50%,
+    var(--bg-chip) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}

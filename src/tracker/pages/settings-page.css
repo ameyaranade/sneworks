@@ -1,0 +1,124 @@
+.settings-page {
+  padding: 4px 0;
+}
+
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+
+.settings-options {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-option {
+  padding: 8px 18px;
+  font-size: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-option.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.settings-option:hover:not(.active) {
+  border-color: var(--text-placeholder);
+}
+
+/* Toggle switch */
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 15px;
+  color: var(--text-body);
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-toggle.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-toggle input {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--border-strong);
+  border-radius: 12px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--bg-surface);
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.settings-toggle input:checked + .toggle-slider {
+  background: var(--color-accent);
+}
+
+.settings-toggle input:checked + .toggle-slider::after {
+  transform: translateX(20px);
+}
+
+.settings-hint {
+  font-size: 12px;
+  color: var(--text-disabled);
+  margin: 4px 0 0;
+}
+
+.settings-user-email {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.btn-logout {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #e53935;
+  border-radius: 8px;
+  background: transparent;
+  color: #e53935;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.btn-logout:hover,
+.btn-logout:active {
+  background: #e53935;
+  color: #fff;
+}

@@ -1,0 +1,43 @@
+.board-grid {
+  gap: 0;
+}
+
+.cell-slot {
+  padding: 0;
+  margin: 0;
+}
+
+.cell {
+  width: 64px;
+  height: 64px;
+  background-color: #0066cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.cell.cell-hovered {
+  background-color: #3399ff;
+}
+
+.cell-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.cell-empty .cell-inner {
+  background-color: white;
+}
+
+.cell-player-a .cell-inner {
+  background-color: #e74c3c;
+}
+
+.cell-player-b .cell-inner {
+  background-color: #f1c40f;
+}

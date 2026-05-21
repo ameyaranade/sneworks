@@ -1,0 +1,69 @@
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 100;
+  padding: 0 8px;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 44px;
+}
+
+.tab-item.active {
+  color: var(--color-accent);
+}
+
+.tab-svg-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.tab-add {
+  flex: 0 0 auto;
+  position: relative;
+  bottom: 8px;
+}
+
+.tab-add-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: white;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.35);
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+.tab-add:hover .tab-add-icon,
+.tab-add:active .tab-add-icon {
+  background: var(--color-accent-hover);
+  transform: scale(1.05);
+}

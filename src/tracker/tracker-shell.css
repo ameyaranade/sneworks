@@ -1,0 +1,53 @@
+.tracker-shell {
+  position: relative;
+  min-height: calc(100vh - 56px);
+}
+
+.tracker-content {
+  padding-bottom: 72px;
+}
+
+/* ─── Drawer ─── */
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  animation: backdrop-fade-in 0.2s ease-out;
+}
+
+.drawer-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border-radius: 16px 16px 0 0;
+  max-height: 85vh;
+  overflow-y: auto;
+  z-index: 201;
+  animation: drawer-slide-up 0.3s ease-out;
+}
+
+.drawer-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: 2px;
+  margin: 10px auto 4px;
+}
+
+.drawer-body {
+  padding: 8px 20px 32px;
+}
+
+@keyframes backdrop-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawer-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
