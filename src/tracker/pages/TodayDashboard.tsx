@@ -5,7 +5,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { deleteActivity, updateActivity, subscribeToActivitiesForDateRange } from '../firebase/trackerQueries';
 import { ACTIVITY_TYPE_META, FINANCE_CATEGORIES } from '../constants';
 import { formatCurrency, formatDate } from '../utils';
-import type { DateRange, Activity, FinanceActivity, ExerciseActivity, PaymentActivity } from '../types';
+import type { DateRange, Activity, FinanceActivity, ExerciseActivity, PaymentActivity, GroceryActivity } from '../types';
 import { useDrawer } from '../TrackerShell';
 import { useToast } from '../components/Toast';
 import PriorityBanner from '../components/PriorityBanner';
@@ -309,6 +309,19 @@ export default function TodayDashboard() {
                       )}
                       <span className="entry-meta">
                         {entry.status === 'paid' ? '✓ Paid' : '⟳ Skipped'} · {formatCurrency(entry.amount, settings.currencySymbol)}
+                      </span>
+                    </>
+                  )}
+                  {entry.type === 'grocery' && (
+                    <>
+                      <span className="entry-primary">
+                        {(entry as GroceryActivity).tripName || 'Grocery trip'}
+                      </span>
+                      <span className="entry-meta">
+                        {(entry as GroceryActivity).tripMode === 'store' ? '🏪 Store' : '🌐 Online'}
+                        {(entry as GroceryActivity).tripItems?.length
+                          ? ` · ${(entry as GroceryActivity).tripItems.length} items`
+                          : ''}
                       </span>
                     </>
                   )}

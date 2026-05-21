@@ -71,3 +71,29 @@
   font-weight: 500;
   color: var(--text-body);
 }
+
+/* Money mode sub-toggle */
+.money-mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.money-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.money-mode-btn.active {
+  border-color: #2ecc71;
+  background: color-mix(in srgb, #2ecc71 12%, transparent);
+  color: var(--text-heading);
+}

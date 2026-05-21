@@ -13,14 +13,26 @@ interface AddEntryDrawerProps {
   activityToEdit?: Activity;
 }
 
-const TYPES: ActivityType[] = ['finance', 'exercise', 'grocery', 'payment', 'generic'];
+type MoneyMode = 'finance' | 'payment';
+
+const PICKER_TYPES = [
+  { type: 'finance' as ActivityType, label: 'Money', emoji: '💰', color: '#2ecc71' },
+  { type: 'exercise' as ActivityType, label: 'Exercise', emoji: '💪', color: '#3498db' },
+  { type: 'grocery' as ActivityType, label: 'Groceries', emoji: '🛒', color: '#e67e22' },
+  { type: 'generic' as ActivityType, label: 'Other', emoji: '📝', color: '#7f8c8d' },
+];
 
 export default function AddEntryDrawer({ onClose, activityToEdit }: AddEntryDrawerProps) {
-  const [selectedType, setSelectedType] = useState<ActivityType | null>(
-    activityToEdit ? activityToEdit.type : null,
-  );
-
   const isEditing = !!activityToEdit;
+
+  const [selectedType, setSelectedType] = useState<ActivityType | null>(
+    activityToEdit
+      ? (activityToEdit.type === 'payment' ? 'finance' : activityToEdit.type)
+      : null,
+  );
+  const [moneyMode, setMoneyMode] = useState<MoneyMode>(
+    activityToEdit?.type === 'payment' ? 'payment' : 'finance',
+  );
 
   const handleSaved = () => {
     setSelectedType(null);
@@ -35,6 +47,16 @@ export default function AddEntryDrawer({ onClose, activityToEdit }: AddEntryDraw
     }
   };
 
+  const getTitle = () => {
+    if (!selectedType) return 'Add Entry';
+    if (selectedType === 'finance') {
+      const modeLabel = moneyMode === 'payment' ? 'Recurring Bill' : 'Expense / Income';
+      return isEditing ? `Edit ${modeLabel}` : modeLabel;
+    }
+    const meta = ACTIVITY_TYPE_META[selectedType];
+    return isEditing ? `Edit ${meta.label}` : meta.label;
+  };
+
   return (
     <div className="drawer-backdrop" onClick={onClose}>
       <div className="drawer-sheet" onClick={(e) => e.stopPropagation()}>
@@ -44,36 +66,52 @@ export default function AddEntryDrawer({ onClose, activityToEdit }: AddEntryDraw
             <>
               <h3 className="drawer-title">Add Entry</h3>
               <div className="type-picker-grid">
-                {TYPES.map((t) => {
-                  const meta = ACTIVITY_TYPE_META[t];
-                  return (
-                    <button
-                      key={t}
-                      className="type-picker-btn"
-                      style={{ '--type-color': meta.color } as React.CSSProperties}
-                      onClick={() => setSelectedType(t)}
-                    >
-                      <span className="type-picker-emoji">{meta.emoji}</span>
-                      <span className="type-picker-label">{meta.label}</span>
-                    </button>
-                  );
-                })}
+                {PICKER_TYPES.map(({ type, label, emoji, color }) => (
+                  <button
+                    key={type}
+                    className="type-picker-btn"
+                    style={{ '--type-color': color } as React.CSSProperties}
+                    onClick={() => setSelectedType(type)}
+                  >
+                    <span className="type-picker-emoji">{emoji}</span>
+                    <span className="type-picker-label">{label}</span>
+                  </button>
+                ))}
               </div>
             </>
           ) : (
             <>
               <div className="drawer-form-header">
                 <button className="drawer-back-btn" onClick={handleBack}>&larr;</button>
-                <h3 className="drawer-title">
-                  {isEditing ? `Edit ${ACTIVITY_TYPE_META[selectedType].label}` : ACTIVITY_TYPE_META[selectedType].label}
-                </h3>
+                <h3 className="drawer-title">{getTitle()}</h3>
               </div>
-              {selectedType === 'finance' && (
+
+              {selectedType === 'finance' && !isEditing && (
+                <div className="money-mode-toggle">
+                  <button
+                    className={`money-mode-btn ${moneyMode === 'finance' ? 'active' : ''}`}
+                    onClick={() => setMoneyMode('finance')}
+                  >
+                    Expense / Income
+                  </button>
+                  <button
+                    className={`money-mode-btn ${moneyMode === 'payment' ? 'active' : ''}`}
+                    onClick={() => setMoneyMode('payment')}
+                  >
+                    Recurring Bill
+                  </button>
+                </div>
+              )}
+
+              {selectedType === 'finance' && moneyMode === 'finance' && (
                 <FinanceForm
                   onSaved={handleSaved}
                   initialValues={activityToEdit as FinanceActivity | undefined}
                   entryId={activityToEdit?.id}
                 />
+              )}
+              {selectedType === 'finance' && moneyMode === 'payment' && (
+                <PaymentTemplateForm onSaved={handleSaved} />
               )}
               {selectedType === 'exercise' && (
                 <ExerciseForm
@@ -83,7 +121,6 @@ export default function AddEntryDrawer({ onClose, activityToEdit }: AddEntryDraw
                 />
               )}
               {selectedType === 'grocery' && <GroceryForm onSaved={handleSaved} />}
-              {selectedType === 'payment' && <PaymentTemplateForm onSaved={handleSaved} />}
               {selectedType === 'generic' && <GenericActivityForm onSaved={handleSaved} />}
             </>
           )}
