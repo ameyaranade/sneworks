@@ -6,7 +6,7 @@ A personal multi-app SPA at **sneworks.com** built with Vite + React + TypeScrip
 - `/games` — Public games section (no login required)
 - `/games/connect4` — Connect 4 (2-player local)
 - `/games/minesweeper` — Minesweeper
-- `/tracker` — Activity tracker (auth required) — Finances, Exercise, Groceries, Payments
+- `/tracker` — Activity tracker (auth required) — Finances, Exercise, Groceries, Reminders
 - `/login` — Google sign-in
 
 ---
@@ -67,40 +67,52 @@ C:\coding\sneworks\
         types.ts                # Shared CellState, CellData, GameStatus types
         minesweeper.css
     tracker/
-      types.ts                   # All TypeScript types (TrackerEntry, FinanceEntry, ExerciseEntry, etc.)
-      constants.ts               # Fixed categories, frequencies, mood emojis, defaults
-      utils.ts                   # computeDueStatus, date helpers, currency formatter
-      TrackerPage.tsx            # (Legacy placeholder — no longer used in routing)
-      TrackerShell.tsx            # Bottom tab bar + Outlet + drawer state + TrackerProvider wrapper
+      types.ts                   # All TypeScript types — Activity + Reminder discriminated unions
+      constants.ts               # ACTIVITY_TYPE_META, REMINDER_TYPE_META, categories, frequencies, mood options
+      utils.ts                   # computeDueStatus, computeNextDueDate, date helpers, currency formatter
+      TrackerShell.tsx           # Bottom tab bar + Outlet + DrawerContext (openDrawerWithActivity) + TrackerProvider wrapper
       tracker-shell.css
       context/
-        TrackerProvider.tsx      # React context: Firestore subscriptions for settings, entries, grocery, recurring
+        TrackerProvider.tsx      # useTracker() → { settings, todayActivities, weekActivities, monthActivities, reminders, loading }
       firebase/
-        trackerQueries.ts        # All Firestore CRUD: entries, settings, grocery lists, recurring items; subscribeToGroceryTripsForDateRange added for calendar
+        trackerQueries.ts        # All Firestore CRUD for activities, reminders, settings
       components/
-        BottomTabBar.tsx         # Fixed bottom nav (Today|Calendar|+|Settings)
+        BottomTabBar.tsx         # Fixed bottom nav (Today | Calendar | + | Go To)
         bottom-tab-bar.css
-        AddEntryDrawer.tsx       # Slide-up bottom sheet: type picker → form
+        AddEntryDrawer.tsx       # Slide-up drawer: type picker → form (types: finance, exercise, grocery, payment, generic)
         add-entry-drawer.css
+        GoToMenu.tsx             # Slide-up sheet: Finances | Exercise & Health | Groceries | Reminders
+        go-to-menu.css
+        PriorityBanner.tsx       # Overdue/due-today finance reminders banner on dashboard
+        DueIndicator.tsx         # Due status badge (overdue/due-today/upcoming/paid/skipped)
+        Toast.tsx                # Toast notification component
       forms/
-        FinanceForm.tsx          # Amount + scrollable category chips + expense/income toggle
-        ExerciseForm.tsx         # Workout yes/no + duration + weight + mood selector
-        form-shared.css          # Shared form styles (inputs, buttons, chips, mood, toggles)
+        FinanceForm.tsx          # Amount + category chips + expense/income toggle
+        ExerciseForm.tsx         # Workout toggle + duration + weight + mood selector
+        PaymentTemplateForm.tsx  # Name + amount + frequency + due day (creates FinanceReminder)
+        GroceryForm.tsx          # Item name input (creates GroceryReminder)
+        GenericActivityForm.tsx  # Date + notes (creates GenericActivity)
+        GenericReminderForm.tsx  # Name + optional due date + notes (creates GenericReminder)
+        form-shared.css          # Shared form styles
       pages/
-        TodayDashboard.tsx       # Date range toggle + summary cards + entry log
+        TodayDashboard.tsx       # Date range toggle + summary cards + activity log
         today-dashboard.css
-        CalendarPage.tsx         # Placeholder — month grid + day detail (not yet built)
+        CalendarPage.tsx         # Month grid + day detail panel + activity dots
         calendar-page.css
-        SettingsPage.tsx         # Currency picker, dark mode toggle, notifications toggle
+        SettingsPage.tsx         # Currency picker, dark mode toggle, notifications toggle, logout
         settings-page.css
-        FinancesDetailPage.tsx   # Placeholder — monthly breakdown
-        ExerciseDetailPage.tsx   # Placeholder — workout/health log
-        GroceriesPage.tsx        # Placeholder — active list + trip archive
-        PaymentsPage.tsx         # Placeholder — recurring items + mark paid/skip
+        FinancesDetailPage.tsx   # Finance activity history + collapsible Recurring Bills section
+        finances-detail-page.css
+        ExerciseDetailPage.tsx   # Workout streak + exercise activity log
+        exercise-detail-page.css
+        GroceriesPage.tsx        # Active grocery checklist + past trips archive
+        groceries-page.css
+        RemindersPage.tsx        # Generic reminders: add / complete / delete
+        reminders-page.css
     shared/
-      Layout.tsx                # Nav bar (SNE Works brand + Games/Tracker links + login state) + <Outlet />
+      Layout.tsx                # Nav bar (SNE Works brand + Games/Tracker links + gear icon for settings) + <Outlet />
       styles/
-        global.css              # Resets, shared button styles (btn-new, btn-back)
+        global.css              # Resets, shared button styles, dark mode CSS vars, shimmer skeleton
         layout.css              # Nav bar styles
   vite.config.ts
   firebase.json                 # Hosting: serves dist/, SPA rewrite ** → index.html
@@ -134,157 +146,81 @@ npm run deploy     # Build + deploy to Firebase Hosting (sneworks.com)
 ## Architecture Notes
 - **Auth:** `AuthProvider` wraps all routes in `App.tsx`. `useAuth()` hook gives `{ user, loading }` anywhere in the tree. Games work without auth. `ProtectedRoute` redirects to `/login` if no user.
 - **Routing:** React Router v6 with `<BrowserRouter>`. `/tracker` uses nested routes under `<TrackerShell>` which provides bottom tab navigation and the add-entry drawer. Firebase Hosting SPA rewrite sends all paths to `index.html`.
-- **Tracker context:** `TrackerProvider` (inside `TrackerShell`) provides `useTracker()` hook with `{ settings, todayEntries, weekEntries, activeGroceryList, recurringItems, loading }`. All data is live via Firestore `onSnapshot`. The drawer is controlled via `useDrawer()` from `TrackerShell`.
+- **Tracker context:** `TrackerProvider` (inside `TrackerShell`) provides `useTracker()` hook with `{ settings, todayActivities, weekActivities, monthActivities, reminders, loading }`. All data is live via Firestore `onSnapshot`. The drawer is controlled via `useDrawer()` from `TrackerShell` — call `openDrawerWithActivity(activity)` to open in edit mode.
 - **CSS:** Per-component CSS files imported directly (no Tailwind, no CSS-in-JS). Shared styles in `shared/styles/global.css` and `layout.css`. Tracker forms share styles via `forms/form-shared.css`.
 - **Realtime Database:** Not initialized at startup to avoid crashing on missing `databaseURL`. Use `getRtdb()` export from `firebase/config.ts` when needed.
 - **Firebase config:** Real values already in `src/firebase/config.ts`. Do not commit to a public repo without moving to env vars.
 
 ---
 
-## Tracker — Current State & Remaining Work
+## Tracker — Data Model
 
-### What's Built (Phases 1-3)
+### Two universal primitives
 
-**Foundation:**
-- `TrackerShell` with fixed bottom tab bar (Today | Calendar | + | Settings)
-- Nested routes under `/tracker/*` in `App.tsx` — all wrapped in `ProtectedRoute`
-- Top nav (`Layout.tsx`) stays visible; bottom tabs only appear in `/tracker/*`
-
-**Data layer:**
-- `trackerQueries.ts` — full Firestore CRUD with real-time `onSnapshot` subscriptions
-- `TrackerProvider` context — subscribes to settings, today's entries, week entries, active grocery list, recurring items
-- Queries use client-side sorting to avoid composite Firestore index requirements
-
-**Settings page (`/tracker/settings`):**
-- Currency picker (INR ₹ / USD $) — persists to Firestore
-- Dark mode toggle (schema ready, CSS not yet applied)
-- Notifications toggle (greyed out, "Coming soon")
-
-**Add Entry drawer:**
-- Slide-up bottom sheet with backdrop (CSS animation, no library)
-- Type picker grid: Finances, Exercise, Groceries, Payments
-- Back button to return to type picker from a form
-
-**Finance form:**
-- Expense/income toggle (red/green)
-- Amount input with currency symbol from settings
-- Horizontal scrollable category chip row (10 categories: Food, Transport, Rent, etc.)
-- Date picker (defaults today), notes field
-- Saves to `users/{uid}/entries/{entryId}`
-
-**Exercise form:**
-- Workout yes/no toggle (conditionally shows duration + type fields)
-- Weight input (kg), mood selector (5 emoji buttons: Awful → Great)
-- Date picker, notes field
-- Saves to `users/{uid}/entries/{entryId}`
-
-**Dashboard (`/tracker`):**
-- Date range toggle: Today (default) | This Week
-- Summary cards per activity type with accent color borders
-- Finance card: total spent/earned with currency formatting
-- Exercise card: workout status, mood emoji, weight
-- Full entry log with type badges, amounts, metadata, delete buttons
-
-### Firestore Schema
-
+**Activity** — a log of something that happened. Stored in `users/{uid}/activities/{id}`.
 ```
-users/{uid}/
-  settings/preferences              → { currency, currencySymbol, darkMode, notificationsEnabled, updatedAt }
-  entries/{entryId}                  → FinanceEntry | ExerciseEntry | PaymentEntry
-                                       Common: { type, date (YYYY-MM-DD), notes, createdAt, updatedAt }
-                                       Finance: + { amount, direction, category, target? }
-                                       Exercise: + { workout: { completed, durationMinutes?, workoutType? }, health?: { weightKg?, mood? } }
-                                       Payment: + { recurringItemId, amount, status }
-  groceryLists/active                → { items: GroceryItem[], updatedAt }
-  groceryLists/{tripId}              → { name, items, tripMode, completedAt, date }
-  recurringItems/{itemId}            → { name, amount, frequency, dueDay, notes, active, category?, reminderDate?, reminderSent? }
+Common: { type, date (YYYY-MM-DD), notes, createdAt, updatedAt }
+finance:  + { amount, direction: 'expense'|'income', category }
+exercise: + { workout: { completed, durationMinutes?, workoutType? }, health?: { weightKg?, mood? } }
+payment:  + { reminderId, amount, status: 'paid'|'skipped' }
+grocery:  + { tripName, tripMode: 'store'|'online', tripItems: GroceryTripItem[] }
+generic:  (common fields only)
 ```
 
-### Remaining Work Checklist
+**Reminder** — something to do. Stored in `users/{uid}/reminders/{id}`.
+```
+Common: { type, name, notes, active, createdAt, updatedAt }
+finance:  + { amount, frequency, dueDay, category? }
+exercise: + { dueDate? }
+grocery:  + { checked, checkedAt?, sortOrder }
+generic:  + { dueDate?, completed, completedAt? }
+```
 
-#### Phase 4 — Payments ✓ COMPLETE
-- [x] `PaymentTemplateForm.tsx` — name, amount, frequency picker, due day, notes
-- [x] `PaymentsPage.tsx` — list all recurring items with due status (overdue/due-today/upcoming)
-- [x] Mark Paid / Skip flow — creates a `PaymentEntry` referencing the recurring item
-- [x] `PriorityBanner.tsx` — overdue (red) and due-today (orange) alerts on dashboard
-- [x] `DueIndicator.tsx` — status badge component
-- [x] Wire `computeDueStatus()` from `utils.ts` into dashboard and payments page
+**Settings** — `users/{uid}/settings/preferences`
+```
+{ currency, currencySymbol, darkMode, notificationsEnabled, updatedAt }
+```
 
-#### Phase 5 — Groceries ✓ COMPLETE
-- [x] `GroceriesPage.tsx` — active checklist with add/check/uncheck items
-- [x] Check timestamps recorded on each item (`checkedAt` field)
-- [x] "Done" button → auto-names trip "Grocery Run DD-MM-YYYY" with inline rename
-- [x] Trip mode picker (Store / Online)
-- [x] Archive flow: checked items bundled into trip, unchecked items stay on active list
-- [x] Past trips section — expandable list showing items with timestamps
-- [x] `GroceryForm.tsx` — simple add-item form (for use in drawer as shortcut)
+### Key query functions (`trackerQueries.ts`)
+- `addActivity / updateActivity / deleteActivity`
+- `subscribeToActivitiesForDate / subscribeToActivitiesForDateRange / subscribeToActivitiesByType`
+- `addReminder / updateReminder / deleteReminder`
+- `subscribeToReminders` (all active) / `subscribeToRemindersByType`
+- `toggleGroceryReminder` — sets checked + checkedAt
+- `archiveGroceryTrip` — creates GroceryActivity + batch-deletes checked GroceryReminders
+- `completeGenericReminder` — sets completed: true, active: false
 
-#### Phase 6 — Calendar ✓ COMPLETE
-- [x] `CalendarPage.tsx` — month grid (7-column CSS grid, no library)
-- [x] Colored dots on days with entries (one color per activity type, including grocery trips)
-- [x] Day detail panel below grid — shows all entries + grocery trip for tapped day
-- [x] Month navigation (prev/next arrows) — re-subscribes Firestore per month
-- [x] Toggle: tapping same day again collapses the detail panel
+---
 
-#### Phase 7 — Go To Navigation Menu ✓ COMPLETE
-- [x] `GoToMenu.tsx` — slide-up sheet triggered by a "Go To" button in the bottom tab bar (replaces the Settings tab)
-- [x] Menu lists entry points: Groceries (`/tracker/groceries`), Finances (`/tracker/finances`), Exercise & Health (`/tracker/exercise`), Payments (`/tracker/payments`)
-- [x] Each entry is a tappable row with emoji, label, and a `›` arrow — tapping closes the menu and navigates
-- [x] Bottom tab bar becomes: Today | Calendar | + | Go To (Settings tab removed from bottom bar)
-- [x] Settings link moved to the top-level nav (`Layout.tsx`) — visible when logged in, in place of the current LogOut button; rendered as a gear SVG icon (no text label, `title="Settings"` tooltip)
-- [x] LogOut button moved inside `SettingsPage.tsx` (stays there, not in the nav)
-- [x] Login button stays in the top-level nav when the user is NOT logged in (no change)
-- [x] `go-to-menu.css` — styles for the slide-up sheet
-- [x] Go To tab uses a hamburger SVG icon (3 lines); Settings nav uses a gear SVG icon — no emoji
+## Tracker — Feature Status (all complete)
 
-#### Phase 8 — Detail Pages ✓ 8A COMPLETE
+- **Dashboard** — Today/week toggle, summary cards, activity log, edit/delete, PriorityBanner
+- **Finances** — Activity history (infinite scroll) + Recurring Bills section (mark paid/skip/delete)
+- **Exercise** — Streak + monthly count header, expandable activity rows, edit/delete
+- **Groceries** — Individual reminder docs per item, check/uncheck, archive trip → GroceryActivity
+- **Calendar** — Month grid with colored activity dots, day detail panel
+- **Reminders** — Generic reminders: add, complete, delete
+- **Settings** — Currency, dark mode, notifications toggle, logout
+- **Go To menu** — Bottom sheet nav: Finances | Exercise & Health | Groceries | Reminders
+- **Add drawer** — Types: Finances, Exercise, Groceries, Payments (bill template), Other (generic)
+- **Edit mode** — Drawer opens pre-filled via `openDrawerWithActivity(activity)`
+- **Dark mode** — Full CSS custom property system, applied app-wide
+- **Error handling** — Toast notifications on all Firestore mutation failures
+- **Loading states** — Shimmer skeletons on Finances and Exercise pages
 
-##### 8A — FinancesDetailPage ✓ COMPLETE
-- [x] Paginated history list, newest-first, with infinite scroll (IntersectionObserver, 20 at a time)
-- [x] Each entry row shows: amount, direction, category emoji + label, date, notes
-- [x] Create (tap + opens drawer) and delete — live via `onSnapshot` subscription
-- [ ] Edit inline — deferred to Phase 9
-- [x] Data: `onSnapshot` subscription (changed from `getDocs` to keep list live after adds/deletes)
-
-##### 8B — ExerciseDetailPage ✓ COMPLETE
-- [x] Header: workout streak (consecutive days with `workout.completed = true`) + total workouts in current month
-- [x] Chronological list (newest-first): workout status, duration, type, mood emoji, weight chips
-- [x] Each row tappable — expands to show full detail (Workout / Weight / Mood / Notes) + Delete button
-- [ ] Edit — deferred to Phase 9
-- [x] Data: same `onSnapshot` subscription pattern as 8A
-
-#### Phase 9 — Edit Entries ✓ COMPLETE
-- [x] Add edit mode to `AddEntryDrawer` — accept an optional `entryToEdit` prop; when set, skip type picker and go straight to the pre-filled form; title shows "Edit Finances" / "Edit Exercise"
-- [x] `FinanceForm` — accept `initialValues`/`entryId` props to prefill all fields; on submit calls `updateEntry()` instead of `addEntry()`
-- [x] `ExerciseForm` — same as above
-- [x] Payments — "Unmark" button on payment entries (deletes the PaymentEntry) + inline notes editing (tap notes text → input → blur/Enter to save via `updateEntry`)
-- [x] `updateEntry(uid, entryId, partial)` already existed in `trackerQueries.ts` (no change needed)
-- [x] `TrackerShell` — extended `DrawerContext` with `openDrawerWithEntry(entry)` for wiring edit from any page
-- [x] Wire edit from `TodayDashboard` log rows: pencil icon for finance/exercise, "Unmark" button for payments
-
-#### Phase 10 — Polish ✓ COMPLETE
-- [x] Empty state messages per page / activity type — already present on all pages
-- [x] Error handling: `Toast.tsx` + `ToastProvider` in `TrackerShell`; all Firestore mutations (add, update, delete) wrapped in try/catch across TodayDashboard, FinancesDetailPage, ExerciseDetailPage, GroceriesPage, PaymentsPage
-- [x] Loading skeletons for Finances and Exercise detail pages — shimmer animation via `@keyframes shimmer` in global.css; skeleton rows replace "Loading…" text
-- [x] Dark mode CSS — full CSS custom property system in `global.css` (`:root` + `[data-theme="dark"]`); all 18 CSS files updated to use vars; `TrackerProvider` applies `document.body.dataset.theme` on settings change
-- [x] Dark mode scope: entire app (landing, games, auth, all tracker pages)
-
-#### Future (Not in v1)
-- [ ] Swipeable/horizontal scroll-snap dashboard cards (`SwipeableCards.tsx` + `ActivityCard.tsx`)
-- [ ] Trend charts for exercise/health (weight over time, mood over time, workout frequency)
-- [ ] Push notifications via Firebase Cloud Messaging (schema fields already in place)
+### Future (not yet built)
+- [ ] Trend charts for exercise/health (weight, mood, frequency over time)
+- [ ] Push notifications via Firebase Cloud Messaging
 - [ ] Custom finance categories (currently 10 fixed)
-- [ ] Budget goals / targets per category (schema `target` field already in types)
-- [ ] Sharing activities with other users
+- [ ] Budget goals / targets per category
 
-### Design Decisions Reference
+### Design Decisions
 - **Mobile-first** — 44px+ touch targets, bottom tab nav, slide-up drawer
-- **No external libraries** for animations, calendar, or swipe — all built with CSS transitions/scroll-snap
+- **No external libraries** for animations, calendar, or swipe — all CSS transitions
 - **State management** — React Context only (TrackerProvider), no Redux/Zustand
 - **Date storage** — YYYY-MM-DD strings (not Timestamps) to avoid timezone bugs
-- **Single `entries` collection** with type discriminator for unified calendar queries
 - **Client-side sorting** to avoid Firestore composite index requirements
-- **Detailed plan file**: `C:\Users\Ameya\.claude\plans\i-want-to-make-humble-ocean.md`
+- **`computeDueStatus`** checks payments against the start of the current billing cycle (not just the next due date), so early payments are correctly recognised as paid
 
 ---
 
