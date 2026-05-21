@@ -6,10 +6,10 @@ interface GoToMenuProps {
 }
 
 const DESTINATIONS = [
-  { emoji: '🛒', label: 'Groceries', path: '/tracker/groceries' },
   { emoji: '💰', label: 'Finances', path: '/tracker/finances' },
   { emoji: '🏋️', label: 'Exercise & Health', path: '/tracker/exercise' },
-  { emoji: '💳', label: 'Payments', path: '/tracker/payments' },
+  { emoji: '🛒', label: 'Groceries', path: '/tracker/groceries' },
+  { emoji: '📌', label: 'Reminders', path: '/tracker/reminders' },
 ];
 
 export default function GoToMenu({ onClose }: GoToMenuProps) {

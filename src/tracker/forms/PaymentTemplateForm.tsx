@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
-import { addRecurringItem } from '../firebase/trackerQueries';
+import { addReminder } from '../firebase/trackerQueries';
 import { PAYMENT_FREQUENCIES } from '../constants';
 import type { PaymentFrequency } from '../types';
 import './form-shared.css';
@@ -40,7 +40,8 @@ export default function PaymentTemplateForm({ onSaved }: Props) {
     if (!user || !name.trim() || !amount || Number(amount) <= 0) return;
     setSaving(true);
     try {
-      await addRecurringItem(user.uid, {
+      await addReminder(user.uid, {
+        type: 'finance',
         name: name.trim(),
         amount: Number(amount),
         frequency,

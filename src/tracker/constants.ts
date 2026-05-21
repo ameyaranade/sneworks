@@ -42,8 +42,16 @@ export const DEFAULT_SETTINGS: Omit<TrackerSettings, 'updatedAt'> = {
 };
 
 export const ACTIVITY_TYPE_META = {
-  finance: { label: 'Finances', emoji: '💰', color: '#2ecc71' },
-  exercise: { label: 'Exercise', emoji: '💪', color: '#3498db' },
-  grocery: { label: 'Groceries', emoji: '🛒', color: '#e67e22' },
-  payment: { label: 'Payments', emoji: '💳', color: '#9b59b6' },
+  finance:  { label: 'Finances',  emoji: '💰', color: '#2ecc71' },
+  exercise: { label: 'Exercise',  emoji: '💪', color: '#3498db' },
+  grocery:  { label: 'Groceries', emoji: '🛒', color: '#e67e22' },
+  payment:  { label: 'Payments',  emoji: '💳', color: '#9b59b6' },
+  generic:  { label: 'Other',     emoji: '📝', color: '#7f8c8d' },
+} as const;
+
+export const REMINDER_TYPE_META = {
+  finance:  { label: 'Bills',      emoji: '💳', color: '#9b59b6' },
+  exercise: { label: 'Exercise',   emoji: '💪', color: '#3498db' },
+  grocery:  { label: 'Groceries',  emoji: '🛒', color: '#e67e22' },
+  generic:  { label: 'Reminders',  emoji: '📌', color: '#7f8c8d' },
 } as const;

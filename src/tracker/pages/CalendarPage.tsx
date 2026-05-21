@@ -4,13 +4,12 @@ import { useTracker } from '../context/TrackerProvider';
 import { useDrawer } from '../TrackerShell';
 import { useToast } from '../components/Toast';
 import {
-  subscribeToEntriesForDateRange,
-  subscribeToGroceryTripsForDateRange,
-  deleteEntry,
+  subscribeToActivitiesForDateRange,
+  deleteActivity,
 } from '../firebase/trackerQueries';
 import { ACTIVITY_TYPE_META } from '../constants';
 import { formatCurrency } from '../utils';
-import type { TrackerEntry, GroceryTrip, FinanceEntry, ExerciseEntry, PaymentEntry } from '../types';
+import type { Activity, FinanceActivity, ExerciseActivity, PaymentActivity, GroceryActivity } from '../types';
 import './calendar-page.css';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -31,7 +30,7 @@ function parseLocalDate(dateStr: string): Date {
 export default function CalendarPage() {
   const { user } = useAuth();
   const { settings } = useTracker();
-  const { openDrawerWithEntry } = useDrawer();
+  const { openDrawerWithActivity } = useDrawer();
   const { showToast } = useToast();
 
   const today = new Date();
@@ -39,8 +38,7 @@ export default function CalendarPage() {
 
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [monthEntries, setMonthEntries] = useState<TrackerEntry[]>([]);
-  const [monthTrips, setMonthTrips] = useState<GroceryTrip[]>([]);
+  const [monthActivities, setMonthActivities] = useState<Activity[]>([]);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,21 +51,12 @@ export default function CalendarPage() {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const endDate = toYMD(currentYear, currentMonth, daysInMonth);
 
-    let entriesReady = false;
-    let tripsReady = false;
-    const checkDone = () => { if (entriesReady && tripsReady) setLoading(false); };
-
-    const unsubEntries = subscribeToEntriesForDateRange(user.uid, startDate, endDate, (entries) => {
-      setMonthEntries(entries);
-      if (!entriesReady) { entriesReady = true; checkDone(); }
+    const unsub = subscribeToActivitiesForDateRange(user.uid, startDate, endDate, (activities) => {
+      setMonthActivities(activities);
+      setLoading(false);
     });
 
-    const unsubTrips = subscribeToGroceryTripsForDateRange(user.uid, startDate, endDate, (trips) => {
-      setMonthTrips(trips);
-      if (!tripsReady) { tripsReady = true; checkDone(); }
-    });
-
-    return () => { unsubEntries(); unsubTrips(); };
+    return unsub;
   }, [user, currentYear, currentMonth]);
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -75,15 +64,9 @@ export default function CalendarPage() {
 
   // Map each date string → set of activity type strings present that day
   const dayActivityMap = new Map<string, Set<string>>();
-  for (const entry of monthEntries) {
-    if (!dayActivityMap.has(entry.date)) dayActivityMap.set(entry.date, new Set());
-    dayActivityMap.get(entry.date)!.add(entry.type);
-  }
-  for (const trip of monthTrips) {
-    if (trip.date) {
-      if (!dayActivityMap.has(trip.date)) dayActivityMap.set(trip.date, new Set());
-      dayActivityMap.get(trip.date)!.add('grocery');
-    }
+  for (const activity of monthActivities) {
+    if (!dayActivityMap.has(activity.date)) dayActivityMap.set(activity.date, new Set());
+    dayActivityMap.get(activity.date)!.add(activity.type);
   }
 
   const prevMonth = () => {
@@ -100,16 +83,15 @@ export default function CalendarPage() {
     setSelectedDay((prev) => (prev === dateStr ? null : dateStr));
   };
 
-  const handleDelete = async (entryId: string) => {
+  const handleDelete = async (activityId: string) => {
     if (!user) return;
-    try { await deleteEntry(user.uid, entryId); }
+    try { await deleteActivity(user.uid, activityId); }
     catch { showToast('Failed to delete entry'); }
   };
 
-  const selectedEntries = selectedDay
-    ? [...monthEntries].filter((e) => e.date === selectedDay).reverse()
+  const selectedActivities = selectedDay
+    ? [...monthActivities].filter((e) => e.date === selectedDay).reverse()
     : [];
-  const selectedTrip = selectedDay ? monthTrips.find((t) => t.date === selectedDay) ?? null : null;
 
   const cells: (number | null)[] = [
     ...Array(firstDayOfWeek).fill(null),
@@ -175,11 +157,11 @@ export default function CalendarPage() {
             <button className="cal-detail-close" onClick={() => setSelectedDay(null)}>×</button>
           </div>
 
-          {selectedEntries.length === 0 && !selectedTrip ? (
+          {selectedActivities.length === 0 ? (
             <p className="cal-detail-empty">No entries for this day.</p>
           ) : (
             <div className="cal-detail-entries">
-              {selectedEntries.map((entry) => (
+              {selectedActivities.map((entry) => (
                 <div key={entry.id} className="cal-entry-row">
                   <span
                     className="cal-entry-badge"
@@ -190,9 +172,9 @@ export default function CalendarPage() {
                   <div className="cal-entry-info">
                     {entry.type === 'finance' && (
                       <>
-                        <span className={`cal-entry-primary ${(entry as FinanceEntry).direction}`}>
-                          {(entry as FinanceEntry).direction === 'expense' ? '−' : '+'}
-                          {formatCurrency((entry as FinanceEntry).amount, settings.currencySymbol)}
+                        <span className={`cal-entry-primary ${(entry as FinanceActivity).direction}`}>
+                          {(entry as FinanceActivity).direction === 'expense' ? '−' : '+'}
+                          {formatCurrency((entry as FinanceActivity).amount, settings.currencySymbol)}
                         </span>
                         {entry.notes && <span className="cal-entry-meta">{entry.notes}</span>}
                       </>
@@ -200,8 +182,8 @@ export default function CalendarPage() {
                     {entry.type === 'exercise' && (
                       <>
                         <span className="cal-entry-primary">
-                          {(entry as ExerciseEntry).workout.completed
-                            ? `Workout${(entry as ExerciseEntry).workout.durationMinutes ? ` — ${(entry as ExerciseEntry).workout.durationMinutes}min` : ''}`
+                          {(entry as ExerciseActivity).workout.completed
+                            ? `Workout${(entry as ExerciseActivity).workout.durationMinutes ? ` — ${(entry as ExerciseActivity).workout.durationMinutes}min` : ''}`
                             : 'Rest day'}
                         </span>
                         {entry.notes && <span className="cal-entry-meta">{entry.notes}</span>}
@@ -211,17 +193,28 @@ export default function CalendarPage() {
                       <>
                         <span className="cal-entry-primary">{entry.notes || 'Payment'}</span>
                         <span className="cal-entry-meta">
-                          {(entry as PaymentEntry).status === 'paid' ? '✓ Paid' : '⟳ Skipped'}
-                          {' · '}{formatCurrency((entry as PaymentEntry).amount, settings.currencySymbol)}
+                          {(entry as PaymentActivity).status === 'paid' ? '✓ Paid' : '⟳ Skipped'}
+                          {' · '}{formatCurrency((entry as PaymentActivity).amount, settings.currencySymbol)}
                         </span>
                       </>
                     )}
+                    {entry.type === 'grocery' && (
+                      <>
+                        <span className="cal-entry-primary">{(entry as GroceryActivity).tripName}</span>
+                        <span className="cal-entry-meta">
+                          {(entry as GroceryActivity).tripItems.length} items · {(entry as GroceryActivity).tripMode}
+                        </span>
+                      </>
+                    )}
+                    {entry.type === 'generic' && (
+                      <span className="cal-entry-primary">{entry.notes || 'Note'}</span>
+                    )}
                   </div>
                   <div className="cal-entry-actions">
-                    {entry.type !== 'payment' && (
+                    {(entry.type === 'finance' || entry.type === 'exercise') && (
                       <button
                         className="entry-edit"
-                        onClick={() => entry.id && openDrawerWithEntry(entry)}
+                        onClick={() => entry.id && openDrawerWithActivity(entry)}
                         title="Edit"
                       >
                         ✏️
@@ -246,22 +239,6 @@ export default function CalendarPage() {
                   </div>
                 </div>
               ))}
-              {selectedTrip && (
-                <div className="cal-entry-row">
-                  <span
-                    className="cal-entry-badge"
-                    style={{ background: ACTIVITY_TYPE_META.grocery.color }}
-                  >
-                    {ACTIVITY_TYPE_META.grocery.emoji}
-                  </span>
-                  <div className="cal-entry-info">
-                    <span className="cal-entry-primary">{selectedTrip.name}</span>
-                    <span className="cal-entry-meta">
-                      {selectedTrip.items.filter((item) => item.checked).length} items · {selectedTrip.tripMode}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

@@ -1,25 +1,26 @@
 import { useState } from 'react';
-import type { ActivityType, TrackerEntry, FinanceEntry, ExerciseEntry } from '../types';
+import type { ActivityType, Activity, FinanceActivity, ExerciseActivity } from '../types';
 import { ACTIVITY_TYPE_META } from '../constants';
 import FinanceForm from '../forms/FinanceForm';
 import ExerciseForm from '../forms/ExerciseForm';
 import GroceryForm from '../forms/GroceryForm';
 import PaymentTemplateForm from '../forms/PaymentTemplateForm';
+import GenericActivityForm from '../forms/GenericActivityForm';
 import './add-entry-drawer.css';
 
 interface AddEntryDrawerProps {
   onClose: () => void;
-  entryToEdit?: TrackerEntry;
+  activityToEdit?: Activity;
 }
 
-const TYPES: ActivityType[] = ['finance', 'exercise', 'grocery', 'payment'];
+const TYPES: ActivityType[] = ['finance', 'exercise', 'grocery', 'payment', 'generic'];
 
-export default function AddEntryDrawer({ onClose, entryToEdit }: AddEntryDrawerProps) {
+export default function AddEntryDrawer({ onClose, activityToEdit }: AddEntryDrawerProps) {
   const [selectedType, setSelectedType] = useState<ActivityType | null>(
-    entryToEdit ? entryToEdit.type : null,
+    activityToEdit ? activityToEdit.type : null,
   );
 
-  const isEditing = !!entryToEdit;
+  const isEditing = !!activityToEdit;
 
   const handleSaved = () => {
     setSelectedType(null);
@@ -70,19 +71,20 @@ export default function AddEntryDrawer({ onClose, entryToEdit }: AddEntryDrawerP
               {selectedType === 'finance' && (
                 <FinanceForm
                   onSaved={handleSaved}
-                  initialValues={entryToEdit as FinanceEntry | undefined}
-                  entryId={entryToEdit?.id}
+                  initialValues={activityToEdit as FinanceActivity | undefined}
+                  entryId={activityToEdit?.id}
                 />
               )}
               {selectedType === 'exercise' && (
                 <ExerciseForm
                   onSaved={handleSaved}
-                  initialValues={entryToEdit as ExerciseEntry | undefined}
-                  entryId={entryToEdit?.id}
+                  initialValues={activityToEdit as ExerciseActivity | undefined}
+                  entryId={activityToEdit?.id}
                 />
               )}
               {selectedType === 'grocery' && <GroceryForm onSaved={handleSaved} />}
               {selectedType === 'payment' && <PaymentTemplateForm onSaved={handleSaved} />}
+              {selectedType === 'generic' && <GenericActivityForm onSaved={handleSaved} />}
             </>
           )}
         </div>

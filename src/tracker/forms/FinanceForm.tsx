@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
-import { addEntry, updateEntry } from '../firebase/trackerQueries';
+import { addActivity, updateActivity } from '../firebase/trackerQueries';
 import { FINANCE_CATEGORIES } from '../constants';
 import { formatDate } from '../utils';
-import type { FinanceCategory, FinanceDirection, FinanceEntry } from '../types';
+import type { FinanceCategory, FinanceDirection, FinanceActivity } from '../types';
 import './form-shared.css';
 
 interface FinanceFormProps {
   onSaved: () => void;
-  initialValues?: FinanceEntry;
+  initialValues?: FinanceActivity;
   entryId?: string;
 }
 
@@ -28,9 +28,9 @@ export default function FinanceForm({ onSaved, initialValues, entryId }: Finance
     setSaving(true);
     try {
       if (entryId) {
-        await updateEntry(user.uid, entryId, { amount: Number(amount), direction, category, date, notes });
+        await updateActivity(user.uid, entryId, { amount: Number(amount), direction, category, date, notes });
       } else {
-        await addEntry(user.uid, { type: 'finance', amount: Number(amount), direction, category, date, notes });
+        await addActivity(user.uid, { type: 'finance', amount: Number(amount), direction, category, date, notes });
       }
       onSaved();
     } catch (e) {

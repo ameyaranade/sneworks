@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { useDrawer } from '../TrackerShell';
-import { subscribeToEntriesByType, deleteEntry } from '../firebase/trackerQueries';
+import { subscribeToActivitiesByType, deleteActivity } from '../firebase/trackerQueries';
 import { MOOD_OPTIONS } from '../constants';
 import { formatDate } from '../utils';
-import type { ExerciseEntry } from '../types';
+import type { ExerciseActivity } from '../types';
 import './exercise-detail-page.css';
 
 const PAGE_SIZE = 20;
@@ -20,7 +20,7 @@ function formatEntryDate(dateStr: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-function computeStreak(entries: ExerciseEntry[]): number {
+function computeStreak(entries: ExerciseActivity[]): number {
   const workoutDates = new Set(entries.filter((e) => e.workout.completed).map((e) => e.date));
   let streak = 0;
   const check = new Date();
@@ -34,9 +34,9 @@ function computeStreak(entries: ExerciseEntry[]): number {
 
 type ListRow =
   | { kind: 'header'; key: string; label: string }
-  | { kind: 'entry'; entry: ExerciseEntry };
+  | { kind: 'entry'; entry: ExerciseActivity };
 
-function buildRows(entries: ExerciseEntry[]): ListRow[] {
+function buildRows(entries: ExerciseActivity[]): ListRow[] {
   const rows: ListRow[] = [];
   let lastMonth = '';
   for (const entry of entries) {
@@ -73,8 +73,8 @@ function ExerciseSkeleton() {
 export default function ExerciseDetailPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { openDrawerWithEntry } = useDrawer();
-  const [allEntries, setAllEntries] = useState<ExerciseEntry[]>([]);
+  const { openDrawerWithActivity } = useDrawer();
+  const [allEntries, setAllEntries] = useState<ExerciseActivity[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export default function ExerciseDetailPage() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const unsub = subscribeToEntriesByType<ExerciseEntry>(user.uid, 'exercise', (entries) => {
+    const unsub = subscribeToActivitiesByType<ExerciseActivity>(user.uid, 'exercise', (entries) => {
       setAllEntries(entries);
       setLoading(false);
     });
@@ -104,13 +104,13 @@ export default function ExerciseDetailPage() {
     return () => observerRef.current?.disconnect();
   }, [loading, allEntries.length]);
 
-  const handleDelete = async (entryId: string) => {
+  const handleDelete = async (activityId: string) => {
     if (!user) return;
     setExpandedId(null);
     try {
-      await deleteEntry(user.uid, entryId);
+      await deleteActivity(user.uid, activityId);
     } catch (e) {
-      console.error('Delete exercise entry failed:', e);
+      console.error('Delete exercise activity failed:', e);
       showToast('Failed to delete entry');
     }
   };
@@ -232,7 +232,7 @@ export default function ExerciseDetailPage() {
                     <div className="exercise-entry-actions">
                       <button
                         className="exercise-entry-edit"
-                        onClick={() => entry.id && openDrawerWithEntry(entry)}
+                        onClick={() => entry.id && openDrawerWithActivity(entry)}
                       >
                         Edit entry
                       </button>

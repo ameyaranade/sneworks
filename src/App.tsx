@@ -15,7 +15,7 @@ import SettingsPage from './tracker/pages/SettingsPage';
 import FinancesDetailPage from './tracker/pages/FinancesDetailPage';
 import ExerciseDetailPage from './tracker/pages/ExerciseDetailPage';
 import GroceriesPage from './tracker/pages/GroceriesPage';
-import PaymentsPage from './tracker/pages/PaymentsPage';
+import RemindersPage from './tracker/pages/RemindersPage';
 
 export default function App() {
   return (
@@ -35,7 +35,7 @@ export default function App() {
               <Route path="finances" element={<FinancesDetailPage />} />
               <Route path="exercise" element={<ExerciseDetailPage />} />
               <Route path="groceries" element={<GroceriesPage />} />
-              <Route path="payments" element={<PaymentsPage />} />
+              <Route path="reminders" element={<RemindersPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>

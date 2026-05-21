@@ -1,15 +1,40 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import { useToast } from '../components/Toast';
 import { useDrawer } from '../TrackerShell';
-import { subscribeToEntriesByType, deleteEntry } from '../firebase/trackerQueries';
+import {
+  subscribeToActivitiesByType,
+  deleteActivity,
+  addActivity,
+  deleteReminder,
+} from '../firebase/trackerQueries';
 import { FINANCE_CATEGORIES } from '../constants';
-import { formatCurrency } from '../utils';
-import type { FinanceEntry } from '../types';
+import { formatCurrency, formatDate, computeDueStatus, computeNextDueDate } from '../utils';
+import DueIndicator from '../components/DueIndicator';
+import type { FinanceActivity, PaymentActivity, FinanceReminder, DueStatus } from '../types';
 import './finances-detail-page.css';
 
 const PAGE_SIZE = 20;
+
+const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function formatSchedule(item: FinanceReminder): string {
+  switch (item.frequency) {
+    case 'weekly':    return `Every ${DAYS_OF_WEEK[item.dueDay]}`;
+    case 'biweekly':  return `Every other ${DAYS_OF_WEEK[item.dueDay]}`;
+    case 'monthly':   return `Monthly on the ${ordinal(item.dueDay)}`;
+    case 'quarterly': return `Quarterly on the ${ordinal(item.dueDay)}`;
+    case 'yearly':    return `Yearly on day ${item.dueDay}`;
+    default:          return '';
+  }
+}
 
 function formatEntryDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -23,9 +48,9 @@ function getMonthLabel(yyyyMm: string): string {
 
 type ListRow =
   | { kind: 'header'; key: string; label: string }
-  | { kind: 'entry'; entry: FinanceEntry };
+  | { kind: 'entry'; entry: FinanceActivity };
 
-function buildRows(entries: FinanceEntry[]): ListRow[] {
+function buildRows(entries: FinanceActivity[]): ListRow[] {
   const rows: ListRow[] = [];
   let lastMonth = '';
   for (const entry of entries) {
@@ -38,6 +63,10 @@ function buildRows(entries: FinanceEntry[]): ListRow[] {
   }
   return rows;
 }
+
+const STATUS_PRIORITY: Record<DueStatus, number> = {
+  overdue: 0, 'due-today': 1, upcoming: 2, none: 3, paid: 4, skipped: 5,
+};
 
 function FinancesSkeleton() {
   return (
@@ -55,19 +84,21 @@ function FinancesSkeleton() {
 
 export default function FinancesDetailPage() {
   const { user } = useAuth();
-  const { settings } = useTracker();
+  const { settings, reminders, monthActivities } = useTracker();
   const { showToast } = useToast();
-  const { openDrawerWithEntry } = useDrawer();
-  const [allEntries, setAllEntries] = useState<FinanceEntry[]>([]);
+  const { openDrawerWithActivity } = useDrawer();
+  const [allEntries, setAllEntries] = useState<FinanceActivity[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
+  const [billsExpanded, setBillsExpanded] = useState(true);
+  const [actionLoading, setActionLoading] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const unsub = subscribeToEntriesByType<FinanceEntry>(user.uid, 'finance', (entries) => {
+    const unsub = subscribeToActivitiesByType<FinanceActivity>(user.uid, 'finance', (entries) => {
       setAllEntries(entries);
       setLoading(false);
     });
@@ -87,31 +118,81 @@ export default function FinancesDetailPage() {
     return () => observerRef.current?.disconnect();
   }, [loading, allEntries.length]);
 
-  const handleDelete = async (entryId: string) => {
+  const financeReminders = useMemo(
+    () => reminders.filter((r): r is FinanceReminder => r.type === 'finance'),
+    [reminders],
+  );
+
+  const billsWithStatus = useMemo(() => {
+    const paymentActivities = monthActivities.filter(
+      (a): a is PaymentActivity => a.type === 'payment',
+    );
+    return financeReminders
+      .map((item) => ({
+        item,
+        status: computeDueStatus(item, paymentActivities),
+        nextDue: computeNextDueDate(item),
+      }))
+      .sort((a, b) => {
+        const pDiff = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+        if (pDiff !== 0) return pDiff;
+        return a.nextDue.getTime() - b.nextDue.getTime();
+      });
+  }, [financeReminders, monthActivities]);
+
+  const handleDeleteActivity = async (activityId: string) => {
     if (!user) return;
     try {
-      await deleteEntry(user.uid, entryId);
+      await deleteActivity(user.uid, activityId);
     } catch (e) {
-      console.error('Delete finance entry failed:', e);
+      console.error('Delete finance activity failed:', e);
       showToast('Failed to delete entry');
+    }
+  };
+
+  const handleBillAction = async (item: FinanceReminder, action: 'paid' | 'skipped') => {
+    if (!user || !item.id) return;
+    setActionLoading((prev) => new Set(prev).add(item.id!));
+    try {
+      await addActivity(user.uid, {
+        type: 'payment',
+        reminderId: item.id,
+        amount: item.amount,
+        status: action,
+        date: formatDate(new Date()),
+        notes: item.name,
+      });
+    } catch (e) {
+      console.error('Record payment failed:', e);
+      showToast('Failed to record payment');
+    } finally {
+      setActionLoading((prev) => { const next = new Set(prev); next.delete(item.id!); return next; });
+    }
+  };
+
+  const handleDeleteBill = async (item: FinanceReminder) => {
+    if (!user || !item.id) return;
+    if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+    try {
+      await deleteReminder(user.uid, item.id);
+    } catch (e) {
+      console.error('Delete bill failed:', e);
+      showToast('Failed to delete bill');
     }
   };
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthEntries = allEntries.filter((e) => e.date.startsWith(currentMonth));
-  const totalSpent = monthEntries
-    .filter((e) => e.direction === 'expense')
-    .reduce((s, e) => s + e.amount, 0);
-  const totalEarned = monthEntries
-    .filter((e) => e.direction === 'income')
-    .reduce((s, e) => s + e.amount, 0);
+  const totalSpent = monthEntries.filter((e) => e.direction === 'expense').reduce((s, e) => s + e.amount, 0);
+  const totalEarned = monthEntries.filter((e) => e.direction === 'income').reduce((s, e) => s + e.amount, 0);
 
   const visibleEntries = allEntries.slice(0, visibleCount);
   const hasMore = visibleCount < allEntries.length;
   const rows = buildRows(visibleEntries);
-
   const getCat = (val: string) => FINANCE_CATEGORIES.find((c) => c.value === val);
+
+  const formatNextDue = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
   return (
     <div className="finances-page">
@@ -119,6 +200,77 @@ export default function FinancesDetailPage() {
         <h2 className="page-title">💰 Finances</h2>
       </div>
 
+      {/* Recurring Bills section */}
+      <div className="finances-bills-section">
+        <button
+          className="finances-bills-toggle"
+          onClick={() => setBillsExpanded((v) => !v)}
+        >
+          <span>💳 Recurring Bills</span>
+          <span className="finances-bills-toggle-arrow">{billsExpanded ? '▾' : '▸'}</span>
+          {financeReminders.length > 0 && (
+            <span className="finances-bills-count">{financeReminders.length}</span>
+          )}
+        </button>
+
+        {billsExpanded && (
+          <div className="finances-bills-list">
+            {financeReminders.length === 0 ? (
+              <p className="finances-bills-empty">No recurring bills. Tap + → Payments to add one.</p>
+            ) : (
+              billsWithStatus.map(({ item, status, nextDue }) => {
+                const loading = actionLoading.has(item.id!);
+                const isDone = status === 'paid' || status === 'skipped';
+                return (
+                  <div key={item.id} className={`payment-card payment-card--${status}`}>
+                    <div className="payment-card-top">
+                      <div className="payment-card-info">
+                        <span className="payment-card-name">{item.name}</span>
+                        <DueIndicator status={status} />
+                      </div>
+                      <button
+                        className="payment-card-delete"
+                        onClick={() => handleDeleteBill(item)}
+                        title="Delete"
+                        aria-label="Delete recurring payment"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                    <div className="payment-card-meta">
+                      <span className="payment-amount">{formatCurrency(item.amount, settings.currencySymbol)}</span>
+                      <span className="payment-schedule">{formatSchedule(item)}</span>
+                      {!isDone && (
+                        <span className="payment-next-due">Next: {formatNextDue(nextDue)}</span>
+                      )}
+                    </div>
+                    {!isDone && (
+                      <div className="payment-card-actions">
+                        <button
+                          className="payment-action-btn payment-action-btn--paid"
+                          onClick={() => handleBillAction(item, 'paid')}
+                          disabled={loading}
+                        >
+                          {loading ? '...' : '✓ Mark Paid'}
+                        </button>
+                        <button
+                          className="payment-action-btn payment-action-btn--skip"
+                          onClick={() => handleBillAction(item, 'skipped')}
+                          disabled={loading}
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Monthly summary */}
       {!loading && monthEntries.length > 0 && (
         <div className="finances-summary-card">
           <span className="finances-summary-month">
@@ -141,6 +293,7 @@ export default function FinancesDetailPage() {
         </div>
       )}
 
+      {/* Finance history */}
       {loading ? (
         <FinancesSkeleton />
       ) : allEntries.length === 0 ? (
@@ -170,14 +323,14 @@ export default function FinancesDetailPage() {
                 </div>
                 <button
                   className="finance-entry-edit"
-                  onClick={() => entry.id && openDrawerWithEntry(entry)}
+                  onClick={() => entry.id && openDrawerWithActivity(entry)}
                   title="Edit"
                 >
                   ✏️
                 </button>
                 <button
                   className="finance-entry-delete"
-                  onClick={() => entry.id && handleDelete(entry.id)}
+                  onClick={() => entry.id && handleDeleteActivity(entry.id)}
                   title="Delete"
                 >
                   &times;

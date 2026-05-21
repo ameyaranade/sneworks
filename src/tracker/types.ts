@@ -1,8 +1,9 @@
 import { Timestamp } from 'firebase/firestore';
 
-// ─── Activity Types ───
+// ─── Shared Enums ───
 
-export type ActivityType = 'finance' | 'exercise' | 'grocery' | 'payment';
+export type ActivityType = 'finance' | 'exercise' | 'grocery' | 'payment' | 'generic';
+export type ReminderType = 'finance' | 'exercise' | 'grocery' | 'generic';
 
 export type FinanceCategory =
   | 'food'
@@ -17,18 +18,15 @@ export type FinanceCategory =
   | 'other';
 
 export type FinanceDirection = 'expense' | 'income';
-
 export type PaymentFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
-
 export type Mood = 1 | 2 | 3 | 4 | 5;
-
 export type DueStatus = 'overdue' | 'due-today' | 'upcoming' | 'paid' | 'skipped' | 'none';
-
 export type Currency = 'INR' | 'USD';
+export type DateRange = 'today' | 'week';
 
-// ─── Entry Base ───
+// ─── Activity Types (discriminated union on `type`) ───
 
-interface EntryBase {
+interface ActivityBase {
   id?: string;
   type: ActivityType;
   date: string; // YYYY-MM-DD
@@ -37,17 +35,14 @@ interface EntryBase {
   updatedAt: Timestamp;
 }
 
-// ─── Entry Types ───
-
-export interface FinanceEntry extends EntryBase {
+export interface FinanceActivity extends ActivityBase {
   type: 'finance';
   amount: number;
   direction: FinanceDirection;
   category: FinanceCategory;
-  target?: number;
 }
 
-export interface ExerciseEntry extends EntryBase {
+export interface ExerciseActivity extends ActivityBase {
   type: 'exercise';
   workout: {
     completed: boolean;
@@ -58,63 +53,86 @@ export interface ExerciseEntry extends EntryBase {
     weightKg?: number;
     mood?: Mood;
   };
-  target?: number;
 }
 
-export interface PaymentEntry extends EntryBase {
+export interface PaymentActivity extends ActivityBase {
   type: 'payment';
-  recurringItemId: string;
+  reminderId: string;
   amount: number;
   status: 'paid' | 'skipped';
-  target?: number;
 }
 
-export type TrackerEntry = FinanceEntry | ExerciseEntry | PaymentEntry;
-
-// ─── Grocery ───
-
-export interface GroceryItem {
+export interface GroceryTripItem {
   id: string;
   name: string;
   checked: boolean;
   checkedAt?: Timestamp;
-  addedAt: Timestamp;
-  sortOrder: number;
 }
 
-export interface ActiveGroceryList {
-  items: GroceryItem[];
+export interface GroceryActivity extends ActivityBase {
+  type: 'grocery';
+  tripName: string;
+  tripMode: 'store' | 'online';
+  tripItems: GroceryTripItem[];
+}
+
+export interface GenericActivity extends ActivityBase {
+  type: 'generic';
+}
+
+export type Activity =
+  | FinanceActivity
+  | ExerciseActivity
+  | PaymentActivity
+  | GroceryActivity
+  | GenericActivity;
+
+// ─── Reminder Types (discriminated union on `type`) ───
+
+interface ReminderBase {
+  id?: string;
+  type: ReminderType;
+  name: string;
+  notes: string;
+  active: boolean;
+  createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
-export interface GroceryTrip {
-  id?: string;
-  name: string;
-  items: GroceryItem[];
-  tripMode: 'store' | 'online';
-  completedAt: Timestamp;
-  date: string; // YYYY-MM-DD
-}
-
-// ─── Recurring Items ───
-
-export interface RecurringItem {
-  id?: string;
-  name: string;
+export interface FinanceReminder extends ReminderBase {
+  type: 'finance';
   amount: number;
   frequency: PaymentFrequency;
   dueDay: number;
-  notes: string;
-  active: boolean;
   category?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  reminderDate?: Timestamp;
-  reminderSent?: boolean;
-  target?: number;
 }
 
-export interface RecurringItemWithStatus extends RecurringItem {
+export interface ExerciseReminder extends ReminderBase {
+  type: 'exercise';
+  dueDate?: string; // YYYY-MM-DD
+}
+
+export interface GroceryReminder extends ReminderBase {
+  type: 'grocery';
+  checked: boolean;
+  checkedAt?: Timestamp;
+  sortOrder: number;
+}
+
+export interface GenericReminder extends ReminderBase {
+  type: 'generic';
+  dueDate?: string; // YYYY-MM-DD
+  completed: boolean;
+  completedAt?: Timestamp;
+}
+
+export type Reminder =
+  | FinanceReminder
+  | ExerciseReminder
+  | GroceryReminder
+  | GenericReminder;
+
+export interface FinanceReminderWithStatus extends FinanceReminder {
   dueStatus: DueStatus;
   nextDueDate: Date;
   lastPaidDate?: Date;
@@ -130,6 +148,3 @@ export interface TrackerSettings {
   updatedAt: Timestamp;
 }
 
-// ─── Dashboard ───
-
-export type DateRange = 'today' | 'week';

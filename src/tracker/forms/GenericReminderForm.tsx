@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { useTracker } from '../context/TrackerProvider';
 import { addReminder } from '../firebase/trackerQueries';
 import './form-shared.css';
 
@@ -8,25 +7,24 @@ interface Props {
   onSaved: () => void;
 }
 
-export default function GroceryForm({ onSaved }: Props) {
+export default function GenericReminderForm({ onSaved }: Props) {
   const { user } = useAuth();
-  const { reminders } = useTracker();
   const [name, setName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
-    if (!user || !name.trim() || saving) return;
+    if (!user || !name.trim()) return;
     setSaving(true);
-    const groceryReminders = reminders.filter((r) => r.type === 'grocery');
-    const maxOrder = groceryReminders.reduce((m, r) => Math.max(m, (r as any).sortOrder ?? -1), -1);
     try {
       await addReminder(user.uid, {
-        type: 'grocery',
+        type: 'generic',
         name: name.trim(),
-        notes: '',
+        notes,
         active: true,
-        checked: false,
-        sortOrder: maxOrder + 1,
+        completed: false,
+        ...(dueDate ? { dueDate } : {}),
       });
       onSaved();
     } finally {
@@ -37,15 +35,34 @@ export default function GroceryForm({ onSaved }: Props) {
   return (
     <div className="entry-form">
       <div className="form-group">
-        <label className="form-label">Item</label>
+        <label className="form-label">Reminder</label>
         <input
           type="text"
           className="form-input"
-          placeholder="e.g. Milk, Bread, Eggs"
+          placeholder="e.g. Call dentist, Renew passport"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           autoFocus
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Due date (optional)</label>
+        <input
+          type="date"
+          className="form-input"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Notes</label>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Optional"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
         />
       </div>
       <button
@@ -53,7 +70,7 @@ export default function GroceryForm({ onSaved }: Props) {
         onClick={handleSubmit}
         disabled={saving || !name.trim()}
       >
-        {saving ? 'Adding…' : 'Add to List'}
+        {saving ? 'Saving…' : 'Add Reminder'}
       </button>
     </div>
   );

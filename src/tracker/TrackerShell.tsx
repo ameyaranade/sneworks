@@ -5,18 +5,18 @@ import BottomTabBar from './components/BottomTabBar';
 import AddEntryDrawer from './components/AddEntryDrawer';
 import GoToMenu from './components/GoToMenu';
 import { ToastProvider } from './components/Toast';
-import type { TrackerEntry } from './types';
+import type { Activity } from './types';
 import './tracker-shell.css';
 
 interface DrawerContextType {
   openDrawer: () => void;
-  openDrawerWithEntry: (entry: TrackerEntry) => void;
+  openDrawerWithActivity: (activity: Activity) => void;
   closeDrawer: () => void;
 }
 
 const DrawerContext = createContext<DrawerContextType>({
   openDrawer: () => {},
-  openDrawerWithEntry: () => {},
+  openDrawerWithActivity: () => {},
   closeDrawer: () => {},
 });
 
@@ -26,33 +26,33 @@ export function useDrawer() {
 
 export default function TrackerShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [entryToEdit, setEntryToEdit] = useState<TrackerEntry | undefined>();
+  const [activityToEdit, setActivityToEdit] = useState<Activity | undefined>();
   const [goToOpen, setGoToOpen] = useState(false);
 
   const openDrawer = () => {
-    setEntryToEdit(undefined);
+    setActivityToEdit(undefined);
     setDrawerOpen(true);
   };
-  const openDrawerWithEntry = (entry: TrackerEntry) => {
-    setEntryToEdit(entry);
+  const openDrawerWithActivity = (activity: Activity) => {
+    setActivityToEdit(activity);
     setDrawerOpen(true);
   };
   const closeDrawer = () => {
     setDrawerOpen(false);
-    setEntryToEdit(undefined);
+    setActivityToEdit(undefined);
   };
 
   return (
     <TrackerProvider>
       <ToastProvider>
-        <DrawerContext.Provider value={{ openDrawer, openDrawerWithEntry, closeDrawer }}>
+        <DrawerContext.Provider value={{ openDrawer, openDrawerWithActivity, closeDrawer }}>
           <div className="tracker-shell">
             <div className="tracker-content">
               <Outlet />
             </div>
             <BottomTabBar onAddClick={openDrawer} onGoToClick={() => setGoToOpen(true)} />
 
-            {drawerOpen && <AddEntryDrawer onClose={closeDrawer} entryToEdit={entryToEdit} />}
+            {drawerOpen && <AddEntryDrawer onClose={closeDrawer} activityToEdit={activityToEdit} />}
             {goToOpen && <GoToMenu onClose={() => setGoToOpen(false)} />}
           </div>
         </DrawerContext.Provider>
