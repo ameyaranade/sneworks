@@ -9,46 +9,37 @@ import {
   getDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   serverTimestamp,
+  writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type {
-  TrackerEntry,
-  TrackerSettings,
-  ActiveGroceryList,
-  GroceryTrip,
-  GroceryItem,
-  RecurringItem,
+  Activity,
   ActivityType,
+  Reminder,
+  ReminderType,
+  GroceryReminder,
+  TrackerSettings,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 
-// ─── Paths ───
+// ─── New Paths ───
 
-function entriesCol(uid: string) {
-  return collection(db, 'users', uid, 'entries');
+function activitiesCol(uid: string) {
+  return collection(db, 'users', uid, 'activities');
 }
 
-function groceryCol(uid: string) {
-  return collection(db, 'users', uid, 'groceryLists');
-}
-
-function recurringCol(uid: string) {
-  return collection(db, 'users', uid, 'recurringItems');
+function remindersCol(uid: string) {
+  return collection(db, 'users', uid, 'reminders');
 }
 
 function settingsDoc(uid: string) {
   return doc(db, 'users', uid, 'settings', 'preferences');
 }
 
-function activeGroceryDoc(uid: string) {
-  return doc(db, 'users', uid, 'groceryLists', 'active');
-}
-
-// ─── Settings ───
+// ─── Settings (unchanged) ───
 
 export async function getSettings(uid: string): Promise<TrackerSettings> {
   const snap = await getDoc(settingsDoc(uid));
@@ -68,170 +59,177 @@ export function subscribeToSettings(uid: string, cb: (s: TrackerSettings) => voi
   });
 }
 
-// ─── Entries ───
+// ─── Activities ───
 
-export async function addEntry(uid: string, entry: Omit<TrackerEntry, 'id' | 'createdAt' | 'updatedAt'> & Record<string, unknown>) {
-  const ref = await addDoc(entriesCol(uid), {
-    ...entry,
+export async function addActivity(
+  uid: string,
+  activity: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'> & Record<string, unknown>,
+) {
+  const ref = await addDoc(activitiesCol(uid), {
+    ...activity,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
   return ref.id;
 }
 
-export async function updateEntry(uid: string, entryId: string, partial: Partial<TrackerEntry>) {
-  await updateDoc(doc(entriesCol(uid), entryId), {
+export async function updateActivity(uid: string, activityId: string, partial: Partial<Activity>) {
+  await updateDoc(doc(activitiesCol(uid), activityId), {
     ...partial,
     updatedAt: serverTimestamp(),
   });
 }
 
-export async function deleteEntry(uid: string, entryId: string) {
-  await deleteDoc(doc(entriesCol(uid), entryId));
+export async function deleteActivity(uid: string, activityId: string) {
+  await deleteDoc(doc(activitiesCol(uid), activityId));
 }
 
-export function subscribeToEntriesForDate(
+export function subscribeToActivitiesForDate(
   uid: string,
   date: string,
-  cb: (entries: TrackerEntry[]) => void,
+  cb: (activities: Activity[]) => void,
 ): Unsubscribe {
-  const q = query(entriesCol(uid), where('date', '==', date));
+  const q = query(activitiesCol(uid), where('date', '==', date));
   return onSnapshot(q, (snap) => {
-    const entries = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as TrackerEntry);
-    entries.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-    cb(entries);
+    const activities = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Activity);
+    activities.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    cb(activities);
   });
 }
 
-export function subscribeToEntriesForDateRange(
+export function subscribeToActivitiesForDateRange(
   uid: string,
   startDate: string,
   endDate: string,
-  cb: (entries: TrackerEntry[]) => void,
+  cb: (activities: Activity[]) => void,
 ): Unsubscribe {
   const q = query(
-    entriesCol(uid),
+    activitiesCol(uid),
     where('date', '>=', startDate),
     where('date', '<=', endDate),
   );
   return onSnapshot(q, (snap) => {
-    const entries = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as TrackerEntry);
-    entries.sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-    cb(entries);
-  });
-}
-
-export function subscribeToEntriesByType<T extends TrackerEntry>(
-  uid: string,
-  type: ActivityType,
-  cb: (entries: T[]) => void,
-): Unsubscribe {
-  const q = query(entriesCol(uid), where('type', '==', type));
-  return onSnapshot(q, (snap) => {
-    const entries = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as T);
-    entries.sort(
+    const activities = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Activity);
+    activities.sort(
       (a, b) => b.date.localeCompare(a.date) || (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0),
     );
-    cb(entries);
+    cb(activities);
   });
 }
 
-export async function getEntriesForDateRange(uid: string, startDate: string, endDate: string) {
+export function subscribeToActivitiesByType<T extends Activity>(
+  uid: string,
+  type: ActivityType,
+  cb: (activities: T[]) => void,
+): Unsubscribe {
+  const q = query(activitiesCol(uid), where('type', '==', type));
+  return onSnapshot(q, (snap) => {
+    const activities = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as T);
+    activities.sort(
+      (a, b) => b.date.localeCompare(a.date) || (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0),
+    );
+    cb(activities);
+  });
+}
+
+export async function getActivitiesForDateRange(uid: string, startDate: string, endDate: string) {
   const q = query(
-    entriesCol(uid),
+    activitiesCol(uid),
     where('date', '>=', startDate),
     where('date', '<=', endDate),
   );
   const snap = await getDocs(q);
-  const entries = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as TrackerEntry);
-  entries.sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-  return entries;
-}
-
-// ─── Grocery Lists ───
-
-export function subscribeToActiveGroceryList(
-  uid: string,
-  cb: (list: ActiveGroceryList | null) => void,
-): Unsubscribe {
-  return onSnapshot(activeGroceryDoc(uid), (snap) => {
-    cb(snap.exists() ? (snap.data() as ActiveGroceryList) : null);
-  });
-}
-
-export async function updateActiveGroceryList(uid: string, items: GroceryItem[]) {
-  await setDoc(activeGroceryDoc(uid), { items, updatedAt: serverTimestamp() });
-}
-
-export async function archiveGroceryTrip(
-  uid: string,
-  trip: Omit<GroceryTrip, 'id' | 'completedAt'>,
-  remainingItems: GroceryItem[],
-) {
-  await addDoc(groceryCol(uid), {
-    ...trip,
-    completedAt: serverTimestamp(),
-  });
-  await updateActiveGroceryList(uid, remainingItems);
-}
-
-export async function getGroceryTrips(uid: string): Promise<GroceryTrip[]> {
-  const snap = await getDocs(groceryCol(uid));
-  return snap.docs
-    .filter((d) => d.id !== 'active')
-    .map((d) => ({ ...d.data(), id: d.id }) as GroceryTrip)
-    .sort((a, b) => (b.completedAt?.seconds ?? 0) - (a.completedAt?.seconds ?? 0));
-}
-
-export function subscribeToGroceryTripsForDateRange(
-  uid: string,
-  startDate: string,
-  endDate: string,
-  cb: (trips: GroceryTrip[]) => void,
-): Unsubscribe {
-  const q = query(
-    groceryCol(uid),
-    where('date', '>=', startDate),
-    where('date', '<=', endDate),
+  const activities = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Activity);
+  activities.sort(
+    (a, b) => b.date.localeCompare(a.date) || (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0),
   );
-  return onSnapshot(q, (snap) => {
-    const trips = snap.docs
-      .filter((d) => d.id !== 'active')
-      .map((d) => ({ ...d.data(), id: d.id }) as GroceryTrip)
-      .sort((a, b) => (b.completedAt?.seconds ?? 0) - (a.completedAt?.seconds ?? 0));
-    cb(trips);
-  });
+  return activities;
 }
 
-// ─── Recurring Items ───
+// ─── Reminders ───
 
-export async function addRecurringItem(uid: string, item: Omit<RecurringItem, 'id' | 'createdAt' | 'updatedAt'>) {
-  const ref = await addDoc(recurringCol(uid), {
-    ...item,
+export async function addReminder(
+  uid: string,
+  reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'> & Record<string, unknown>,
+) {
+  const ref = await addDoc(remindersCol(uid), {
+    ...reminder,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
   return ref.id;
 }
 
-export async function updateRecurringItem(uid: string, itemId: string, partial: Partial<RecurringItem>) {
-  await updateDoc(doc(recurringCol(uid), itemId), {
+export async function updateReminder(uid: string, reminderId: string, partial: Partial<Reminder>) {
+  await updateDoc(doc(remindersCol(uid), reminderId), {
     ...partial,
     updatedAt: serverTimestamp(),
   });
 }
 
-export async function deleteRecurringItem(uid: string, itemId: string) {
-  await deleteDoc(doc(recurringCol(uid), itemId));
+export async function deleteReminder(uid: string, reminderId: string) {
+  await deleteDoc(doc(remindersCol(uid), reminderId));
 }
 
-export function subscribeToRecurringItems(
-  uid: string,
-  cb: (items: RecurringItem[]) => void,
-): Unsubscribe {
-  const q = query(recurringCol(uid), where('active', '==', true));
+export function subscribeToReminders(uid: string, cb: (reminders: Reminder[]) => void): Unsubscribe {
+  const q = query(remindersCol(uid), where('active', '==', true));
   return onSnapshot(q, (snap) => {
-    const items = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as RecurringItem);
-    cb(items);
+    cb(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Reminder));
   });
 }
+
+export function subscribeToRemindersByType<T extends Reminder>(
+  uid: string,
+  type: ReminderType,
+  cb: (reminders: T[]) => void,
+): Unsubscribe {
+  const q = query(remindersCol(uid), where('type', '==', type), where('active', '==', true));
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as T));
+  });
+}
+
+export async function toggleGroceryReminder(uid: string, reminderId: string, checked: boolean) {
+  await updateDoc(doc(remindersCol(uid), reminderId), {
+    checked,
+    checkedAt: checked ? serverTimestamp() : null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function archiveGroceryTrip(
+  uid: string,
+  tripName: string,
+  tripMode: 'store' | 'online',
+  checkedReminders: GroceryReminder[],
+  date: string,
+) {
+  await addActivity(uid, {
+    type: 'grocery',
+    date,
+    notes: '',
+    tripName,
+    tripMode,
+    tripItems: checkedReminders.map((r) => ({
+      id: r.id!,
+      name: r.name,
+      checked: true,
+      ...(r.checkedAt ? { checkedAt: r.checkedAt } : {}),
+    })),
+  });
+  const batch = writeBatch(db);
+  for (const r of checkedReminders) {
+    if (r.id) batch.delete(doc(remindersCol(uid), r.id));
+  }
+  await batch.commit();
+}
+
+export async function completeGenericReminder(uid: string, reminderId: string) {
+  await updateDoc(doc(remindersCol(uid), reminderId), {
+    completed: true,
+    completedAt: serverTimestamp(),
+    active: false,
+    updatedAt: serverTimestamp(),
+  });
+}
+

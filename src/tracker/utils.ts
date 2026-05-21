@@ -1,4 +1,4 @@
-import type { DueStatus, RecurringItem, PaymentEntry, TrackerEntry } from './types';
+import type { DueStatus, FinanceReminder, PaymentActivity, Activity } from './types';
 
 export function formatDate(d: Date): string {
   const y = d.getFullYear();
@@ -23,7 +23,7 @@ export function formatCurrency(amount: number, symbol: string): string {
   return `${symbol}${amount.toLocaleString('en-US')}`;
 }
 
-export function computeNextDueDate(item: RecurringItem): Date {
+export function computeNextDueDate(item: FinanceReminder): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -66,20 +66,34 @@ export function computeNextDueDate(item: RecurringItem): Date {
   }
 }
 
-export function computeDueStatus(item: RecurringItem, paymentEntries: TrackerEntry[]): DueStatus {
+function computePreviousDueDate(item: FinanceReminder, nextDue: Date): Date {
+  const prev = new Date(nextDue);
+  switch (item.frequency) {
+    case 'weekly':    prev.setDate(prev.getDate() - 7); break;
+    case 'biweekly':  prev.setDate(prev.getDate() - 14); break;
+    case 'monthly':   prev.setMonth(prev.getMonth() - 1); break;
+    case 'quarterly': prev.setMonth(prev.getMonth() - 3); break;
+    case 'yearly':    prev.setFullYear(prev.getFullYear() - 1); break;
+  }
+  return prev;
+}
+
+export function computeDueStatus(item: FinanceReminder, paymentActivities: Activity[]): DueStatus {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const nextDue = computeNextDueDate(item);
 
-  const relevantPayments = paymentEntries.filter(
-    (e): e is PaymentEntry => e.type === 'payment' && e.recurringItemId === item.id,
+  const relevantPayments = paymentActivities.filter(
+    (e): e is PaymentActivity => e.type === 'payment' && e.reminderId === item.id,
   );
 
   if (relevantPayments.length > 0) {
     const latest = relevantPayments[0];
     const latestDate = new Date(latest.date);
     latestDate.setHours(0, 0, 0, 0);
-    if (latestDate >= nextDue) {
+    // Payment on or after the start of the current billing cycle counts as paid
+    const prevDue = computePreviousDueDate(item, nextDue);
+    if (latestDate >= prevDue) {
       return latest.status === 'skipped' ? 'skipped' : 'paid';
     }
   }

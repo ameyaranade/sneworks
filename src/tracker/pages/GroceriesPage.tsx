@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import {
-  updateActiveGroceryList,
+  addReminder,
+  deleteReminder,
+  toggleGroceryReminder,
   archiveGroceryTrip,
-  getGroceryTrips,
+  subscribeToActivitiesByType,
 } from '../firebase/trackerQueries';
 import { formatDate } from '../utils';
 import { ACTIVITY_TYPE_META } from '../constants';
 import { useToast } from '../components/Toast';
-import type { GroceryItem, GroceryTrip } from '../types';
+import type { GroceryReminder, GroceryActivity } from '../types';
 import './groceries-page.css';
 
-function formatTime(ts?: Timestamp): string {
+function formatTime(ts?: { toDate: () => Date }): string {
   if (!ts) return '';
   return ts.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
@@ -34,7 +35,7 @@ function getDefaultTripName(): string {
 
 export default function GroceriesPage() {
   const { user } = useAuth();
-  const { activeGroceryList } = useTracker();
+  const { reminders } = useTracker();
   const { showToast } = useToast();
 
   const [addName, setAddName] = useState('');
@@ -45,37 +46,39 @@ export default function GroceriesPage() {
   const [tripMode, setTripMode] = useState<'store' | 'online'>('store');
   const [archiving, setArchiving] = useState(false);
 
-  const [pastTrips, setPastTrips] = useState<GroceryTrip[]>([]);
+  const [pastTrips, setPastTrips] = useState<GroceryActivity[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
   const [expandedTrips, setExpandedTrips] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
-    getGroceryTrips(user.uid)
-      .then(setPastTrips)
-      .catch(() => setPastTrips([]))
-      .finally(() => setTripsLoading(false));
+    setTripsLoading(true);
+    const unsub = subscribeToActivitiesByType<GroceryActivity>(user.uid, 'grocery', (trips) => {
+      setPastTrips(trips);
+      setTripsLoading(false);
+    });
+    return unsub;
   }, [user]);
 
-  const items: GroceryItem[] = activeGroceryList?.items ?? [];
-  const unchecked = [...items.filter((i) => !i.checked)].sort((a, b) => a.sortOrder - b.sortOrder);
-  const checked = [...items.filter((i) => i.checked)].sort(
-    (a, b) => (a.checkedAt?.seconds ?? 0) - (b.checkedAt?.seconds ?? 0),
-  );
+  const groceryReminders = (reminders.filter((r) => r.type === 'grocery') as GroceryReminder[])
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const unchecked = groceryReminders.filter((r) => !r.checked);
+  const checked = groceryReminders.filter((r) => r.checked)
+    .sort((a, b) => (a.checkedAt?.seconds ?? 0) - (b.checkedAt?.seconds ?? 0));
 
   const handleAdd = async () => {
     if (!user || !addName.trim() || adding) return;
     setAdding(true);
-    const maxOrder = items.reduce((m, i) => Math.max(m, i.sortOrder), -1);
-    const newItem: GroceryItem = {
-      id: crypto.randomUUID(),
-      name: addName.trim(),
-      checked: false,
-      addedAt: Timestamp.now(),
-      sortOrder: maxOrder + 1,
-    };
+    const maxOrder = groceryReminders.reduce((m, r) => Math.max(m, r.sortOrder), -1);
     try {
-      await updateActiveGroceryList(user.uid, [...items, newItem]);
+      await addReminder(user.uid, {
+        type: 'grocery',
+        name: addName.trim(),
+        notes: '',
+        active: true,
+        checked: false,
+        sortOrder: maxOrder + 1,
+      });
       setAddName('');
     } catch (e) {
       console.error('Add grocery item failed:', e);
@@ -85,27 +88,20 @@ export default function GroceriesPage() {
     }
   };
 
-  const handleToggle = async (itemId: string) => {
-    if (!user) return;
-    const updated = items.map((i) => {
-      if (i.id !== itemId) return i;
-      const next: GroceryItem = { ...i, checked: !i.checked };
-      if (i.checked) delete next.checkedAt;  // removing undefined breaks Firestore
-      else next.checkedAt = Timestamp.now();
-      return next;
-    });
+  const handleToggle = async (reminder: GroceryReminder) => {
+    if (!user || !reminder.id) return;
     try {
-      await updateActiveGroceryList(user.uid, updated);
+      await toggleGroceryReminder(user.uid, reminder.id, !reminder.checked);
     } catch (e) {
       console.error('Grocery toggle failed:', e);
       showToast('Failed to update item');
     }
   };
 
-  const handleRemove = async (itemId: string) => {
+  const handleRemove = async (reminderId: string) => {
     if (!user) return;
     try {
-      await updateActiveGroceryList(user.uid, items.filter((i) => i.id !== itemId));
+      await deleteReminder(user.uid, reminderId);
     } catch (e) {
       console.error('Remove grocery item failed:', e);
       showToast('Failed to remove item');
@@ -124,12 +120,12 @@ export default function GroceriesPage() {
     try {
       await archiveGroceryTrip(
         user.uid,
-        { name: tripName.trim(), items: checked, tripMode, date: formatDate(new Date()) },
-        unchecked,
+        tripName.trim(),
+        tripMode,
+        checked,
+        formatDate(new Date()),
       );
       setShowArchiveFlow(false);
-      const trips = await getGroceryTrips(user.uid).catch(() => []);
-      setPastTrips(trips);
     } catch (e) {
       console.error('Archive grocery trip failed:', e);
       showToast('Failed to complete trip');
@@ -179,7 +175,7 @@ export default function GroceriesPage() {
       </div>
 
       {/* Active list */}
-      {items.length === 0 ? (
+      {groceryReminders.length === 0 ? (
         <div className="groceries-empty">
           <p className="empty-text">Your list is empty.</p>
           <p className="empty-hint">Type an item above to get started.</p>
@@ -190,13 +186,13 @@ export default function GroceriesPage() {
             <li key={item.id} className="grocery-item">
               <button
                 className="grocery-checkbox"
-                onClick={() => handleToggle(item.id)}
+                onClick={() => handleToggle(item)}
                 aria-label="Check item"
               />
               <span className="grocery-item-name">{item.name}</span>
               <button
                 className="grocery-item-remove"
-                onClick={() => handleRemove(item.id)}
+                onClick={() => handleRemove(item.id!)}
                 aria-label="Remove item"
               >
                 &times;
@@ -212,7 +208,7 @@ export default function GroceriesPage() {
             <li key={item.id} className="grocery-item grocery-item--checked">
               <button
                 className="grocery-checkbox grocery-checkbox--checked"
-                onClick={() => handleToggle(item.id)}
+                onClick={() => handleToggle(item)}
                 aria-label="Uncheck item"
               >
                 ✓
@@ -223,7 +219,7 @@ export default function GroceriesPage() {
               )}
               <button
                 className="grocery-item-remove"
-                onClick={() => handleRemove(item.id)}
+                onClick={() => handleRemove(item.id!)}
                 aria-label="Remove item"
               >
                 &times;
@@ -244,15 +240,15 @@ export default function GroceriesPage() {
               <div key={id} className="trip-row">
                 <button className="trip-row-header" onClick={() => toggleTripExpanded(id)}>
                   <span className="trip-row-arrow">{isExpanded ? '▾' : '▸'}</span>
-                  <span className="trip-row-name">{trip.name}</span>
+                  <span className="trip-row-name">{trip.tripName}</span>
                   <span className="trip-row-meta">
-                    {trip.tripMode === 'store' ? '🏪' : '🛒'} · {trip.items.length} items
+                    {trip.tripMode === 'store' ? '🏪' : '🛒'} · {trip.tripItems.length} items
                   </span>
                   <span className="trip-row-date">{formatTripDate(trip.date)}</span>
                 </button>
                 {isExpanded && (
                   <ul className="trip-items">
-                    {trip.items.map((item) => (
+                    {trip.tripItems.map((item) => (
                       <li key={item.id} className="trip-item">
                         <span className="trip-item-check">✓</span>
                         <span className="trip-item-name">{item.name}</span>

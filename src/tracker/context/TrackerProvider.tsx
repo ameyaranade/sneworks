@@ -1,24 +1,26 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import type { TrackerEntry, ActiveGroceryList, RecurringItem, TrackerSettings } from '../types';
+import type {
+  Activity,
+  Reminder,
+  TrackerSettings,
+} from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { Timestamp } from 'firebase/firestore';
 import {
   subscribeToSettings,
-  subscribeToEntriesForDate,
-  subscribeToEntriesForDateRange,
-  subscribeToActiveGroceryList,
-  subscribeToRecurringItems,
+  subscribeToActivitiesForDate,
+  subscribeToActivitiesForDateRange,
+  subscribeToReminders,
 } from '../firebase/trackerQueries';
 import { formatDate, getWeekRange } from '../utils';
 
 interface TrackerContextType {
   settings: TrackerSettings;
-  todayEntries: TrackerEntry[];
-  weekEntries: TrackerEntry[];
-  monthEntries: TrackerEntry[];
-  activeGroceryList: ActiveGroceryList | null;
-  recurringItems: RecurringItem[];
+  todayActivities: Activity[];
+  weekActivities: Activity[];
+  monthActivities: Activity[];
+  reminders: Reminder[];
   loading: boolean;
 }
 
@@ -26,11 +28,10 @@ const defaultSettings: TrackerSettings = { ...DEFAULT_SETTINGS, updatedAt: Times
 
 const defaultContext: TrackerContextType = {
   settings: defaultSettings,
-  todayEntries: [],
-  weekEntries: [],
-  monthEntries: [],
-  activeGroceryList: null,
-  recurringItems: [],
+  todayActivities: [],
+  weekActivities: [],
+  monthActivities: [],
+  reminders: [],
   loading: true,
 };
 
@@ -39,11 +40,10 @@ const TrackerContext = createContext<TrackerContextType>(defaultContext);
 export function TrackerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<TrackerSettings>(defaultSettings);
-  const [todayEntries, setTodayEntries] = useState<TrackerEntry[]>([]);
-  const [weekEntries, setWeekEntries] = useState<TrackerEntry[]>([]);
-  const [monthEntries, setMonthEntries] = useState<TrackerEntry[]>([]);
-  const [groceryList, setGroceryList] = useState<ActiveGroceryList | null>(null);
-  const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
+  const [todayActivities, setTodayActivities] = useState<Activity[]>([]);
+  const [weekActivities, setWeekActivities] = useState<Activity[]>([]);
+  const [monthActivities, setMonthActivities] = useState<Activity[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,6 +59,7 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     const monthAgo = new Date(now);
     monthAgo.setDate(monthAgo.getDate() - 30);
     const monthStart = formatDate(monthAgo);
+
     let loadCount = 0;
     const onLoad = () => {
       loadCount++;
@@ -71,11 +72,10 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
         document.body.dataset.theme = s.darkMode ? 'dark' : '';
         onLoad();
       }),
-      subscribeToEntriesForDate(uid, today, (e) => { setTodayEntries(e); onLoad(); }),
-      subscribeToEntriesForDateRange(uid, start, end, (e) => { setWeekEntries(e); onLoad(); }),
-      subscribeToEntriesForDateRange(uid, monthStart, today, (e) => { setMonthEntries(e); onLoad(); }),
-      subscribeToActiveGroceryList(uid, (l) => { setGroceryList(l); onLoad(); }),
-      subscribeToRecurringItems(uid, (items) => { setRecurringItems(items); onLoad(); }),
+      subscribeToActivitiesForDate(uid, today, (a) => { setTodayActivities(a); onLoad(); }),
+      subscribeToActivitiesForDateRange(uid, start, end, (a) => { setWeekActivities(a); onLoad(); }),
+      subscribeToActivitiesForDateRange(uid, monthStart, today, (a) => { setMonthActivities(a); onLoad(); }),
+      subscribeToReminders(uid, (r) => { setReminders(r); onLoad(); }),
     ];
 
     return () => unsubs.forEach((unsub) => unsub());
@@ -83,7 +83,7 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
 
   return (
     <TrackerContext.Provider
-      value={{ settings, todayEntries, weekEntries, monthEntries, activeGroceryList: groceryList, recurringItems, loading }}
+      value={{ settings, todayActivities, weekActivities, monthActivities, reminders, loading }}
     >
       {children}
     </TrackerContext.Provider>

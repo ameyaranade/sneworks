@@ -6,6 +6,179 @@
   margin-bottom: 16px;
 }
 
+/* ─── Recurring Bills section ─── */
+
+.finances-bills-section {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  border-left: 4px solid #9b59b6;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.finances-bills-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-body);
+  text-align: left;
+}
+
+.finances-bills-toggle-arrow {
+  margin-left: auto;
+  font-size: 16px;
+  color: var(--text-disabled);
+}
+
+.finances-bills-count {
+  background: var(--border-muted);
+  color: var(--text-placeholder);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 2px 7px;
+}
+
+.finances-bills-list {
+  padding: 0 12px 12px;
+}
+
+.finances-bills-empty {
+  font-size: 13px;
+  color: var(--text-placeholder);
+  padding: 8px 4px 4px;
+}
+
+/* ─── Bill cards ─── */
+
+.payment-card {
+  background: var(--bg-page);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border-muted);
+}
+
+.payment-card:last-child {
+  margin-bottom: 0;
+}
+
+.payment-card--paid,
+.payment-card--skipped {
+  opacity: 0.55;
+}
+
+.payment-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.payment-card-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.payment-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-card-delete {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-ghost);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.payment-card-delete:hover {
+  color: var(--color-expense);
+  background: var(--color-expense-bg);
+}
+
+.payment-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-placeholder);
+  margin-bottom: 10px;
+}
+
+.payment-amount {
+  font-weight: 700;
+  color: var(--text-body);
+}
+
+.payment-schedule {
+  color: var(--text-placeholder);
+}
+
+.payment-next-due {
+  color: var(--text-disabled);
+}
+
+.payment-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.payment-action-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.payment-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.payment-action-btn--paid {
+  background: var(--color-income-bg, #e8f8f0);
+  color: var(--color-income, #2ecc71);
+}
+
+.payment-action-btn--paid:hover:not(:disabled) {
+  background: #d0f0e0;
+}
+
+.payment-action-btn--skip {
+  background: var(--border-muted);
+  color: var(--text-disabled);
+}
+
+.payment-action-btn--skip:hover:not(:disabled) {
+  background: var(--border-faint);
+}
+
 /* Summary card */
 .finances-summary-card {
   background: var(--bg-surface);

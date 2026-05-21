@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { addEntry, updateEntry } from '../firebase/trackerQueries';
+import { addActivity, updateActivity } from '../firebase/trackerQueries';
 import { MOOD_OPTIONS } from '../constants';
 import { formatDate } from '../utils';
-import type { Mood, ExerciseEntry } from '../types';
+import type { Mood, ExerciseActivity } from '../types';
 import './form-shared.css';
 
 interface ExerciseFormProps {
   onSaved: () => void;
-  initialValues?: ExerciseEntry;
+  initialValues?: ExerciseActivity;
   entryId?: string;
 }
 
@@ -47,9 +47,9 @@ export default function ExerciseForm({ onSaved, initialValues, entryId }: Exerci
         notes,
       };
       if (entryId) {
-        await updateEntry(user.uid, entryId, payload);
+        await updateActivity(user.uid, entryId, payload);
       } else {
-        await addEntry(user.uid, { type: 'exercise', ...payload });
+        await addActivity(user.uid, { type: 'exercise', ...payload });
       }
       onSaved();
     } catch (e) {
