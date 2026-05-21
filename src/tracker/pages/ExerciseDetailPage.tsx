@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { useDrawer } from '../TrackerShell';
 import { subscribeToActivitiesByType, deleteActivity } from '../firebase/trackerQueries';
 import { MOOD_OPTIONS } from '../constants';
+import MoodSvg from '../components/MoodSvg';
 import { formatDate } from '../utils';
 import type { ExerciseActivity } from '../types';
 import './exercise-detail-page.css';
@@ -73,7 +75,17 @@ function ExerciseSkeleton() {
 export default function ExerciseDetailPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { openDrawerWithActivity } = useDrawer();
+  const { openDrawerWithActivity, openDrawerWithType } = useDrawer();
+  const location = useLocation();
+
+  useEffect(() => {
+    const { openAdd } = (location.state ?? {}) as { openAdd?: boolean };
+    if (openAdd) {
+      openDrawerWithType('exercise');
+      window.history.replaceState({}, document.title);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [allEntries, setAllEntries] = useState<ExerciseActivity[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
@@ -128,7 +140,8 @@ export default function ExerciseDetailPage() {
   return (
     <div className="exercise-page">
       <div className="exercise-header">
-        <h2 className="page-title">💪 Exercise & Health</h2>
+        <h2 className="page-title">Exercise & Health</h2>
+        <button className="page-add-btn" onClick={() => openDrawerWithType('exercise')}>+ Add</button>
       </div>
 
       {!loading && allEntries.length > 0 && (
@@ -184,8 +197,13 @@ export default function ExerciseDetailPage() {
                       <span className="exercise-entry-status rest">Rest day</span>
                     )}
                     <div className="exercise-entry-chips">
-                      {moodOption && <span className="exercise-chip">{moodOption.emoji}</span>}
+                      {moodOption && (
+                        <span className="exercise-chip exercise-chip--mood">
+                          <MoodSvg mood={moodOption.value} size={14} />
+                        </span>
+                      )}
                       {weight && <span className="exercise-chip">{weight}kg</span>}
+                      {entry.notes && <span className="exercise-chip exercise-chip--notes">{entry.notes}</span>}
                     </div>
                   </div>
                   <span className={`exercise-chevron ${isExpanded ? 'open' : ''}`}>›</span>
@@ -217,8 +235,9 @@ export default function ExerciseDetailPage() {
                       {moodOption && (
                         <div className="exercise-detail-row">
                           <span className="exercise-detail-label">Mood</span>
-                          <span className="exercise-detail-value">
-                            {moodOption.emoji} {moodOption.label}
+                          <span className="exercise-detail-value exercise-detail-mood">
+                            <MoodSvg mood={moodOption.value} size={16} />
+                            {moodOption.label}
                           </span>
                         </div>
                       )}
@@ -234,13 +253,13 @@ export default function ExerciseDetailPage() {
                         className="exercise-entry-edit"
                         onClick={() => entry.id && openDrawerWithActivity(entry)}
                       >
-                        Edit entry
+                        Edit
                       </button>
                       <button
                         className="exercise-entry-delete"
                         onClick={() => entry.id && handleDelete(entry.id)}
                       >
-                        Delete entry
+                        Delete
                       </button>
                     </div>
                   </div>

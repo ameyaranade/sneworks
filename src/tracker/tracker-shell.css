@@ -1,10 +1,10 @@
 .tracker-shell {
   position: relative;
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - 64px);
 }
 
 .tracker-content {
-  padding-bottom: 72px;
+  padding-bottom: 80px;
 }
 
 /* ─── Drawer ─── */

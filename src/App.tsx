@@ -10,7 +10,6 @@ import LoginPage from './auth/LoginPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import TrackerShell from './tracker/TrackerShell';
 import TodayDashboard from './tracker/pages/TodayDashboard';
-import CalendarPage from './tracker/pages/CalendarPage';
 import SettingsPage from './tracker/pages/SettingsPage';
 import FinancesDetailPage from './tracker/pages/FinancesDetailPage';
 import ExerciseDetailPage from './tracker/pages/ExerciseDetailPage';
@@ -30,7 +29,6 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/tracker" element={<ProtectedRoute><TrackerShell /></ProtectedRoute>}>
               <Route index element={<TodayDashboard />} />
-              <Route path="calendar" element={<CalendarPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="finances" element={<FinancesDetailPage />} />
               <Route path="exercise" element={<ExerciseDetailPage />} />

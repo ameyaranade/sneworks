@@ -70,47 +70,62 @@ C:\coding\sneworks\
       types.ts                   # All TypeScript types — Activity + Reminder discriminated unions
       constants.ts               # ACTIVITY_TYPE_META, REMINDER_TYPE_META, categories, frequencies, mood options
       utils.ts                   # computeDueStatus, computeNextDueDate, date helpers, currency formatter
-      TrackerShell.tsx           # Bottom tab bar + Outlet + DrawerContext (openDrawerWithActivity) + TrackerProvider wrapper
+      TrackerShell.tsx           # Bottom tab bar + Outlet + DrawerContext + TrackerProvider wrapper
       tracker-shell.css
       context/
         TrackerProvider.tsx      # useTracker() → { settings, todayActivities, weekActivities, monthActivities, reminders, loading }
       firebase/
         trackerQueries.ts        # All Firestore CRUD for activities, reminders, settings
       components/
-        BottomTabBar.tsx         # Fixed bottom nav (Today | Calendar | + | Go To)
+        BottomTabBar.tsx         # Fixed bottom nav — 5 tabs: Home | Money | Health | Shop | Reminder
+                                 #   Each tab: SVG icon + text label (10px) underneath
+                                 #   Tab bar height: 64px
         bottom-tab-bar.css
-        AddEntryDrawer.tsx       # Slide-up drawer: type picker → form (types: finance, exercise, grocery, payment, generic)
+        AddEntryDrawer.tsx       # Slide-up drawer: type picker → form
+                                 #   4 types with SVG icons: Money | Health | Shopping | Other
+                                 #   Money sub-toggle: Expense/Income vs Recurring Bill
         add-entry-drawer.css
-        GoToMenu.tsx             # Slide-up sheet: Finances | Exercise & Health | Groceries | Reminders
-        go-to-menu.css
+        MoodSvg.tsx              # Shared SVG mood face component (moods 1–5, quadratic bezier mouth)
         PriorityBanner.tsx       # Overdue/due-today finance reminders banner on dashboard
         DueIndicator.tsx         # Due status badge (overdue/due-today/upcoming/paid/skipped)
         Toast.tsx                # Toast notification component
       forms/
-        FinanceForm.tsx          # Amount + category chips + expense/income toggle
-        ExerciseForm.tsx         # Workout toggle + duration + weight + mood selector
+        FinanceForm.tsx          # Amount + category chips (label only, no emoji) + expense/income toggle
+        ExerciseForm.tsx         # Workout toggle + duration + weight + MoodSvg mood selector
         PaymentTemplateForm.tsx  # Name + amount + frequency + due day (creates FinanceReminder)
         GroceryForm.tsx          # Item name input (creates GroceryReminder)
         GenericActivityForm.tsx  # Date + notes (creates GenericActivity)
-        GenericReminderForm.tsx  # Name + optional due date + notes (creates GenericReminder)
+        GenericReminderForm.tsx  # Name + optional due date + time + notes (creates GenericReminder)
         form-shared.css          # Shared form styles
       pages/
-        TodayDashboard.tsx       # Date range toggle + summary cards + activity log
+        TodayDashboard.tsx       # Today/week/month toggle + summary cards + activity log
+                                 #   Quick-add popover with SVG icons (no emoji)
+                                 #   + button: SVG cross outline (no colored circle)
+                                 #   Entry meta: "Category · notes" format (no emoji badges)
+                                 #   Edit buttons: bordered pill, muted style
         today-dashboard.css
         CalendarPage.tsx         # Month grid + day detail panel + activity dots
         calendar-page.css
         SettingsPage.tsx         # Currency picker, dark mode toggle, notifications toggle, logout
         settings-page.css
-        FinancesDetailPage.tsx   # Finance activity history + collapsible Recurring Bills section
+        FinancesDetailPage.tsx   # Finance activity history (expandable rows: click → Edit/Delete)
+                                 #   + collapsible Recurring Bills section (no emoji in heading)
         finances-detail-page.css
         ExerciseDetailPage.tsx   # Workout streak + exercise activity log
+                                 #   Collapsed chip row shows: type · duration · weight · MoodSvg · notes
+                                 #   Page title: "Exercise & Health" (no emoji)
         exercise-detail-page.css
         GroceriesPage.tsx        # Active grocery checklist + past trips archive
+                                 #   All accent colors use var(--color-accent) (no hardcoded orange)
+                                 #   Page title: "Groceries" (no emoji)
         groceries-page.css
         RemindersPage.tsx        # Generic reminders: add / complete / delete
+                                 #   Form: name + date (default today) + time + notes
+                                 #   Due display: "Due 21 May 2026 at 09:00"
+                                 #   Collapsible "Archived" section: lazy-loaded, client-side paginated (10/page)
         reminders-page.css
     shared/
-      Layout.tsx                # Nav bar (SNE Works brand + Games/Tracker links + gear icon for settings) + <Outlet />
+      Layout.tsx                # Nav bar (SNE Works brand + Games/Tracker links + gear icon) + <Outlet />
       styles/
         global.css              # Resets, shared button styles, dark mode CSS vars, shimmer skeleton
         layout.css              # Nav bar styles
@@ -146,8 +161,10 @@ npm run deploy     # Build + deploy to Firebase Hosting (sneworks.com)
 ## Architecture Notes
 - **Auth:** `AuthProvider` wraps all routes in `App.tsx`. `useAuth()` hook gives `{ user, loading }` anywhere in the tree. Games work without auth. `ProtectedRoute` redirects to `/login` if no user.
 - **Routing:** React Router v6 with `<BrowserRouter>`. `/tracker` uses nested routes under `<TrackerShell>` which provides bottom tab navigation and the add-entry drawer. Firebase Hosting SPA rewrite sends all paths to `index.html`.
-- **Tracker context:** `TrackerProvider` (inside `TrackerShell`) provides `useTracker()` hook with `{ settings, todayActivities, weekActivities, monthActivities, reminders, loading }`. All data is live via Firestore `onSnapshot`. The drawer is controlled via `useDrawer()` from `TrackerShell` — call `openDrawerWithActivity(activity)` to open in edit mode.
+- **Tracker context:** `TrackerProvider` (inside `TrackerShell`) provides `useTracker()` hook with `{ settings, todayActivities, weekActivities, monthActivities, reminders, loading }`. All data is live via Firestore `onSnapshot`.
+- **Drawer context:** `DrawerContext` in `TrackerShell` exposes `useDrawer()` → `{ openDrawer, openDrawerWithActivity, openDrawerWithType }`. Call `openDrawerWithActivity(activity)` to open in edit mode; `openDrawerWithType('finance')` to pre-select a type.
 - **CSS:** Per-component CSS files imported directly (no Tailwind, no CSS-in-JS). Shared styles in `shared/styles/global.css` and `layout.css`. Tracker forms share styles via `forms/form-shared.css`.
+- **No emoji in UI** — All structural UI elements (page titles, tab labels, type picker, entry badges, category chips, popover, past trips mode label) use SVG icons or plain text only.
 - **Realtime Database:** Not initialized at startup to avoid crashing on missing `databaseURL`. Use `getRtdb()` export from `firebase/config.ts` when needed.
 - **Firebase config:** Real values already in `src/firebase/config.ts`. Do not commit to a public repo without moving to env vars.
 
@@ -173,8 +190,9 @@ Common: { type, name, notes, active, createdAt, updatedAt }
 finance:  + { amount, frequency, dueDay, category? }
 exercise: + { dueDate? }
 grocery:  + { checked, checkedAt?, sortOrder }
-generic:  + { dueDate?, completed, completedAt? }
+generic:  + { dueDate?, dueTime?, completed, completedAt? }
 ```
+Note: `GenericReminder.dueTime` is stored as `"HH:MM"` string for future push notification scheduling.
 
 **Settings** — `users/{uid}/settings/preferences`
 ```
@@ -189,38 +207,57 @@ generic:  + { dueDate?, completed, completedAt? }
 - `toggleGroceryReminder` — sets checked + checkedAt
 - `archiveGroceryTrip` — creates GroceryActivity + batch-deletes checked GroceryReminders
 - `completeGenericReminder` — sets completed: true, active: false
+- `getCompletedGenericReminders(uid)` — one-shot fetch of archived generic reminders, sorted by completedAt desc (client-side; avoids composite index)
 
 ---
 
 ## Tracker — Feature Status (all complete)
 
-- **Dashboard** — Today/week toggle, summary cards, activity log, edit/delete, PriorityBanner
-- **Finances** — Activity history (infinite scroll) + Recurring Bills section (mark paid/skip/delete)
-- **Exercise** — Streak + monthly count header, expandable activity rows, edit/delete
-- **Groceries** — Individual reminder docs per item, check/uncheck, archive trip → GroceryActivity
+- **Dashboard** — Today/week/month toggle, summary cards (no emoji headers), activity log
+  - Entry meta format: `"Category · notes"` (no badge, no emoji)
+  - Quick-add popover: SVG icons, opens drawer pre-typed
+  - Edit buttons: bordered pill style matching "Unmark" styling
+  - PriorityBanner for overdue/due-today finance reminders
+- **Finances** — Activity history with expandable rows (click row → chevron rotates → Edit/Delete revealed)
+  - Category chips: label text only (no emoji)
+  - Recurring Bills section: collapsible, no emoji in heading
+- **Exercise & Health** — Streak + monthly count header, expandable activity rows
+  - Collapsed chip row shows: type · duration · weight · MoodSvg face · notes
+  - MoodSvg: SVG face icon, moods 1–5 with bezier mouth curve
+  - Page title: "Exercise & Health"
+- **Shop (Groceries)** — Individual reminder docs per item, check/uncheck, archive trip → GroceryActivity
+  - Page title: "Shop"; default trip name: "Shop: dd-mm-yyyy"
+  - All accent colors use `var(--color-accent)` (no hardcoded orange)
+  - Archive button, add button, checkboxes all use outline/accent style
+  - Past trips: collapsible rows with × delete button (calls `deleteActivity`); no emoji in mode label (Store/Online plain text)
+- **Reminders** — Generic reminders: add (name + due date defaulting to today + due time + notes), complete, delete
+  - Due shown as: "Due 21 May 2026 at 09:00"
+  - Collapsible "Archived" section: lazy-loaded on first expand, client-side pagination (10/page), shows completion date, delete button
+  - +Add button: neutral outlined pill (no accent/blue color)
 - **Calendar** — Month grid with colored activity dots, day detail panel
-- **Reminders** — Generic reminders: add, complete, delete
 - **Settings** — Currency, dark mode, notifications toggle, logout
-- **Go To menu** — Bottom sheet nav: Finances | Exercise & Health | Groceries | Reminders
-- **Add drawer** — Types: Finances, Exercise, Groceries, Payments (bill template), Other (generic)
+- **Add drawer** — 4 types with SVG icons: Money (Expense/Income or Recurring Bill sub-toggle) | Health | Shopping | Other
+- **Bottom tab bar** — 5 tabs, each with SVG icon + text label: Home | Money | Health | Shop | Reminder (64px tall)
 - **Edit mode** — Drawer opens pre-filled via `openDrawerWithActivity(activity)`
 - **Dark mode** — Full CSS custom property system, applied app-wide
 - **Error handling** — Toast notifications on all Firestore mutation failures
 - **Loading states** — Shimmer skeletons on Finances and Exercise pages
 
 ### Future (not yet built)
+- [ ] Push notifications via Firebase Cloud Messaging (dueTime already stored for scheduling)
 - [ ] Trend charts for exercise/health (weight, mood, frequency over time)
-- [ ] Push notifications via Firebase Cloud Messaging
 - [ ] Custom finance categories (currently 10 fixed)
 - [ ] Budget goals / targets per category
 
 ### Design Decisions
 - **Mobile-first** — 44px+ touch targets, bottom tab nav, slide-up drawer
-- **No external libraries** for animations, calendar, or swipe — all CSS transitions
-- **State management** — React Context only (TrackerProvider), no Redux/Zustand
-- **Date storage** — YYYY-MM-DD strings (not Timestamps) to avoid timezone bugs
-- **Client-side sorting** to avoid Firestore composite index requirements
+- **No emoji in structural UI** — Page titles, nav labels, type pickers, entry badges, category chips all use SVG or plain text
+- **No external libraries** for animations, calendar, icons, or swipe — all CSS transitions + inline SVG
+- **State management** — React Context only (TrackerProvider + DrawerContext), no Redux/Zustand
+- **Date storage** — YYYY-MM-DD strings (not Timestamps) to avoid timezone bugs; time stored as HH:MM string
+- **Client-side sorting/filtering** to avoid Firestore composite index requirements
 - **`computeDueStatus`** checks payments against the start of the current billing cycle (not just the next due date), so early payments are correctly recognised as paid
+- **Cross-page navigation signals** — `useLocation` state (e.g., `{ openAdd: true }`) consumed once via `window.history.replaceState({}, document.title)` to prevent re-trigger on back navigation
 
 ---
 

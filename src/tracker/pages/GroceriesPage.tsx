@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import {
   addReminder,
   deleteReminder,
+  deleteActivity,
   toggleGroceryReminder,
   archiveGroceryTrip,
   subscribeToActivitiesByType,
@@ -30,13 +32,24 @@ function getDefaultTripName(): string {
   const d = new Date();
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `Grocery Run ${dd}-${mm}-${d.getFullYear()}`;
+  return `Shop: ${dd}-${mm}-${d.getFullYear()}`;
 }
 
 export default function GroceriesPage() {
   const { user } = useAuth();
   const { reminders } = useTracker();
   const { showToast } = useToast();
+  const location = useLocation();
+  const addInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const { openAdd } = (location.state ?? {}) as { openAdd?: boolean };
+    if (openAdd) {
+      addInputRef.current?.focus();
+      window.history.replaceState({}, document.title);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [addName, setAddName] = useState('');
   const [adding, setAdding] = useState(false);
@@ -134,6 +147,16 @@ export default function GroceriesPage() {
     }
   };
 
+  const handleDeleteTrip = async (tripId: string) => {
+    if (!user) return;
+    try {
+      await deleteActivity(user.uid, tripId);
+    } catch (e) {
+      console.error('Delete trip failed:', e);
+      showToast('Failed to delete trip');
+    }
+  };
+
   const toggleTripExpanded = (tripId: string) => {
     setExpandedTrips((prev) => {
       const next = new Set(prev);
@@ -147,7 +170,7 @@ export default function GroceriesPage() {
     <div className="groceries-page">
       {/* Header */}
       <div className="groceries-header">
-        <h2 className="page-title">{ACTIVITY_TYPE_META.grocery.emoji} Groceries</h2>
+        <h2 className="page-title">Shop</h2>
         {checked.length > 0 && (
           <button className="groceries-done-btn" onClick={openArchiveFlow}>
             Done ({checked.length})
@@ -158,6 +181,7 @@ export default function GroceriesPage() {
       {/* Add item */}
       <div className="grocery-add-row">
         <input
+          ref={addInputRef}
           type="text"
           className="grocery-add-input"
           placeholder="Add item…"
@@ -238,14 +262,23 @@ export default function GroceriesPage() {
             const isExpanded = expandedTrips.has(id);
             return (
               <div key={id} className="trip-row">
-                <button className="trip-row-header" onClick={() => toggleTripExpanded(id)}>
-                  <span className="trip-row-arrow">{isExpanded ? '▾' : '▸'}</span>
-                  <span className="trip-row-name">{trip.tripName}</span>
-                  <span className="trip-row-meta">
-                    {trip.tripMode === 'store' ? '🏪' : '🛒'} · {trip.tripItems.length} items
-                  </span>
-                  <span className="trip-row-date">{formatTripDate(trip.date)}</span>
-                </button>
+                <div className="trip-row-top">
+                  <button className="trip-row-header" onClick={() => toggleTripExpanded(id)}>
+                    <span className="trip-row-arrow">{isExpanded ? '▾' : '▸'}</span>
+                    <span className="trip-row-name">{trip.tripName}</span>
+                    <span className="trip-row-meta">
+                      {trip.tripMode === 'store' ? 'Store' : 'Online'} · {trip.tripItems.length} items
+                    </span>
+                    <span className="trip-row-date">{formatTripDate(trip.date)}</span>
+                  </button>
+                  <button
+                    className="trip-row-delete-btn"
+                    onClick={() => handleDeleteTrip(id)}
+                    aria-label="Delete trip"
+                  >
+                    &times;
+                  </button>
+                </div>
                 {isExpanded && (
                   <ul className="trip-items">
                     {trip.tripItems.map((item) => (
@@ -290,13 +323,13 @@ export default function GroceriesPage() {
                   className={`trip-mode-btn ${tripMode === 'store' ? 'active' : ''}`}
                   onClick={() => setTripMode('store')}
                 >
-                  🏪 Store
+                  Store
                 </button>
                 <button
                   className={`trip-mode-btn ${tripMode === 'online' ? 'active' : ''}`}
                   onClick={() => setTripMode('online')}
                 >
-                  🛒 Online
+                  Online
                 </button>
               </div>
             </div>

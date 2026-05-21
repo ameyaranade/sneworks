@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import { useToast } from '../components/Toast';
@@ -86,12 +87,23 @@ export default function FinancesDetailPage() {
   const { user } = useAuth();
   const { settings, reminders, monthActivities } = useTracker();
   const { showToast } = useToast();
-  const { openDrawerWithActivity } = useDrawer();
+  const { openDrawerWithActivity, openDrawerWithType } = useDrawer();
+  const location = useLocation();
+
+  useEffect(() => {
+    const { openAdd } = (location.state ?? {}) as { openAdd?: boolean };
+    if (openAdd) {
+      openDrawerWithType('finance');
+      window.history.replaceState({}, document.title);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [allEntries, setAllEntries] = useState<FinanceActivity[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [billsExpanded, setBillsExpanded] = useState(true);
   const [actionLoading, setActionLoading] = useState<Set<string>>(new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -197,7 +209,8 @@ export default function FinancesDetailPage() {
   return (
     <div className="finances-page">
       <div className="finances-header">
-        <h2 className="page-title">💰 Finances</h2>
+        <h2 className="page-title">Finances</h2>
+        <button className="page-add-btn" onClick={() => openDrawerWithType('finance')}>+ Add</button>
       </div>
 
       {/* Recurring Bills section */}
@@ -206,7 +219,7 @@ export default function FinancesDetailPage() {
           className="finances-bills-toggle"
           onClick={() => setBillsExpanded((v) => !v)}
         >
-          <span>💳 Recurring Bills</span>
+          <span>Recurring Bills</span>
           <span className="finances-bills-toggle-arrow">{billsExpanded ? '▾' : '▸'}</span>
           {financeReminders.length > 0 && (
             <span className="finances-bills-count">{financeReminders.length}</span>
@@ -310,31 +323,40 @@ export default function FinancesDetailPage() {
             }
             const { entry } = row;
             const cat = getCat(entry.category);
+            const isExpanded = expandedId === entry.id;
             return (
-              <div key={entry.id} className="finance-entry-row">
-                <div className="finance-entry-date">{formatEntryDate(entry.date)}</div>
-                <div className="finance-entry-body">
-                  <span className="finance-entry-cat">{cat?.emoji} {cat?.label}</span>
-                  {entry.notes && <span className="finance-entry-notes">{entry.notes}</span>}
-                </div>
-                <div className={`finance-entry-amount ${entry.direction}`}>
-                  {entry.direction === 'expense' ? '-' : '+'}
-                  {formatCurrency(entry.amount, settings.currencySymbol)}
-                </div>
+              <div key={entry.id} className={`finance-entry-row ${isExpanded ? 'expanded' : ''}`}>
                 <button
-                  className="finance-entry-edit"
-                  onClick={() => entry.id && openDrawerWithActivity(entry)}
-                  title="Edit"
+                  className="finance-entry-main-btn"
+                  onClick={() => setExpandedId(isExpanded ? null : (entry.id ?? null))}
                 >
-                  ✏️
+                  <div className="finance-entry-date">{formatEntryDate(entry.date)}</div>
+                  <div className="finance-entry-body">
+                    <span className="finance-entry-cat">{cat?.label}</span>
+                    {entry.notes && <span className="finance-entry-notes">{entry.notes}</span>}
+                  </div>
+                  <div className={`finance-entry-amount ${entry.direction}`}>
+                    {entry.direction === 'expense' ? '-' : '+'}
+                    {formatCurrency(entry.amount, settings.currencySymbol)}
+                  </div>
+                  <span className={`finance-entry-chevron ${isExpanded ? 'open' : ''}`}>›</span>
                 </button>
-                <button
-                  className="finance-entry-delete"
-                  onClick={() => entry.id && handleDeleteActivity(entry.id)}
-                  title="Delete"
-                >
-                  &times;
-                </button>
+                {isExpanded && (
+                  <div className="finance-entry-actions-row">
+                    <button
+                      className="finance-entry-edit"
+                      onClick={() => entry.id && openDrawerWithActivity(entry)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="finance-entry-delete"
+                      onClick={() => entry.id && handleDeleteActivity(entry.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

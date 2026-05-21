@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { addActivity, updateActivity } from '../firebase/trackerQueries';
 import { MOOD_OPTIONS } from '../constants';
+import MoodSvg from '../components/MoodSvg';
 import { formatDate } from '../utils';
 import type { Mood, ExerciseActivity } from '../types';
 import './form-shared.css';
@@ -137,7 +138,7 @@ export default function ExerciseForm({ onSaved, initialValues, entryId }: Exerci
               className={`mood-btn ${mood === opt.value ? 'active' : ''}`}
               onClick={() => setMood(mood === opt.value ? null : opt.value)}
             >
-              <span className="mood-emoji">{opt.emoji}</span>
+              <MoodSvg mood={opt.value} size={20} className="mood-svg" />
               <span className="mood-label">{opt.label}</span>
             </button>
           ))}

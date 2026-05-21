@@ -3,7 +3,27 @@
 }
 
 .finances-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.page-add-btn {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: none;
+  border: 1.5px solid var(--color-accent);
+  border-radius: 8px;
+  padding: 5px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.page-add-btn:hover {
+  background: var(--color-accent-light, rgba(0, 102, 204, 0.08));
 }
 
 /* ─── Recurring Bills section ─── */
@@ -263,15 +283,45 @@
 
 /* Entry row */
 .finance-entry-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 0;
   border-bottom: 1px solid var(--border-muted);
 }
 
 .finance-entry-row:last-of-type {
   border-bottom: none;
+}
+
+.finance-entry-row.expanded {
+  border-bottom-color: var(--border-default);
+}
+
+.finance-entry-main-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.finance-entry-chevron {
+  font-size: 18px;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+
+.finance-entry-chevron.open {
+  transform: rotate(90deg);
+}
+
+.finance-entry-actions-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 0 12px 58px;
 }
 
 .finance-entry-date {
@@ -320,35 +370,40 @@
 
 .finance-entry-delete {
   background: none;
-  border: none;
-  font-size: 18px;
-  color: var(--text-ghost);
+  border: 1px solid var(--color-expense-bg);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-expense);
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 3px 7px;
   border-radius: 4px;
   line-height: 1;
-  flex-shrink: 0;
+}
+
+[data-theme="dark"] .finance-entry-delete {
+  border-color: #4a2020;
 }
 
 .finance-entry-delete:hover {
-  color: var(--color-expense);
   background: var(--color-expense-bg);
 }
 
 .finance-entry-edit {
   background: none;
-  border: none;
-  font-size: 14px;
-  color: var(--text-ghost);
+  border: 1px solid var(--border-default);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-faint);
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 3px 7px;
   border-radius: 4px;
   line-height: 1;
-  flex-shrink: 0;
 }
 
 .finance-entry-edit:hover {
   background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .finances-load-sentinel {

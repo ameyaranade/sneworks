@@ -84,8 +84,7 @@ export default function FinanceForm({ onSaved, initialValues, entryId }: Finance
               className={`category-chip ${category === cat.value ? 'active' : ''}`}
               onClick={() => setCategory(cat.value)}
             >
-              <span>{cat.emoji}</span>
-              <span>{cat.label}</span>
+              {cat.label}
             </button>
           ))}
         </div>

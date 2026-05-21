@@ -233,3 +233,20 @@ export async function completeGenericReminder(uid: string, reminderId: string) {
   });
 }
 
+export async function getCompletedGenericReminders(uid: string): Promise<import('../types').GenericReminder[]> {
+  const q = query(
+    remindersCol(uid),
+    where('type', '==', 'generic'),
+    where('active', '==', false),
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => ({ ...d.data(), id: d.id }) as import('../types').GenericReminder)
+    .filter((r) => r.completed)
+    .sort((a, b) => {
+      const aTime = (a as any).completedAt?.toMillis?.() ?? 0;
+      const bTime = (b as any).completedAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
+}
+

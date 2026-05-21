@@ -194,6 +194,7 @@
   border: 2px solid transparent;
   border-radius: 10px;
   background: var(--bg-muted);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.15s;
   min-width: 48px;
@@ -205,9 +206,8 @@
   background: var(--color-accent-light);
 }
 
-.mood-emoji {
-  font-size: 24px;
-  line-height: 1;
+.mood-svg {
+  flex-shrink: 0;
 }
 
 .mood-label {

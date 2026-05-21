@@ -122,6 +122,7 @@ export interface GroceryReminder extends ReminderBase {
 export interface GenericReminder extends ReminderBase {
   type: 'generic';
   dueDate?: string; // YYYY-MM-DD
+  dueTime?: string; // HH:MM
   completed: boolean;
   completedAt?: Timestamp;
 }
