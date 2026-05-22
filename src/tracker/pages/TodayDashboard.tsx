@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTracker } from '../context/TrackerProvider';
 import { useAuth } from '../../auth/AuthContext';
 import { deleteActivity, updateActivity, subscribeToActivitiesForDateRange } from '../firebase/trackerQueries';
-import { ACTIVITY_TYPE_META, FINANCE_CATEGORIES } from '../constants';
+import { ACTIVITY_TYPE_META } from '../constants';
 import { formatCurrency, formatDate } from '../utils';
-import type { Activity, FinanceActivity, ExerciseActivity, PaymentActivity, GroceryActivity } from '../types';
-import { useDrawer } from '../TrackerShell';
+import type { Activity, FinanceActivity, ExerciseActivity, PaymentActivity } from '../types';
+import { useDrawer } from '../context/DrawerContext';
 import { useToast } from '../components/Toast';
 import PriorityBanner from '../components/PriorityBanner';
+import ActivityEntryRow from '../components/ActivityEntryRow';
+import { MoneyIcon, HealthIcon, ShoppingIcon, ReminderIcon } from '../components/icons';
 import './today-dashboard.css';
 
 // ─── Types & constants ───
@@ -17,48 +19,11 @@ type DashRange = 'today' | 'month';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const QUICK_ADD: { label: string; path: string; icon: React.ReactNode }[] = [
-  {
-    label: 'Money',
-    path: '/tracker/finances',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Health',
-    path: '/tracker/exercise',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        <polyline points="3 12 6 12 8 8 10 16 12 12 14 12 16 9 18 15 20 12 21 12" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Shopping',
-    path: '/tracker/groceries',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="21" r="1" />
-        <circle cx="20" cy="21" r="1" />
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Reminder',
-    path: '/tracker/reminders',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-    ),
-  },
+const QUICK_ADD: { label: string; path: string; icon: ReactNode }[] = [
+  { label: 'Money',    path: '/tracker/finances',  icon: <MoneyIcon /> },
+  { label: 'Health',   path: '/tracker/exercise',  icon: <HealthIcon /> },
+  { label: 'Shopping', path: '/tracker/groceries', icon: <ShoppingIcon /> },
+  { label: 'Reminder', path: '/tracker/reminders', icon: <ReminderIcon /> },
 ];
 
 // ─── Helpers ───
@@ -122,15 +87,18 @@ function getCalendarInfo(offset: number) {
 export default function TodayDashboard() {
   const [range, setRange] = useState<DashRange>('today');
   const [offset, setOffset] = useState(0);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [editingNotesValue, setEditingNotesValue] = useState('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  const { settings, loading } = useTracker();
+  const { settings, loading, todayActivities: cachedTodayActivities } = useTracker();
+
+  // Seed from TrackerProvider's synchronous cache so frame 1 already has data.
+  // activitiesLoading stays false if cache is present; true only when empty.
+  const [activities, setActivities] = useState<Activity[]>(() => cachedTodayActivities);
+  const [activitiesLoading, setActivitiesLoading] = useState(() => cachedTodayActivities.length === 0);
   const { user } = useAuth();
   const { openDrawerWithActivity } = useDrawer();
   const { showToast } = useToast();
@@ -145,14 +113,28 @@ export default function TodayDashboard() {
     setSelectedDay(null);
   };
 
+  // Tracks whether Firebase has resolved at least once so we can distinguish
+  // "first auth ready" (skip loading if cache exists) from "user changed range"
+  // (always clear stale data and show loading).
+  const userReadyRef = useRef(false);
+
   useEffect(() => {
     if (!user) return;
-    setActivitiesLoading(true);
+    const firstReady = !userReadyRef.current;
+    userReadyRef.current = true;
     const { start, end } = getPeriodRange(range, offset);
+    // First auth resolution with cached data → skip loading, show cache instantly.
+    // Any subsequent range/offset change → clear stale data, show loading.
+    if (!firstReady || activities.length === 0) {
+      setActivities([]);
+      setActivitiesLoading(true);
+    }
     return subscribeToActivitiesForDateRange(user.uid, start, end, (newActivities) => {
       setActivities(newActivities);
       setActivitiesLoading(false);
     });
+  // activities intentionally omitted — only read on first effect run via firstReady guard
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, range, offset]);
 
   // Close popover on outside click
@@ -211,9 +193,6 @@ export default function TodayDashboard() {
     catch { showToast('Failed to save notes'); }
     setEditingNotesId(null);
   };
-
-  const getCategoryLabel = (val: string) =>
-    FINANCE_CATEGORIES.find((c) => c.value === val)?.label ?? val;
 
   if (loading || activitiesLoading) {
     return <div className="dashboard"><p className="empty-text">Loading...</p></div>;
@@ -317,59 +296,14 @@ export default function TodayDashboard() {
               ) : (
                 <div className="cal-detail-entries">
                   {selectedActivities.map((entry) => (
-                    <div key={entry.id} className="cal-entry-row">
-                      <span className="cal-entry-type-label">{ACTIVITY_TYPE_META[entry.type].label}</span>
-                      <div className="cal-entry-info">
-                        {entry.type === 'finance' && (
-                          <>
-                            <span className={`cal-entry-primary ${(entry as FinanceActivity).direction}`}>
-                              {(entry as FinanceActivity).direction === 'expense' ? '−' : '+'}
-                              {formatCurrency((entry as FinanceActivity).amount, settings.currencySymbol)}
-                            </span>
-                            {entry.notes && <span className="cal-entry-meta">{entry.notes}</span>}
-                          </>
-                        )}
-                        {entry.type === 'exercise' && (
-                          <>
-                            <span className="cal-entry-primary">
-                              {(entry as ExerciseActivity).workout.completed
-                                ? `Workout${(entry as ExerciseActivity).workout.durationMinutes ? ` — ${(entry as ExerciseActivity).workout.durationMinutes}min` : ''}`
-                                : 'Rest day'}
-                            </span>
-                            {entry.notes && <span className="cal-entry-meta">{entry.notes}</span>}
-                          </>
-                        )}
-                        {entry.type === 'payment' && (
-                          <>
-                            <span className="cal-entry-primary">{entry.notes || 'Payment'}</span>
-                            <span className="cal-entry-meta">
-                              {(entry as PaymentActivity).status === 'paid' ? '✓ Paid' : '⟳ Skipped'}
-                              {' · '}{formatCurrency((entry as PaymentActivity).amount, settings.currencySymbol)}
-                            </span>
-                          </>
-                        )}
-                        {entry.type === 'grocery' && (
-                          <>
-                            <span className="cal-entry-primary">{(entry as GroceryActivity).tripName}</span>
-                            <span className="cal-entry-meta">
-                              {(entry as GroceryActivity).tripItems.length} items · {(entry as GroceryActivity).tripMode}
-                            </span>
-                          </>
-                        )}
-                        {entry.type === 'generic' && (
-                          <span className="cal-entry-primary">{entry.notes || 'Note'}</span>
-                        )}
-                      </div>
-                      <div className="cal-entry-actions">
-                        {(entry.type === 'finance' || entry.type === 'exercise') && (
-                          <button className="entry-edit" onClick={() => entry.id && openDrawerWithActivity(entry)} title="Edit">Edit</button>
-                        )}
-                        {entry.type === 'payment' && (
-                          <button className="entry-unmark" onClick={() => entry.id && handleDelete(entry.id)} title="Unmark">Unmark</button>
-                        )}
-                        <button className="entry-delete" onClick={() => entry.id && handleDelete(entry.id)} title="Delete">&times;</button>
-                      </div>
-                    </div>
+                    <ActivityEntryRow
+                      key={entry.id}
+                      activity={entry}
+                      currencySymbol={settings.currencySymbol}
+                      onEdit={openDrawerWithActivity}
+                      onDelete={handleDelete}
+                      variant="cal"
+                    />
                   ))}
                 </div>
               )}
@@ -440,64 +374,38 @@ export default function TodayDashboard() {
                 {offset === 0 ? "Today's Log" : offset === -1 ? "Yesterday's Log" : 'Log'}
               </h3>
               {activities.map((entry) => (
-                <div key={entry.id} className="entry-row">
-                  <div className="entry-details">
-                    {entry.type === 'finance' && (
-                      <>
-                        <span className={`entry-amount ${entry.direction}`}>
-                          {entry.direction === 'expense' ? '-' : '+'}{formatCurrency(entry.amount, settings.currencySymbol)}
-                        </span>
-                        <span className="entry-meta">{getCategoryLabel(entry.category)}{entry.notes ? ` · ${entry.notes}` : ''}</span>
-                      </>
-                    )}
-                    {entry.type === 'exercise' && (
-                      <>
-                        <span className="entry-primary">
-                          {entry.workout.completed ? `Workout${entry.workout.durationMinutes ? ` — ${entry.workout.durationMinutes}min` : ''}` : 'Rest day'}
-                        </span>
-                        <span className="entry-meta">
-                          {[entry.workout.workoutType, entry.health?.mood && `Mood: ${['', 'Awful', 'Bad', 'Okay', 'Good', 'Great'][entry.health.mood]}`, entry.health?.weightKg && `${entry.health.weightKg}kg`].filter(Boolean).join(' · ') || entry.notes || ''}
-                        </span>
-                      </>
-                    )}
-                    {entry.type === 'payment' && (
-                      <>
-                        {editingNotesId === entry.id ? (
-                          <input className="form-input" value={editingNotesValue} onChange={(e) => setEditingNotesValue(e.target.value)}
-                            onBlur={() => entry.id && handleSaveNotes(entry.id)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') entry.id && handleSaveNotes(entry.id); if (e.key === 'Escape') setEditingNotesId(null); }}
-                            autoFocus onClick={(e) => e.stopPropagation()} />
-                        ) : (
-                          <span className="entry-primary entry-notes-editable" title="Tap to edit notes"
-                            onClick={(e) => { e.stopPropagation(); setEditingNotesId(entry.id!); setEditingNotesValue(entry.notes); }}>
-                            {entry.notes || 'Payment'}
-                          </span>
-                        )}
-                        <span className="entry-meta">{entry.status === 'paid' ? '✓ Paid' : '⟳ Skipped'} · {formatCurrency(entry.amount, settings.currencySymbol)}</span>
-                      </>
-                    )}
-                    {entry.type === 'grocery' && (
-                      <>
-                        <span className="entry-primary">{(entry as GroceryActivity).tripName || 'Grocery trip'}</span>
-                        <span className="entry-meta">
-                          {(entry as GroceryActivity).tripMode === 'store' ? 'Store' : 'Online'}
-                          {(entry as GroceryActivity).tripItems?.length ? ` · ${(entry as GroceryActivity).tripItems.length} items` : ''}
-                        </span>
-                      </>
-                    )}
-                    {entry.type === 'generic' && <span className="entry-primary">{entry.notes || 'Note'}</span>}
-                    {offset !== 0 && <span className="entry-date-label">{entry.date}</span>}
-                  </div>
-                  <div className="entry-actions">
-                    {(entry.type === 'finance' || entry.type === 'exercise') && (
-                      <button className="entry-edit" onClick={(e) => { e.stopPropagation(); openDrawerWithActivity(entry); }} title="Edit">Edit</button>
-                    )}
-                    {entry.type === 'payment' && (
-                      <button className="entry-unmark" onClick={(e) => { e.stopPropagation(); entry.id && handleDelete(entry.id); }} title="Unmark payment">Unmark</button>
-                    )}
-                    <button className="entry-delete" onClick={(e) => { e.stopPropagation(); entry.id && handleDelete(entry.id); }} title="Delete">&times;</button>
-                  </div>
-                </div>
+                <ActivityEntryRow
+                  key={entry.id}
+                  activity={entry}
+                  currencySymbol={settings.currencySymbol}
+                  onEdit={openDrawerWithActivity}
+                  onDelete={handleDelete}
+                  dateLabel={offset !== 0 ? entry.date : undefined}
+                  paymentLabel={entry.type === 'payment' ? (
+                    editingNotesId === entry.id ? (
+                      <input
+                        className="form-input"
+                        value={editingNotesValue}
+                        onChange={(e) => setEditingNotesValue(e.target.value)}
+                        onBlur={() => entry.id && handleSaveNotes(entry.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') entry.id && handleSaveNotes(entry.id);
+                          if (e.key === 'Escape') setEditingNotesId(null);
+                        }}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span
+                        className="entry-primary entry-notes-editable"
+                        title="Tap to edit notes"
+                        onClick={(e) => { e.stopPropagation(); setEditingNotesId(entry.id!); setEditingNotesValue(entry.notes); }}
+                      >
+                        {entry.notes || 'Payment'}
+                      </span>
+                    )
+                  ) : undefined}
+                />
               ))}
             </div>
           </div>

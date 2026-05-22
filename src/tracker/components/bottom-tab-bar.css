@@ -1,16 +1,14 @@
 .bottom-tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
+  /* Static flex child of tracker-shell — body never scrolls so Safari's
+     address bar stays put and the tab bar never gets clipped. */
+  flex-shrink: 0;
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding: 0 8px env(safe-area-inset-bottom);
   background: var(--bg-surface);
   border-top: 1px solid var(--border-default);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-around;
-  z-index: 100;
-  padding: 0 8px;
 }
 
 .tab-item {

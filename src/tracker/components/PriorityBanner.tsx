@@ -16,7 +16,7 @@ export default function PriorityBanner() {
     return financeReminders
       .map((item) => ({ item, status: computeDueStatus(item, paymentActivities) }))
       .filter(({ status }) => status === 'overdue' || status === 'due-today')
-      .sort((a, b) => (a.status === 'overdue' ? -1 : 1));
+      .sort((a) => (a.status === 'overdue' ? -1 : 1));
   }, [financeReminders, paymentActivities]);
 
   if (alerts.length === 0) return null;
@@ -29,9 +29,7 @@ export default function PriorityBanner() {
           className={`priority-alert priority-alert--${status}`}
           onClick={() => navigate('/tracker/finances')}
         >
-          <span className="priority-alert-icon">
-            {status === 'overdue' ? '🔴' : '🟡'}
-          </span>
+          <span className={`priority-alert-dot priority-alert-dot--${status}`} />
           <div className="priority-alert-body">
             <span className="priority-alert-name">{item.name}</span>
             <span className="priority-alert-sub">

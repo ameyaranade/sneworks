@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -15,11 +15,11 @@ export default function LoginPage() {
   // Where to go after login — default to /tracker if came from there, else /
   const from = (location.state as { from?: string })?.from ?? '/tracker';
 
-  // If already logged in, redirect
-  if (user) {
-    navigate(from, { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user) navigate(from, { replace: true });
+  }, [user, from, navigate]);
+
+  if (user) return null;
 
   const handleGoogleLogin = async () => {
     setError(null);

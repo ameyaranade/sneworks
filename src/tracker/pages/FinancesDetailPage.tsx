@@ -3,20 +3,19 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import { useToast } from '../components/Toast';
-import { useDrawer } from '../TrackerShell';
+import { useDrawer } from '../context/DrawerContext';
 import {
   subscribeToActivitiesByType,
   deleteActivity,
   addActivity,
   deleteReminder,
 } from '../firebase/trackerQueries';
-import { FINANCE_CATEGORIES } from '../constants';
+import { FINANCE_CATEGORIES, ACTIVITY_PAGE_SIZE } from '../constants';
 import { formatCurrency, formatDate, computeDueStatus, computeNextDueDate } from '../utils';
 import DueIndicator from '../components/DueIndicator';
 import type { FinanceActivity, PaymentActivity, FinanceReminder, DueStatus } from '../types';
 import './finances-detail-page.css';
 
-const PAGE_SIZE = 20;
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -99,7 +98,7 @@ export default function FinancesDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [allEntries, setAllEntries] = useState<FinanceActivity[]>([]);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [visibleCount, setVisibleCount] = useState(ACTIVITY_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [billsExpanded, setBillsExpanded] = useState(true);
   const [actionLoading, setActionLoading] = useState<Set<string>>(new Set());
@@ -122,7 +121,7 @@ export default function FinancesDetailPage() {
     observerRef.current?.disconnect();
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setVisibleCount((c) => c + PAGE_SIZE);
+        if (entry.isIntersecting) setVisibleCount((c) => c + ACTIVITY_PAGE_SIZE);
       },
       { threshold: 0.1 },
     );
@@ -329,6 +328,8 @@ export default function FinancesDetailPage() {
                 <button
                   className="finance-entry-main-btn"
                   onClick={() => setExpandedId(isExpanded ? null : (entry.id ?? null))}
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? 'Collapse' : 'Expand'} entry`}
                 >
                   <div className="finance-entry-date">{formatEntryDate(entry.date)}</div>
                   <div className="finance-entry-body">
@@ -361,7 +362,7 @@ export default function FinancesDetailPage() {
             );
           })}
           {hasMore && <div ref={sentinelRef} className="finances-load-sentinel" />}
-          {!hasMore && allEntries.length > PAGE_SIZE && (
+          {!hasMore && allEntries.length > ACTIVITY_PAGE_SIZE && (
             <p className="finances-end-label">All {allEntries.length} entries loaded</p>
           )}
         </div>

@@ -139,6 +139,11 @@ export interface FinanceReminderWithStatus extends FinanceReminder {
   lastPaidDate?: Date;
 }
 
+// Distributive omit — produces a union of each subtype with base fields stripped.
+// Used as the parameter type for addActivity / addReminder.
+export type ActivityInput = Activity extends infer T ? (T extends Activity ? Omit<T, 'id' | 'createdAt' | 'updatedAt'> : never) : never;
+export type ReminderInput = Reminder extends infer T ? (T extends Reminder ? Omit<T, 'id' | 'createdAt' | 'updatedAt'> : never) : never;
+
 // ─── Settings ───
 
 export interface TrackerSettings {

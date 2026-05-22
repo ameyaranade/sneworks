@@ -3,11 +3,12 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import { deleteReminder, completeGenericReminder, addReminder, getCompletedGenericReminders } from '../firebase/trackerQueries';
+import { ARCHIVE_PAGE_SIZE } from '../constants';
 import { useToast } from '../components/Toast';
 import type { GenericReminder } from '../types';
+import type { Timestamp } from 'firebase/firestore';
 import './reminders-page.css';
 
-const ARCHIVE_PAGE_SIZE = 10;
 
 function formatDueDate(dateStr?: string): string {
   if (!dateStr) return '';
@@ -15,9 +16,9 @@ function formatDueDate(dateStr?: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function formatCompletedAt(ts: any): string {
+function formatCompletedAt(ts: Timestamp | null | undefined): string {
   if (!ts) return '';
-  const ms = ts?.toMillis?.() ?? (typeof ts === 'number' ? ts : 0);
+  const ms = ts.toMillis();
   if (!ms) return '';
   return new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -255,9 +256,9 @@ export default function RemindersPage() {
                       <div className="reminder-body">
                         <span className="reminder-name reminder-name--done">{r.name}</span>
                         {r.notes && <span className="reminder-notes">{r.notes}</span>}
-                        {(r as any).completedAt && (
+                        {r.completedAt && (
                           <span className="reminder-notes">
-                            Completed {formatCompletedAt((r as any).completedAt)}
+                            Completed {formatCompletedAt(r.completedAt)}
                           </span>
                         )}
                       </div>

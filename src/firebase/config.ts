@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 
 // TODO: Replace with your Firebase config object from:
@@ -19,6 +19,13 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Connect to local emulators when running E2E tests (VITE_USE_EMULATOR=true)
+if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, 'localhost', 8080);
+}
+
 // Realtime Database — initialized lazily so a missing databaseURL doesn't crash the app.
 // Call getRtdb() only when you actually need RTDB.
 export const getRtdb = () => getDatabase(app);

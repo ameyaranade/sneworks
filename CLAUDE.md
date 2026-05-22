@@ -159,9 +159,12 @@ npm run deploy     # Build + deploy to Firebase Hosting (sneworks.com)
 ---
 
 ## Architecture Notes
-- **Auth:** `AuthProvider` wraps all routes in `App.tsx`. `useAuth()` hook gives `{ user, loading }` anywhere in the tree. Games work without auth. `ProtectedRoute` redirects to `/login` if no user.
+- **Auth:** `AuthProvider` wraps all routes in `App.tsx`. `useAuth()` hook gives `{ user, loading, optimistic }` anywhere in the tree. Games work without auth. `ProtectedRoute` redirects to `/login` if no user.
+  - **Optimistic auth** — `AuthContext` persists an auth hint (`sneworks_auth_hint`) to localStorage on every successful login (uid + timestamp, 7-day TTL). On refresh, `optimistic=true` lets `ProtectedRoute` render children immediately without waiting for Firebase to confirm the session. `clearAllCache()` (exported from `AuthContext`) wipes all `sneworks*` localStorage keys on logout or session expiry. `getCachedUid()` returns the hint uid synchronously — used by `TrackerProvider` for instant cache reads.
 - **Routing:** React Router v6 with `<BrowserRouter>`. `/tracker` uses nested routes under `<TrackerShell>` which provides bottom tab navigation and the add-entry drawer. Firebase Hosting SPA rewrite sends all paths to `index.html`.
-- **Tracker context:** `TrackerProvider` (inside `TrackerShell`) provides `useTracker()` hook with `{ settings, todayActivities, weekActivities, monthActivities, reminders, loading }`. All data is live via Firestore `onSnapshot`.
+- **Tracker context:** `TrackerProvider` (inside `TrackerShell`) provides `useTracker()` hook with `{ settings, todayActivities, monthActivities, reminders, loading }`. All data is live via Firestore `onSnapshot`.
+  - **localStorage cache** — All four subscriptions (settings, todayActivities, monthActivities, reminders) are cached under `sneworks_{uid}_{key}`. Cache is read synchronously in `useState` lazy initializers using `getCachedUid()`, so the very first render already has data. Firestore Timestamps are serialized via `JSON.stringify` (Firebase's `toJSON()` emits `{ type, seconds, nanoseconds }`) and revived by `reviveTimestamps()` on read. Cache is written on every subscription callback and cleared on logout.
+  - **TodayDashboard** seeds its own `activities` state from `todayActivities` at mount (frame 1 has data). A `userReadyRef` distinguishes first-auth (skip loading if cache exists) from range/offset change (clear + reload). Archived Reminders are lazy-loaded on first expand of the "Archived" section — intentional, not a bug.
 - **Drawer context:** `DrawerContext` in `TrackerShell` exposes `useDrawer()` → `{ openDrawer, openDrawerWithActivity, openDrawerWithType }`. Call `openDrawerWithActivity(activity)` to open in edit mode; `openDrawerWithType('finance')` to pre-select a type.
 - **CSS:** Per-component CSS files imported directly (no Tailwind, no CSS-in-JS). Shared styles in `shared/styles/global.css` and `layout.css`. Tracker forms share styles via `forms/form-shared.css`.
 - **No emoji in UI** — All structural UI elements (page titles, tab labels, type picker, entry badges, category chips, popover, past trips mode label) use SVG icons or plain text only.
@@ -241,7 +244,7 @@ Note: `GenericReminder.dueTime` is stored as `"HH:MM"` string for future push no
 - **Edit mode** — Drawer opens pre-filled via `openDrawerWithActivity(activity)`
 - **Dark mode** — Full CSS custom property system, applied app-wide
 - **Error handling** — Toast notifications on all Firestore mutation failures
-- **Loading states** — Shimmer skeletons on Finances and Exercise pages
+- **Loading states** — Shimmer skeletons on Finances and Exercise pages; Dashboard shows cached data instantly on refresh (no skeleton)
 
 ### Future (not yet built)
 - [ ] Push notifications via Firebase Cloud Messaging (dueTime already stored for scheduling)

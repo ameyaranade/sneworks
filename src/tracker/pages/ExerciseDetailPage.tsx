@@ -2,15 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useToast } from '../components/Toast';
-import { useDrawer } from '../TrackerShell';
+import { useDrawer } from '../context/DrawerContext';
 import { subscribeToActivitiesByType, deleteActivity } from '../firebase/trackerQueries';
-import { MOOD_OPTIONS } from '../constants';
+import { MOOD_OPTIONS, ACTIVITY_PAGE_SIZE } from '../constants';
 import MoodSvg from '../components/MoodSvg';
 import { formatDate } from '../utils';
 import type { ExerciseActivity } from '../types';
 import './exercise-detail-page.css';
 
-const PAGE_SIZE = 20;
 
 function getMonthLabel(yyyyMm: string): string {
   const [y, m] = yyyyMm.split('-').map(Number);
@@ -87,7 +86,7 @@ export default function ExerciseDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [allEntries, setAllEntries] = useState<ExerciseActivity[]>([]);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [visibleCount, setVisibleCount] = useState(ACTIVITY_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -108,7 +107,7 @@ export default function ExerciseDetailPage() {
     observerRef.current?.disconnect();
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setVisibleCount((c) => c + PAGE_SIZE);
+        if (entry.isIntersecting) setVisibleCount((c) => c + ACTIVITY_PAGE_SIZE);
       },
       { threshold: 0.1 },
     );
@@ -185,6 +184,8 @@ export default function ExerciseDetailPage() {
                 <button
                   className="exercise-entry-row"
                   onClick={() => setExpandedId(isExpanded ? null : (entry.id ?? null))}
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? 'Collapse' : 'Expand'} entry`}
                 >
                   <div className="exercise-entry-date">{formatEntryDate(entry.date)}</div>
                   <div className="exercise-entry-main">
@@ -199,7 +200,7 @@ export default function ExerciseDetailPage() {
                     <div className="exercise-entry-chips">
                       {moodOption && (
                         <span className="exercise-chip exercise-chip--mood">
-                          <MoodSvg mood={moodOption.value} size={14} />
+                          <MoodSvg mood={moodOption.value} label={moodOption.label} size={14} />
                         </span>
                       )}
                       {weight && <span className="exercise-chip">{weight}kg</span>}
@@ -236,7 +237,7 @@ export default function ExerciseDetailPage() {
                         <div className="exercise-detail-row">
                           <span className="exercise-detail-label">Mood</span>
                           <span className="exercise-detail-value exercise-detail-mood">
-                            <MoodSvg mood={moodOption.value} size={16} />
+                            <MoodSvg mood={moodOption.value} label={moodOption.label} size={16} />
                             {moodOption.label}
                           </span>
                         </div>
@@ -268,7 +269,7 @@ export default function ExerciseDetailPage() {
             );
           })}
           {hasMore && <div ref={sentinelRef} className="exercise-load-sentinel" />}
-          {!hasMore && allEntries.length > PAGE_SIZE && (
+          {!hasMore && allEntries.length > ACTIVITY_PAGE_SIZE && (
             <p className="exercise-end-label">All {allEntries.length} entries loaded</p>
           )}
         </div>

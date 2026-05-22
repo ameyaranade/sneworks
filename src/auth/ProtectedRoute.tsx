@@ -1,16 +1,19 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { ReactNode } from 'react';
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, optimistic } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
+  // Block only when Firebase hasn't responded AND there's no cached auth hint.
+  if (loading && !optimistic) {
     return <div style={{ padding: 32, color: '#666' }}>Loading...</div>;
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  // Firebase confirmed no session (logout, expiry, or first visit).
+  if (!loading && !user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return <>{children}</>;

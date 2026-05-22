@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
+import { Timestamp } from 'firebase/firestore';
 import {
   addReminder,
   deleteReminder,
@@ -11,12 +12,11 @@ import {
   subscribeToActivitiesByType,
 } from '../firebase/trackerQueries';
 import { formatDate } from '../utils';
-import { ACTIVITY_TYPE_META } from '../constants';
 import { useToast } from '../components/Toast';
 import type { GroceryReminder, GroceryActivity } from '../types';
 import './groceries-page.css';
 
-function formatTime(ts?: { toDate: () => Date }): string {
+function formatTime(ts?: Timestamp): string {
   if (!ts) return '';
   return ts.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
@@ -52,12 +52,11 @@ export default function GroceriesPage() {
   }, []);
 
   const [addName, setAddName] = useState('');
-  const [adding, setAdding] = useState(false);
 
   const [showArchiveFlow, setShowArchiveFlow] = useState(false);
   const [tripName, setTripName] = useState('');
   const [tripMode, setTripMode] = useState<'store' | 'online'>('store');
-  const [archiving, setArchiving] = useState(false);
+  const archiveSheetRef = useRef<HTMLDivElement>(null);
 
   const [pastTrips, setPastTrips] = useState<GroceryActivity[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
@@ -80,24 +79,23 @@ export default function GroceriesPage() {
     .sort((a, b) => (a.checkedAt?.seconds ?? 0) - (b.checkedAt?.seconds ?? 0));
 
   const handleAdd = async () => {
-    if (!user || !addName.trim() || adding) return;
-    setAdding(true);
+    if (!user || !addName.trim()) return;
+    const name = addName.trim();
     const maxOrder = groceryReminders.reduce((m, r) => Math.max(m, r.sortOrder), -1);
+    setAddName('');
     try {
       await addReminder(user.uid, {
         type: 'grocery',
-        name: addName.trim(),
+        name,
         notes: '',
         active: true,
         checked: false,
         sortOrder: maxOrder + 1,
       });
-      setAddName('');
     } catch (e) {
       console.error('Add grocery item failed:', e);
+      setAddName(name);
       showToast('Failed to add item');
-    } finally {
-      setAdding(false);
     }
   };
 
@@ -121,6 +119,23 @@ export default function GroceriesPage() {
     }
   };
 
+  const closeArchiveFlow = useCallback(() => setShowArchiveFlow(false), []);
+
+  useEffect(() => {
+    if (!showArchiveFlow) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusable = archiveSheetRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    focusable?.[0]?.focus();
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') closeArchiveFlow(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [showArchiveFlow, closeArchiveFlow]);
+
   const openArchiveFlow = () => {
     setTripName(getDefaultTripName());
     setTripMode('store');
@@ -128,22 +143,36 @@ export default function GroceriesPage() {
   };
 
   const handleArchive = async () => {
-    if (!user || !tripName.trim() || archiving) return;
-    setArchiving(true);
+    if (!user || !tripName.trim()) return;
+
+    const today = formatDate(new Date());
+    const optimisticId = `opt-${Date.now()}`;
+    const optimisticTrip: GroceryActivity = {
+      id: optimisticId,
+      type: 'grocery',
+      date: today,
+      notes: '',
+      tripName: tripName.trim(),
+      tripMode,
+      tripItems: checked.map((r) => ({
+        id: r.id!,
+        name: r.name,
+        checked: true,
+        ...(r.checkedAt ? { checkedAt: r.checkedAt } : {}),
+      })),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    setPastTrips((prev) => [optimisticTrip, ...prev]);
+    setShowArchiveFlow(false);
+
     try {
-      await archiveGroceryTrip(
-        user.uid,
-        tripName.trim(),
-        tripMode,
-        checked,
-        formatDate(new Date()),
-      );
-      setShowArchiveFlow(false);
+      await archiveGroceryTrip(user.uid, tripName.trim(), tripMode, checked, today);
     } catch (e) {
       console.error('Archive grocery trip failed:', e);
+      setPastTrips((prev) => prev.filter((t) => t.id !== optimisticId));
       showToast('Failed to complete trip');
-    } finally {
-      setArchiving(false);
     }
   };
 
@@ -192,7 +221,7 @@ export default function GroceriesPage() {
         <button
           className="grocery-add-btn"
           onClick={handleAdd}
-          disabled={adding || !addName.trim()}
+          disabled={!addName.trim()}
         >
           Add
         </button>
@@ -263,7 +292,12 @@ export default function GroceriesPage() {
             return (
               <div key={id} className="trip-row">
                 <div className="trip-row-top">
-                  <button className="trip-row-header" onClick={() => toggleTripExpanded(id)}>
+                  <button
+                    className="trip-row-header"
+                    onClick={() => toggleTripExpanded(id)}
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} trip ${trip.tripName}`}
+                  >
                     <span className="trip-row-arrow">{isExpanded ? '▾' : '▸'}</span>
                     <span className="trip-row-name">{trip.tripName}</span>
                     <span className="trip-row-meta">
@@ -300,10 +334,17 @@ export default function GroceriesPage() {
 
       {/* Archive overlay */}
       {showArchiveFlow && (
-        <div className="archive-overlay" onClick={() => setShowArchiveFlow(false)}>
-          <div className="archive-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="archive-overlay" onClick={closeArchiveFlow}>
+          <div
+            ref={archiveSheetRef}
+            className="archive-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="archive-sheet-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="archive-sheet-handle" />
-            <h3 className="archive-sheet-title">Complete Trip</h3>
+            <h3 id="archive-sheet-title" className="archive-sheet-title">Complete Trip</h3>
             <p className="archive-sheet-sub">{checked.length} item{checked.length !== 1 ? 's' : ''} checked</p>
 
             <div className="archive-field">
@@ -337,11 +378,11 @@ export default function GroceriesPage() {
             <button
               className="archive-confirm-btn"
               onClick={handleArchive}
-              disabled={archiving || !tripName.trim()}
+              disabled={!tripName.trim()}
             >
-              {archiving ? 'Saving…' : 'Complete Trip'}
+              Complete Trip
             </button>
-            <button className="archive-cancel-btn" onClick={() => setShowArchiveFlow(false)}>
+            <button className="archive-cancel-btn" onClick={closeArchiveFlow}>
               Cancel
             </button>
           </div>

@@ -138,7 +138,7 @@ export default function ExerciseForm({ onSaved, initialValues, entryId }: Exerci
               className={`mood-btn ${mood === opt.value ? 'active' : ''}`}
               onClick={() => setMood(mood === opt.value ? null : opt.value)}
             >
-              <MoodSvg mood={opt.value} size={20} className="mood-svg" />
+              <MoodSvg mood={opt.value} label={opt.label} size={20} className="mood-svg" />
               <span className="mood-label">{opt.label}</span>
             </button>
           ))}

@@ -9,21 +9,25 @@ import {
   getDoc,
   query,
   where,
+  limit,
   onSnapshot,
   serverTimestamp,
   writeBatch,
+  Timestamp,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type {
   Activity,
+  ActivityInput,
   ActivityType,
   Reminder,
+  ReminderInput,
   ReminderType,
   GroceryReminder,
   TrackerSettings,
 } from '../types';
-import { DEFAULT_SETTINGS } from '../constants';
+import { DEFAULT_SETTINGS, ACTIVITY_PAGE_SIZE } from '../constants';
 
 // ─── New Paths ───
 
@@ -46,7 +50,7 @@ export async function getSettings(uid: string): Promise<TrackerSettings> {
   if (snap.exists()) return snap.data() as TrackerSettings;
   const defaults = { ...DEFAULT_SETTINGS, updatedAt: serverTimestamp() };
   await setDoc(settingsDoc(uid), defaults);
-  return { ...DEFAULT_SETTINGS, updatedAt: null as any };
+  return { ...DEFAULT_SETTINGS, updatedAt: Timestamp.now() };
 }
 
 export async function updateSettings(uid: string, partial: Partial<TrackerSettings>) {
@@ -63,7 +67,7 @@ export function subscribeToSettings(uid: string, cb: (s: TrackerSettings) => voi
 
 export async function addActivity(
   uid: string,
-  activity: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'> & Record<string, unknown>,
+  activity: ActivityInput,
 ) {
   const ref = await addDoc(activitiesCol(uid), {
     ...activity,
@@ -122,7 +126,11 @@ export function subscribeToActivitiesByType<T extends Activity>(
   type: ActivityType,
   cb: (activities: T[]) => void,
 ): Unsubscribe {
-  const q = query(activitiesCol(uid), where('type', '==', type));
+  const q = query(
+    activitiesCol(uid),
+    where('type', '==', type),
+    limit(ACTIVITY_PAGE_SIZE * 5),
+  );
   return onSnapshot(q, (snap) => {
     const activities = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as T);
     activities.sort(
@@ -150,7 +158,7 @@ export async function getActivitiesForDateRange(uid: string, startDate: string, 
 
 export async function addReminder(
   uid: string,
-  reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'> & Record<string, unknown>,
+  reminder: ReminderInput,
 ) {
   const ref = await addDoc(remindersCol(uid), {
     ...reminder,
@@ -204,7 +212,9 @@ export async function archiveGroceryTrip(
   checkedReminders: GroceryReminder[],
   date: string,
 ) {
-  await addActivity(uid, {
+  const batch = writeBatch(db);
+  const activityRef = doc(activitiesCol(uid));
+  batch.set(activityRef, {
     type: 'grocery',
     date,
     notes: '',
@@ -216,8 +226,9 @@ export async function archiveGroceryTrip(
       checked: true,
       ...(r.checkedAt ? { checkedAt: r.checkedAt } : {}),
     })),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
-  const batch = writeBatch(db);
   for (const r of checkedReminders) {
     if (r.id) batch.delete(doc(remindersCol(uid), r.id));
   }
@@ -242,7 +253,6 @@ export async function getCompletedGenericReminders(uid: string): Promise<import(
   const snap = await getDocs(q);
   return snap.docs
     .map((d) => ({ ...d.data(), id: d.id }) as import('../types').GenericReminder)
-    .filter((r) => r.completed)
     .sort((a, b) => {
       const aTime = (a as any).completedAt?.toMillis?.() ?? 0;
       const bTime = (b as any).completedAt?.toMillis?.() ?? 0;

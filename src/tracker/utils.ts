@@ -1,4 +1,5 @@
 import type { DueStatus, FinanceReminder, PaymentActivity, Activity } from './types';
+import { UPCOMING_THRESHOLD_DAYS } from './constants';
 
 export function formatDate(d: Date): string {
   const y = d.getFullYear();
@@ -86,6 +87,7 @@ export function computeDueStatus(item: FinanceReminder, paymentActivities: Activ
   const relevantPayments = paymentActivities.filter(
     (e): e is PaymentActivity => e.type === 'payment' && e.reminderId === item.id,
   );
+  relevantPayments.sort((a, b) => b.date.localeCompare(a.date));
 
   if (relevantPayments.length > 0) {
     const latest = relevantPayments[0];
@@ -102,6 +104,6 @@ export function computeDueStatus(item: FinanceReminder, paymentActivities: Activ
 
   if (diffDays < 0) return 'overdue';
   if (diffDays === 0) return 'due-today';
-  if (diffDays <= 3) return 'upcoming';
+  if (diffDays <= UPCOMING_THRESHOLD_DAYS) return 'upcoming';
   return 'none';
 }

@@ -37,9 +37,27 @@
   border-color: #4a3010;
 }
 
-.priority-alert-icon {
-  font-size: 16px;
+.priority-alert-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   flex-shrink: 0;
+}
+
+.priority-alert-dot--overdue {
+  background: #e74c3c;
+}
+
+.priority-alert-dot--due-today {
+  background: #f39c12;
+}
+
+[data-theme="dark"] .priority-alert-dot--overdue {
+  background: #e05252;
+}
+
+[data-theme="dark"] .priority-alert-dot--due-today {
+  background: #d4a017;
 }
 
 .priority-alert-body {

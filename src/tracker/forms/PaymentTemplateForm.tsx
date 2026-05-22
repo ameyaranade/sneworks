@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import { addReminder } from '../firebase/trackerQueries';
-import { PAYMENT_FREQUENCIES } from '../constants';
+import { PAYMENT_FREQUENCIES, MAX_DUE_DAY } from '../constants';
 import type { PaymentFrequency } from '../types';
 import './form-shared.css';
 
@@ -27,13 +27,13 @@ export default function PaymentTemplateForm({ onSaved }: Props) {
   const handleFrequencyChange = (f: PaymentFrequency) => {
     setFrequency(f);
     const nowWeekBased = f === 'weekly' || f === 'biweekly';
-    if (nowWeekBased !== isWeekBased) setDueDay(nowWeekBased ? 1 : 1);
+    if (nowWeekBased !== isWeekBased) setDueDay(1);
   };
 
   const handleDayInput = (v: string) => {
     const n = parseInt(v, 10);
     if (isNaN(n)) return;
-    setDueDay(Math.min(28, Math.max(1, n)));
+    setDueDay(Math.min(MAX_DUE_DAY, Math.max(1, n)));
   };
 
   const handleSubmit = async () => {
@@ -120,7 +120,7 @@ export default function PaymentTemplateForm({ onSaved }: Props) {
             type="number"
             className="form-input"
             min={1}
-            max={28}
+            max={MAX_DUE_DAY}
             value={dueDay}
             onChange={(e) => handleDayInput(e.target.value)}
             inputMode="numeric"

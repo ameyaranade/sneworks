@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cell from './Cell';
-import { CellState, getLabelForState, isColumnAvailable } from './GameStatus';
+import { CellState, getLabelForState, isColumnAvailable as _isColumnAvailable } from './GameStatus';
 import { useConnect4Game } from './useConnect4Game';
 import './connect4.css';
 

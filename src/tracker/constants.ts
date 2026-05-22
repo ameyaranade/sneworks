@@ -1,16 +1,16 @@
 import type { FinanceCategory, PaymentFrequency, Mood, Currency, TrackerSettings } from './types';
 
-export const FINANCE_CATEGORIES: { value: FinanceCategory; label: string; emoji: string }[] = [
-  { value: 'food', label: 'Food', emoji: '🍔' },
-  { value: 'transport', label: 'Transport', emoji: '🚗' },
-  { value: 'rent', label: 'Rent', emoji: '🏠' },
-  { value: 'utilities', label: 'Utilities', emoji: '💡' },
-  { value: 'entertainment', label: 'Fun', emoji: '🎬' },
-  { value: 'health', label: 'Health', emoji: '💊' },
-  { value: 'shopping', label: 'Shopping', emoji: '🛒' },
-  { value: 'education', label: 'Education', emoji: '📚' },
-  { value: 'gifts', label: 'Gifts', emoji: '🎁' },
-  { value: 'other', label: 'Other', emoji: '📦' },
+export const FINANCE_CATEGORIES: { value: FinanceCategory; label: string }[] = [
+  { value: 'food', label: 'Food' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'rent', label: 'Rent' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'entertainment', label: 'Fun' },
+  { value: 'health', label: 'Health' },
+  { value: 'shopping', label: 'Shopping' },
+  { value: 'education', label: 'Education' },
+  { value: 'gifts', label: 'Gifts' },
+  { value: 'other', label: 'Other' },
 ];
 
 export const PAYMENT_FREQUENCIES: { value: PaymentFrequency; label: string }[] = [
@@ -33,6 +33,12 @@ export const CURRENCY_OPTIONS: { value: Currency; symbol: string; label: string 
   { value: 'INR', symbol: '₹', label: 'INR (₹)' },
   { value: 'USD', symbol: '$', label: 'USD ($)' },
 ];
+
+export const ACTIVITY_PAGE_SIZE = 20;
+export const ARCHIVE_PAGE_SIZE = 10;
+export const UPCOMING_THRESHOLD_DAYS = 3;
+export const MAX_DUE_DAY = 28;
+export const RECENT_ACTIVITIES_DAYS = 365;
 
 export const DEFAULT_SETTINGS: Omit<TrackerSettings, 'updatedAt'> = {
   currency: 'INR',

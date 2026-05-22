@@ -1,10 +1,24 @@
 .tracker-shell {
+  /* Escape the Layout page-content padding to go edge-to-edge */
+  margin: -32px -24px 0;
+  /* Stable height: fill viewport below nav bar using small viewport height
+     (100svh = height when browser chrome is fully visible — never jumps).
+     Falls back to 100vh on older iOS. */
+  height: calc(100vh - 56px);
+  height: calc(100svh - 56px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   position: relative;
-  min-height: calc(100vh - 64px);
 }
 
 .tracker-content {
-  padding-bottom: 80px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  /* Restore the horizontal/top padding that page-content previously provided */
+  padding: 32px 24px 24px;
 }
 
 /* ─── Drawer ─── */

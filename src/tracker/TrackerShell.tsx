@@ -1,63 +1,57 @@
-import { useState, createContext, useContext } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { TrackerProvider } from './context/TrackerProvider';
+import { DrawerContext } from './context/DrawerContext';
 import BottomTabBar from './components/BottomTabBar';
 import AddEntryDrawer from './components/AddEntryDrawer';
+import TrackerErrorBoundary from './components/TrackerErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import type { Activity, ActivityType } from './types';
 import './tracker-shell.css';
-
-interface DrawerContextType {
-  openDrawer: () => void;
-  openDrawerWithActivity: (activity: Activity) => void;
-  openDrawerWithType: (type: ActivityType) => void;
-  closeDrawer: () => void;
-}
-
-const DrawerContext = createContext<DrawerContextType>({
-  openDrawer: () => {},
-  openDrawerWithActivity: () => {},
-  openDrawerWithType: () => {},
-  closeDrawer: () => {},
-});
-
-export function useDrawer() {
-  return useContext(DrawerContext);
-}
 
 export default function TrackerShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activityToEdit, setActivityToEdit] = useState<Activity | undefined>();
   const [initialType, setInitialType] = useState<ActivityType | undefined>();
 
-  const openDrawer = () => {
+  const openDrawer = useCallback(() => {
     setActivityToEdit(undefined);
     setInitialType(undefined);
     setDrawerOpen(true);
-  };
-  const openDrawerWithActivity = (activity: Activity) => {
+  }, []);
+
+  const openDrawerWithActivity = useCallback((activity: Activity) => {
     setActivityToEdit(activity);
     setInitialType(undefined);
     setDrawerOpen(true);
-  };
-  const openDrawerWithType = (type: ActivityType) => {
+  }, []);
+
+  const openDrawerWithType = useCallback((type: ActivityType) => {
     setActivityToEdit(undefined);
     setInitialType(type);
     setDrawerOpen(true);
-  };
-  const closeDrawer = () => {
+  }, []);
+
+  const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     setActivityToEdit(undefined);
     setInitialType(undefined);
-  };
+  }, []);
+
+  const drawerContextValue = useMemo(
+    () => ({ openDrawer, openDrawerWithActivity, openDrawerWithType, closeDrawer }),
+    [openDrawer, openDrawerWithActivity, openDrawerWithType, closeDrawer],
+  );
 
   return (
     <TrackerProvider>
       <ToastProvider>
-        <DrawerContext.Provider value={{ openDrawer, openDrawerWithActivity, openDrawerWithType, closeDrawer }}>
+        <DrawerContext.Provider value={drawerContextValue}>
           <div className="tracker-shell">
             <div className="tracker-content">
-              <Outlet />
+              <TrackerErrorBoundary>
+                <Outlet />
+              </TrackerErrorBoundary>
             </div>
             <BottomTabBar />
 

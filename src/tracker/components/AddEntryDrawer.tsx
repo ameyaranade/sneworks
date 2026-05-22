@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ActivityType, Activity, FinanceActivity, ExerciseActivity } from '../types';
 import { ACTIVITY_TYPE_META } from '../constants';
+import { MoneyIcon, HealthIcon, ShoppingIcon, OtherIcon } from './icons';
 import FinanceForm from '../forms/FinanceForm';
 import ExerciseForm from '../forms/ExerciseForm';
 import GroceryForm from '../forms/GroceryForm';
@@ -17,55 +18,31 @@ interface AddEntryDrawerProps {
 type MoneyMode = 'finance' | 'payment';
 
 const PICKER_TYPES: { type: ActivityType; label: string; icon: React.ReactNode }[] = [
-  {
-    type: 'finance',
-    label: 'Money',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </svg>
-    ),
-  },
-  {
-    type: 'exercise',
-    label: 'Health',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        <polyline points="3 12 6 12 8 8 10 16 12 12 14 12 16 9 18 15 20 12 21 12" />
-      </svg>
-    ),
-  },
-  {
-    type: 'grocery',
-    label: 'Shopping',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="21" r="1" />
-        <circle cx="20" cy="21" r="1" />
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-      </svg>
-    ),
-  },
-  {
-    type: 'generic',
-    label: 'Other',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="8" y1="6" x2="21" y2="6" />
-        <line x1="8" y1="12" x2="21" y2="12" />
-        <line x1="8" y1="18" x2="21" y2="18" />
-        <line x1="3" y1="6" x2="3.01" y2="6" />
-        <line x1="3" y1="12" x2="3.01" y2="12" />
-        <line x1="3" y1="18" x2="3.01" y2="18" />
-      </svg>
-    ),
-  },
+  { type: 'finance',  label: 'Money',    icon: <MoneyIcon /> },
+  { type: 'exercise', label: 'Health',   icon: <HealthIcon /> },
+  { type: 'grocery',  label: 'Shopping', icon: <ShoppingIcon /> },
+  { type: 'generic',  label: 'Other',    icon: <OtherIcon /> },
 ];
 
 export default function AddEntryDrawer({ onClose, activityToEdit, initialType }: AddEntryDrawerProps) {
   const isEditing = !!activityToEdit;
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const titleId = 'drawer-title';
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusable = sheetRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    focusable?.[0]?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
 
   const [selectedType, setSelectedType] = useState<ActivityType | null>(
     activityToEdit
@@ -101,12 +78,19 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
 
   return (
     <div className="drawer-backdrop" onClick={onClose}>
-      <div className="drawer-sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={sheetRef}
+        className="drawer-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="drawer-handle" />
         <div className="drawer-body">
           {!selectedType ? (
             <>
-              <h3 className="drawer-title">Add Entry</h3>
+              <h3 id={titleId} className="drawer-title">Add Entry</h3>
               <div className="type-picker-grid">
                 {PICKER_TYPES.map(({ type, label, icon }) => (
                   <button
@@ -124,7 +108,7 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
             <>
               <div className="drawer-form-header">
                 <button className="drawer-back-btn" onClick={handleBack}>&larr;</button>
-                <h3 className="drawer-title">{getTitle()}</h3>
+                <h3 id={titleId} className="drawer-title">{getTitle()}</h3>
               </div>
 
               {selectedType === 'finance' && !isEditing && (
@@ -146,6 +130,7 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
 
               {selectedType === 'finance' && moneyMode === 'finance' && (
                 <FinanceForm
+                  key={activityToEdit?.id ?? 'new'}
                   onSaved={handleSaved}
                   initialValues={activityToEdit as FinanceActivity | undefined}
                   entryId={activityToEdit?.id}
@@ -156,6 +141,7 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
               )}
               {selectedType === 'exercise' && (
                 <ExerciseForm
+                  key={activityToEdit?.id ?? 'new'}
                   onSaved={handleSaved}
                   initialValues={activityToEdit as ExerciseActivity | undefined}
                   entryId={activityToEdit?.id}
