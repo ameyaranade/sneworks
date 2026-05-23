@@ -15,7 +15,7 @@ const firebaseConfig = {
   // databaseURL: "https://sneworks-app-default-rtdb.firebaseio.com", // Add when Realtime Database is needed
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

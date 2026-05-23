@@ -13,6 +13,14 @@ export const FINANCE_CATEGORIES: { value: FinanceCategory; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
+export const INCOME_CATEGORIES: { value: FinanceCategory; label: string }[] = [
+  { value: 'salary',   label: 'Salary'   },
+  { value: 'business', label: 'Business' },
+  { value: 'stocks',   label: 'Stocks'   },
+  { value: 'gifts',    label: 'Gift'     },
+  { value: 'other',    label: 'Others'   },
+];
+
 export const PAYMENT_FREQUENCIES: { value: PaymentFrequency; label: string }[] = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Bi-weekly' },
@@ -48,11 +56,11 @@ export const DEFAULT_SETTINGS: Omit<TrackerSettings, 'updatedAt'> = {
 };
 
 export const ACTIVITY_TYPE_META = {
-  finance:  { label: 'Finances',  emoji: '💰', color: '#2ecc71' },
+  finance:  { label: 'Money',     emoji: '💰', color: '#2ecc71' },
   exercise: { label: 'Exercise',  emoji: '💪', color: '#3498db' },
   grocery:  { label: 'Groceries', emoji: '🛒', color: '#e67e22' },
   payment:  { label: 'Payments',  emoji: '💳', color: '#9b59b6' },
-  generic:  { label: 'Other',     emoji: '📝', color: '#7f8c8d' },
+  generic:  { label: 'Reminder',  emoji: '📝', color: '#7f8c8d' },
 } as const;
 
 export const REMINDER_TYPE_META = {

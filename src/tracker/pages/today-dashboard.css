@@ -2,6 +2,27 @@
   padding: 4px 0;
 }
 
+/* ─── Loading shimmer ─── */
+
+.dashboard-shimmer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px;
+}
+
+.dashboard-shimmer-card {
+  height: 82px;
+  border-radius: 12px;
+}
+
+.cal-dot-shimmer {
+  display: block;
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+}
+
 .dashboard-header {
   margin-bottom: 20px;
 }
@@ -435,13 +456,13 @@
   justify-content: flex-start;
   gap: 3px;
   padding: 6px 2px 4px;
-  cursor: default;
+  cursor: pointer;
   transition: background 0.12s;
   -webkit-tap-highlight-color: transparent;
 }
 
-.cal-cell--blank { pointer-events: none; }
-.cal-cell--has-entries { cursor: pointer; }
+.cal-cell:active { background: var(--bg-chip); }
+.cal-cell--blank { pointer-events: none; cursor: default; }
 .cal-cell--has-entries:active { background: var(--bg-chip); }
 .cal-cell--selected { background: var(--bg-chip); }
 .cal-cell--today .cal-day-num {
@@ -572,4 +593,167 @@
 .cal-entry-meta {
   font-size: 12px;
   color: var(--text-faint);
+}
+
+/* ─── Reminder items in dashboard context ─── */
+
+.dashboard-reminders-section {
+  margin-bottom: 4px;
+}
+
+/* Reuse reminders-page item styles — classes defined in reminders-page.css are
+   not available here since that component isn't rendered on this route, so we
+   redeclare the minimal set needed. */
+
+.dashboard-reminders-section .reminders-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-reminders-section .reminder-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.dashboard-reminders-section .reminder-complete-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  background: transparent;
+  cursor: pointer;
+  margin-top: 1px;
+}
+
+.dashboard-reminders-section .reminder-complete-btn:hover {
+  background: var(--color-accent);
+}
+
+.dashboard-reminders-section .reminder-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dashboard-reminders-section .reminder-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-body);
+}
+
+.dashboard-reminders-section .reminder-due {
+  font-size: 12px;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.dashboard-reminders-section .reminder-notes {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dashboard-reminders-section .reminder-delete-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.dashboard-reminders-section .reminder-delete-btn:hover {
+  color: var(--color-expense);
+}
+
+/* Calendar detail reminders padding */
+.cal-detail-reminders {
+  padding: 8px 12px 0;
+}
+
+/* ─── Inline Add Entry button ─── */
+
+.empty-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.empty-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 8px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.empty-type-card:hover {
+  border-color: var(--color-accent);
+  background: var(--bg-hover);
+}
+
+.empty-type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+}
+
+.empty-type-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.empty-type-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.dashboard-add-entry-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1.5px dashed var(--text-secondary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.dashboard-add-entry-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Inside cal-day-detail, add padding */
+.cal-day-detail .dashboard-add-entry-btn {
+  margin: 8px 12px 12px;
+  width: calc(100% - 24px);
 }

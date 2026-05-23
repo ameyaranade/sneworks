@@ -8,33 +8,23 @@
   gap: 24px;
 }
 
-.nav-brand {
-  font-size: 20px;
-  font-weight: 700;
+.nav-title {
+  font-size: 16px;
+  font-weight: 600;
   color: var(--nav-text);
-  text-decoration: none;
-  letter-spacing: 0.5px;
-}
-
-.nav-links {
-  display: flex;
-  gap: 16px;
   flex: 1;
 }
 
-.nav-link {
+.nav-beta {
+  font-size: 11px;
+  font-weight: 500;
   color: var(--nav-link);
-  text-decoration: none;
-  font-size: 15px;
-  padding: 4px 8px;
+  background-color: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.nav-link:hover,
-.nav-link.active {
-  color: var(--nav-text);
-  background-color: rgba(255, 255, 255, 0.1);
+  padding: 1px 5px;
+  vertical-align: middle;
+  margin-left: 4px;
+  letter-spacing: 0.3px;
 }
 
 .nav-auth {

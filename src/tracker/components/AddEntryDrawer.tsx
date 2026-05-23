@@ -1,18 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import type { ActivityType, Activity, FinanceActivity, ExerciseActivity } from '../types';
+import type { ActivityType, Activity, FinanceActivity, ExerciseActivity, GenericReminder } from '../types';
 import { ACTIVITY_TYPE_META } from '../constants';
-import { MoneyIcon, HealthIcon, ShoppingIcon, OtherIcon } from './icons';
+import { MoneyIcon, HealthIcon, ShoppingIcon, ReminderIcon } from './icons';
 import FinanceForm from '../forms/FinanceForm';
 import ExerciseForm from '../forms/ExerciseForm';
 import GroceryForm from '../forms/GroceryForm';
 import PaymentTemplateForm from '../forms/PaymentTemplateForm';
-import GenericActivityForm from '../forms/GenericActivityForm';
+import GenericReminderForm from '../forms/GenericReminderForm';
 import './add-entry-drawer.css';
 
 interface AddEntryDrawerProps {
   onClose: () => void;
   activityToEdit?: Activity;
+  reminderToEdit?: GenericReminder;
   initialType?: ActivityType;
+  initialDate?: string;
 }
 
 type MoneyMode = 'finance' | 'payment';
@@ -20,12 +22,12 @@ type MoneyMode = 'finance' | 'payment';
 const PICKER_TYPES: { type: ActivityType; label: string; icon: React.ReactNode }[] = [
   { type: 'finance',  label: 'Money',    icon: <MoneyIcon /> },
   { type: 'exercise', label: 'Health',   icon: <HealthIcon /> },
-  { type: 'grocery',  label: 'Shopping', icon: <ShoppingIcon /> },
-  { type: 'generic',  label: 'Other',    icon: <OtherIcon /> },
+  { type: 'grocery',  label: 'Shop',     icon: <ShoppingIcon /> },
+  { type: 'generic',  label: 'Reminder',  icon: <ReminderIcon /> },
 ];
 
-export default function AddEntryDrawer({ onClose, activityToEdit, initialType }: AddEntryDrawerProps) {
-  const isEditing = !!activityToEdit;
+export default function AddEntryDrawer({ onClose, activityToEdit, reminderToEdit, initialType, initialDate }: AddEntryDrawerProps) {
+  const isEditing = !!activityToEdit || !!reminderToEdit;
   const sheetRef = useRef<HTMLDivElement>(null);
   const titleId = 'drawer-title';
 
@@ -45,9 +47,11 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
   }, [onClose]);
 
   const [selectedType, setSelectedType] = useState<ActivityType | null>(
-    activityToEdit
-      ? (activityToEdit.type === 'payment' ? 'finance' : activityToEdit.type)
-      : (initialType ?? null),
+    reminderToEdit
+      ? 'generic'
+      : activityToEdit
+        ? (activityToEdit.type === 'payment' ? 'finance' : activityToEdit.type)
+        : (initialType ?? null),
   );
   const [moneyMode, setMoneyMode] = useState<MoneyMode>(
     activityToEdit?.type === 'payment' ? 'payment' : 'finance',
@@ -134,6 +138,7 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
                   onSaved={handleSaved}
                   initialValues={activityToEdit as FinanceActivity | undefined}
                   entryId={activityToEdit?.id}
+                  initialDate={initialDate}
                 />
               )}
               {selectedType === 'finance' && moneyMode === 'payment' && (
@@ -145,10 +150,19 @@ export default function AddEntryDrawer({ onClose, activityToEdit, initialType }:
                   onSaved={handleSaved}
                   initialValues={activityToEdit as ExerciseActivity | undefined}
                   entryId={activityToEdit?.id}
+                  initialDate={initialDate}
                 />
               )}
               {selectedType === 'grocery' && <GroceryForm onSaved={handleSaved} />}
-              {selectedType === 'generic' && <GenericActivityForm onSaved={handleSaved} />}
+              {selectedType === 'generic' && (
+                <GenericReminderForm
+                  key={reminderToEdit?.id ?? 'new'}
+                  onSaved={handleSaved}
+                  initialDate={initialDate}
+                  initialReminder={reminderToEdit}
+                  entryId={reminderToEdit?.id}
+                />
+              )}
             </>
           )}
         </div>

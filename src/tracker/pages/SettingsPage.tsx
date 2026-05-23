@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase/config';
@@ -12,6 +13,8 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { settings } = useTracker();
   const navigate = useNavigate();
+  const [toggling, setToggling] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
 
   if (!user) return null;
 
@@ -31,6 +34,34 @@ export default function SettingsPage() {
     updateSettings(user.uid, { darkMode: !settings.darkMode }).catch((e) =>
       console.error('Update dark mode failed:', e),
     );
+  };
+
+  const handleNotifications = async () => {
+    if (!user || toggling) return;
+    setToggling(true);
+    setNotifError(null);
+    try {
+      if (!settings.notificationsEnabled) {
+        const { requestNotificationPermission } = await import('../../firebase/messaging');
+        const token = await requestNotificationPermission();
+        if (!token) {
+          setNotifError('Permission denied. Enable notifications in your browser settings.');
+          return;
+        }
+        await updateSettings(user.uid, {
+          notificationsEnabled: true,
+          fcmToken: token,
+          timezoneOffset: new Date().getTimezoneOffset(),
+        });
+      } else {
+        await updateSettings(user.uid, { notificationsEnabled: false, fcmToken: '' });
+      }
+    } catch (e) {
+      console.error('Update notifications failed:', e);
+      setNotifError('Failed to update notification settings.');
+    } finally {
+      setToggling(false);
+    }
   };
 
   return (
@@ -67,12 +98,18 @@ export default function SettingsPage() {
 
       <div className="settings-section">
         <h3 className="settings-section-title">Notifications</h3>
-        <label className="settings-toggle disabled">
+        <label className={`settings-toggle ${toggling ? 'disabled' : ''}`}>
           <span>Push notifications</span>
-          <input type="checkbox" disabled checked={false} />
+          <input
+            type="checkbox"
+            disabled={toggling}
+            checked={settings.notificationsEnabled}
+            onChange={handleNotifications}
+          />
           <span className="toggle-slider" />
         </label>
-        <p className="settings-hint">Coming soon</p>
+        {notifError && <p className="settings-hint settings-hint--error">{notifError}</p>}
+        {!notifError && <p className="settings-hint">Get reminders and bill due alerts.</p>}
       </div>
 
       <div className="settings-section settings-account">

@@ -15,7 +15,10 @@ export type FinanceCategory =
   | 'shopping'
   | 'education'
   | 'gifts'
-  | 'other';
+  | 'other'
+  | 'salary'
+  | 'business'
+  | 'stocks';
 
 export type FinanceDirection = 'expense' | 'income';
 export type PaymentFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -151,6 +154,8 @@ export interface TrackerSettings {
   currencySymbol: string;
   darkMode: boolean;
   notificationsEnabled: boolean;
+  fcmToken?: string;
+  timezoneOffset?: number;
   updatedAt: Timestamp;
 }
 

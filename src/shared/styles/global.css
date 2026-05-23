@@ -5,6 +5,8 @@
 /* ─── CSS custom properties ─── */
 
 :root {
+  color-scheme: light;
+
   /* Surfaces */
   --bg-body: #f5f5f5;
   --bg-surface: #ffffff;
@@ -59,6 +61,8 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
+
   /* Surfaces */
   --bg-body: #0f0f1e;
   --bg-surface: #1a1a2e;

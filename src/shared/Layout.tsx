@@ -8,15 +8,7 @@ export default function Layout() {
   return (
     <>
       <nav className="nav">
-        <NavLink to="/" className="nav-brand">SNE Works</NavLink>
-        <div className="nav-links">
-          <NavLink to="/games" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-            Games
-          </NavLink>
-          <NavLink to="/tracker" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-            Tracker
-          </NavLink>
-        </div>
+        <span className="nav-title">Track activities <span className="nav-beta">Beta</span></span>
         <div className="nav-auth">
           {user ? (
             <NavLink to="/tracker/settings" className="btn-nav-settings" style={{ textDecoration: 'none' }} title="Settings">

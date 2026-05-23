@@ -99,6 +99,10 @@
   margin: 4px 0 0;
 }
 
+.settings-hint--error {
+  color: #e53935;
+}
+
 .settings-user-email {
   font-size: 14px;
   color: var(--text-secondary);

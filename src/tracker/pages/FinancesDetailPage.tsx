@@ -10,7 +10,7 @@ import {
   addActivity,
   deleteReminder,
 } from '../firebase/trackerQueries';
-import { FINANCE_CATEGORIES, ACTIVITY_PAGE_SIZE } from '../constants';
+import { FINANCE_CATEGORIES, INCOME_CATEGORIES, ACTIVITY_PAGE_SIZE } from '../constants';
 import { formatCurrency, formatDate, computeDueStatus, computeNextDueDate } from '../utils';
 import DueIndicator from '../components/DueIndicator';
 import type { FinanceActivity, PaymentActivity, FinanceReminder, DueStatus } from '../types';
@@ -201,19 +201,19 @@ export default function FinancesDetailPage() {
   const visibleEntries = allEntries.slice(0, visibleCount);
   const hasMore = visibleCount < allEntries.length;
   const rows = buildRows(visibleEntries);
-  const getCat = (val: string) => FINANCE_CATEGORIES.find((c) => c.value === val);
+  const getCat = (val: string) => [...FINANCE_CATEGORIES, ...INCOME_CATEGORIES].find((c) => c.value === val);
 
   const formatNextDue = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
   return (
     <div className="finances-page">
       <div className="finances-header">
-        <h2 className="page-title">Finances</h2>
+        <h2 className="page-title">Money</h2>
         <button className="page-add-btn" onClick={() => openDrawerWithType('finance')}>+ Add</button>
       </div>
 
-      {/* Recurring Bills section */}
-      <div className="finances-bills-section">
+      {/* Recurring Bills section — hidden when no bills exist */}
+      {financeReminders.length > 0 && <div className="finances-bills-section">
         <button
           className="finances-bills-toggle"
           onClick={() => setBillsExpanded((v) => !v)}
@@ -280,7 +280,7 @@ export default function FinancesDetailPage() {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Monthly summary */}
       {!loading && monthEntries.length > 0 && (

@@ -63,12 +63,84 @@
 
 .reminder-item {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 14px;
+  padding: 12px 14px;
+}
+
+.reminder-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.reminder-item-main-btn {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  min-width: 0;
+}
+
+.reminder-item-chevron {
+  font-size: 18px;
+  color: var(--text-ghost);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.reminder-item-chevron.open {
+  transform: rotate(90deg);
+}
+
+.reminder-item-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  padding-left: 34px;
+}
+
+.reminder-action-edit {
+  background: none;
+  border: 1px solid var(--border-default);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.reminder-action-edit:hover {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.reminder-action-delete {
+  background: none;
+  border: 1px solid var(--color-expense-bg);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-expense);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.reminder-action-delete:hover {
+  background: var(--color-expense-bg);
 }
 
 .reminder-complete-btn {

@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTracker } from '../context/TrackerProvider';
 import { useAuth } from '../../auth/AuthContext';
-import { deleteActivity, updateActivity, subscribeToActivitiesForDateRange } from '../firebase/trackerQueries';
+import { deleteActivity, updateActivity, subscribeToActivitiesForDateRange, completeGenericReminder, deleteReminder } from '../firebase/trackerQueries';
 import { ACTIVITY_TYPE_META } from '../constants';
 import { formatCurrency, formatDate } from '../utils';
-import type { Activity, FinanceActivity, ExerciseActivity, PaymentActivity } from '../types';
+import type { Activity, ActivityType, FinanceActivity, ExerciseActivity, PaymentActivity, GenericReminder } from '../types';
 import { useDrawer } from '../context/DrawerContext';
 import { useToast } from '../components/Toast';
 import PriorityBanner from '../components/PriorityBanner';
@@ -22,8 +22,15 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const QUICK_ADD: { label: string; path: string; icon: ReactNode }[] = [
   { label: 'Money',    path: '/tracker/finances',  icon: <MoneyIcon /> },
   { label: 'Health',   path: '/tracker/exercise',  icon: <HealthIcon /> },
-  { label: 'Shopping', path: '/tracker/groceries', icon: <ShoppingIcon /> },
+  { label: 'Shop',     path: '/tracker/groceries', icon: <ShoppingIcon /> },
   { label: 'Reminder', path: '/tracker/reminders', icon: <ReminderIcon /> },
+];
+
+const EMPTY_CARDS: { type: ActivityType; label: string; icon: ReactNode }[] = [
+  { type: 'finance',  label: 'Money',    icon: <MoneyIcon /> },
+  { type: 'exercise', label: 'Health',   icon: <HealthIcon /> },
+  { type: 'grocery',  label: 'Shop',     icon: <ShoppingIcon /> },
+  { type: 'generic',  label: 'Reminder', icon: <ReminderIcon /> },
 ];
 
 // ─── Helpers ───
@@ -82,6 +89,58 @@ function getCalendarInfo(offset: number) {
   return { year, month, cells };
 }
 
+// ─── Helpers ───
+
+function formatDueDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ─── ReminderItems ───
+
+interface ReminderItemsProps {
+  reminders: GenericReminder[];
+  onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function ReminderItems({ reminders, onComplete, onDelete }: ReminderItemsProps) {
+  return (
+    <div className="dashboard-reminders-section">
+      <h3 className="entries-list-title">Reminders</h3>
+      <ul className="reminders-list">
+        {reminders.map((r) => (
+          <li key={r.id} className="reminder-item">
+            <button
+              className="reminder-complete-btn"
+              onClick={() => r.id && onComplete(r.id)}
+              aria-label="Mark complete"
+              title="Mark as done"
+            />
+            <div className="reminder-body">
+              <span className="reminder-name">{r.name}</span>
+              {r.dueDate && (
+                <span className="reminder-due">
+                  Due {formatDueDate(r.dueDate)}{r.dueTime ? ` at ${r.dueTime}` : ''}
+                </span>
+              )}
+              {r.notes && <span className="reminder-notes">{r.notes}</span>}
+            </div>
+            <button
+              className="reminder-delete-btn"
+              onClick={() => r.id && onDelete(r.id)}
+              aria-label="Delete reminder"
+            >
+              &times;
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ─── Component ───
 
 export default function TodayDashboard() {
@@ -93,14 +152,14 @@ export default function TodayDashboard() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  const { settings, loading, todayActivities: cachedTodayActivities } = useTracker();
+  const { settings, loading, todayActivities: cachedTodayActivities, reminders } = useTracker();
 
   // Seed from TrackerProvider's synchronous cache so frame 1 already has data.
   // activitiesLoading stays false if cache is present; true only when empty.
   const [activities, setActivities] = useState<Activity[]>(() => cachedTodayActivities);
   const [activitiesLoading, setActivitiesLoading] = useState(() => cachedTodayActivities.length === 0);
   const { user } = useAuth();
-  const { openDrawerWithActivity } = useDrawer();
+  const { openDrawerWithActivity, openDrawer, openDrawerWithType, openDrawerForDate } = useDrawer();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -151,6 +210,9 @@ export default function TodayDashboard() {
 
   const dateStr = getPeriodLabel(range, offset);
 
+  // The YYYY-MM-DD string for the currently displayed "today" period (accounts for offset)
+  const currentDateStr = useMemo(() => getPeriodRange('today', offset).start, [offset]);
+
   // Calendar grid data (month mode only)
   const { year: calYear, month: calMonth, cells } = useMemo(
     () => (range === 'month' ? getCalendarInfo(offset) : { year: 0, month: 0, cells: [] as (number | null)[] }),
@@ -167,10 +229,37 @@ export default function TodayDashboard() {
     return map;
   }, [activities, range]);
 
+  // Set of calendar dates that have a due GenericReminder
+  const dayReminderSet = useMemo(() => {
+    const s = new Set<string>();
+    if (range !== 'month') return s;
+    for (const r of reminders) {
+      if (r.type === 'generic' && r.active && (r as GenericReminder).dueDate) {
+        s.add((r as GenericReminder).dueDate!);
+      }
+    }
+    return s;
+  }, [reminders, range]);
+
   const selectedActivities = useMemo(
     () => (selectedDay ? activities.filter((e) => e.date === selectedDay) : []),
     [activities, selectedDay],
   );
+
+  // GenericReminders due on the currently viewed "today" date
+  const todayDueReminders = useMemo(() =>
+    reminders.filter((r): r is GenericReminder =>
+      r.type === 'generic' && r.active && !r.completed && r.dueDate === currentDateStr,
+    ), [reminders, currentDateStr]);
+
+  // GenericReminders due on the selected calendar day
+  const selectedDayReminders = useMemo(() =>
+    selectedDay
+      ? reminders.filter((r): r is GenericReminder =>
+          r.type === 'generic' && r.active && !r.completed && r.dueDate === selectedDay,
+        )
+      : [],
+    [reminders, selectedDay]);
 
   // Today-mode filters
   const financeActivities = activities.filter((e): e is FinanceActivity => e.type === 'finance');
@@ -194,9 +283,23 @@ export default function TodayDashboard() {
     setEditingNotesId(null);
   };
 
-  if (loading || activitiesLoading) {
-    return <div className="dashboard"><p className="empty-text">Loading...</p></div>;
-  }
+  const handleCompleteReminder = async (reminderId: string) => {
+    if (!user) return;
+    try { await completeGenericReminder(user.uid, reminderId); }
+    catch { showToast('Failed to complete reminder'); }
+  };
+
+  const handleDeleteReminder = async (reminderId: string) => {
+    if (!user) return;
+    try { await deleteReminder(user.uid, reminderId); }
+    catch { showToast('Failed to delete reminder'); }
+  };
+
+  // Open drawer for the currently displayed date (pre-fills date if not today)
+  const handleAddEntry = () => {
+    if (offset === 0) openDrawer();
+    else openDrawerForDate(currentDateStr);
+  };
 
   return (
     <div className="dashboard">
@@ -241,7 +344,7 @@ export default function TodayDashboard() {
           </div>
           <div className="period-nav">
             <button className="period-nav-btn" onClick={() => setOffset((o) => o - 1)}>‹</button>
-            <button className="period-nav-btn" onClick={() => setOffset((o) => o + 1)} disabled={offset === 0}>›</button>
+            <button className="period-nav-btn" onClick={() => setOffset((o) => o + 1)}>›</button>
           </div>
         </div>
       </div>
@@ -258,25 +361,36 @@ export default function TodayDashboard() {
               if (day === null) return <div key={`blank-${i}`} className="cal-cell cal-cell--blank" />;
               const dateKey = toYMD(calYear, calMonth, day);
               const types = dayActivityMap.get(dateKey);
+              const hasReminder = dayReminderSet.has(dateKey);
               const isToday = dateKey === todayStr;
               const isSelected = dateKey === selectedDay;
+              const hasContent = !!(types || hasReminder);
               return (
                 <div
                   key={dateKey}
-                  className={['cal-cell', isToday && 'cal-cell--today', isSelected && 'cal-cell--selected', types && 'cal-cell--has-entries'].filter(Boolean).join(' ')}
-                  onClick={() => types && setSelectedDay(isSelected ? null : dateKey)}
+                  className={['cal-cell', isToday && 'cal-cell--today', isSelected && 'cal-cell--selected', hasContent && 'cal-cell--has-entries'].filter(Boolean).join(' ')}
+                  onClick={() => setSelectedDay(isSelected ? null : dateKey)}
                 >
                   <span className="cal-day-num">{day}</span>
-                  {types && (
+                  {activitiesLoading ? (
                     <div className="cal-dots">
-                      {[...types].map((type) => (
-                        <span
-                          key={type}
-                          className="cal-dot"
-                          style={{ background: ACTIVITY_TYPE_META[type as keyof typeof ACTIVITY_TYPE_META]?.color ?? '#e67e22' }}
-                        />
-                      ))}
+                      <span className="skeleton-block cal-dot-shimmer" />
                     </div>
+                  ) : (
+                    hasContent && (
+                      <div className="cal-dots">
+                        {types && [...types].map((type) => (
+                          <span
+                            key={type}
+                            className="cal-dot"
+                            style={{ background: ACTIVITY_TYPE_META[type as keyof typeof ACTIVITY_TYPE_META]?.color ?? '#e67e22' }}
+                          />
+                        ))}
+                        {hasReminder && !types?.has('generic') && (
+                          <span className="cal-dot" style={{ background: 'var(--color-accent)' }} />
+                        )}
+                      </div>
+                    )
                   )}
                 </div>
               );
@@ -291,9 +405,18 @@ export default function TodayDashboard() {
                 </span>
                 <button className="cal-detail-close" onClick={() => setSelectedDay(null)}>×</button>
               </div>
-              {selectedActivities.length === 0 ? (
+
+              {selectedDayReminders.length > 0 && (
+                <div className="cal-detail-reminders">
+                  <ReminderItems onComplete={handleCompleteReminder} onDelete={handleDeleteReminder} reminders={selectedDayReminders} />
+                </div>
+              )}
+
+              {selectedActivities.length === 0 && selectedDayReminders.length === 0 && (
                 <p className="cal-detail-empty">No entries for this day.</p>
-              ) : (
+              )}
+
+              {selectedActivities.length > 0 && (
                 <div className="cal-detail-entries">
                   {selectedActivities.map((entry) => (
                     <ActivityEntryRow
@@ -307,6 +430,13 @@ export default function TodayDashboard() {
                   ))}
                 </div>
               )}
+
+              <button
+                className="dashboard-add-entry-btn"
+                onClick={() => openDrawerForDate(selectedDay)}
+              >
+                + Add Entry
+              </button>
             </div>
           )}
         </div>
@@ -314,10 +444,23 @@ export default function TodayDashboard() {
 
       {/* ─── Today view ─── */}
       {range === 'today' && (
-        activities.length === 0 ? (
+        (loading || activitiesLoading) ? (
+          <div className="dashboard-shimmer">
+            <div className="skeleton-block dashboard-shimmer-card" />
+            <div className="skeleton-block dashboard-shimmer-card" />
+            <div className="skeleton-block dashboard-shimmer-card" />
+          </div>
+        ) : activities.length === 0 && todayDueReminders.length === 0 ? (
           <div className="dashboard-empty">
-            <p className="empty-text">No activity for this period.</p>
-            {offset === 0 && <p className="empty-hint">Tap + to add your first entry.</p>}
+            <p className="empty-text">Nothing logged yet — what would you like to add?</p>
+            <div className="empty-type-grid">
+              {EMPTY_CARDS.map(({ type, label, icon }) => (
+                <button key={type} className="empty-type-card" onClick={() => openDrawerWithType(type)}>
+                  <span className="empty-type-icon">{icon}</span>
+                  <span className="empty-type-label">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="dashboard-cards">
@@ -368,6 +511,12 @@ export default function TodayDashboard() {
                 </div>
               </div>
             )}
+
+            {todayDueReminders.length > 0 && <ReminderItems onComplete={handleCompleteReminder} onDelete={handleDeleteReminder} reminders={todayDueReminders} />}
+
+            <button className="dashboard-add-entry-btn" onClick={handleAddEntry}>
+              + Add Entry
+            </button>
 
             <div className="entries-list">
               <h3 className="entries-list-title">

@@ -11,16 +11,17 @@ interface ExerciseFormProps {
   onSaved: () => void;
   initialValues?: ExerciseActivity;
   entryId?: string;
+  initialDate?: string;
 }
 
-export default function ExerciseForm({ onSaved, initialValues, entryId }: ExerciseFormProps) {
+export default function ExerciseForm({ onSaved, initialValues, entryId, initialDate }: ExerciseFormProps) {
   const { user } = useAuth();
   const [didWorkout, setDidWorkout] = useState<boolean | null>(initialValues?.workout.completed ?? null);
   const [duration, setDuration] = useState(initialValues?.workout.durationMinutes ? String(initialValues.workout.durationMinutes) : '');
   const [workoutType, setWorkoutType] = useState(initialValues?.workout.workoutType ?? '');
   const [weight, setWeight] = useState(initialValues?.health?.weightKg ? String(initialValues.health.weightKg) : '');
   const [mood, setMood] = useState<Mood | null>(initialValues?.health?.mood ?? null);
-  const [date, setDate] = useState(initialValues?.date ?? formatDate(new Date()));
+  const [date, setDate] = useState(initialValues?.date ?? initialDate ?? formatDate(new Date()));
   const [notes, setNotes] = useState(initialValues?.notes ?? '');
   const [saving, setSaving] = useState(false);
 

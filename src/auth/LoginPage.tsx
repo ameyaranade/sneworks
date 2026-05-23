@@ -40,7 +40,7 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <h1 className="login-title">Sign in</h1>
-        <p className="login-subtitle">Sign in to access the Tracker and save your progress.</p>
+        <p className="login-subtitle">Track your finances, exercise, groceries, and reminders.</p>
         {error && <p className="login-error">{error}</p>}
         <button
           className="btn-google"
@@ -49,7 +49,6 @@ export default function LoginPage() {
         >
           {loading ? 'Signing in…' : 'Continue with Google'}
         </button>
-        <p className="login-note">Games are available without signing in.</p>
       </div>
     </div>
   );

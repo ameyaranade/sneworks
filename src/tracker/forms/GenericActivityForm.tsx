@@ -6,12 +6,13 @@ import './form-shared.css';
 
 interface Props {
   onSaved: () => void;
+  initialDate?: string;
 }
 
-export default function GenericActivityForm({ onSaved }: Props) {
+export default function GenericActivityForm({ onSaved, initialDate }: Props) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
-  const [date, setDate] = useState(formatDate(new Date()));
+  const [date, setDate] = useState(initialDate ?? formatDate(new Date()));
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {

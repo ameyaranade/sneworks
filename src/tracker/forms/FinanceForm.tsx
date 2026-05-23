@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTracker } from '../context/TrackerProvider';
 import { addActivity, updateActivity } from '../firebase/trackerQueries';
-import { FINANCE_CATEGORIES } from '../constants';
+import { FINANCE_CATEGORIES, INCOME_CATEGORIES } from '../constants';
 import { formatDate } from '../utils';
 import type { FinanceCategory, FinanceDirection, FinanceActivity } from '../types';
 import './form-shared.css';
@@ -11,17 +11,36 @@ interface FinanceFormProps {
   onSaved: () => void;
   initialValues?: FinanceActivity;
   entryId?: string;
+  initialDate?: string;
 }
 
-export default function FinanceForm({ onSaved, initialValues, entryId }: FinanceFormProps) {
+export default function FinanceForm({ onSaved, initialValues, entryId, initialDate }: FinanceFormProps) {
   const { user } = useAuth();
   const { settings } = useTracker();
   const [amount, setAmount] = useState(initialValues ? String(initialValues.amount) : '');
-  const [category, setCategory] = useState<FinanceCategory>(initialValues?.category ?? 'food');
   const [direction, setDirection] = useState<FinanceDirection>(initialValues?.direction ?? 'expense');
-  const [date, setDate] = useState(initialValues?.date ?? formatDate(new Date()));
+  const [category, setCategory] = useState<FinanceCategory>(() => {
+    if (initialValues) {
+      const cat = initialValues.category;
+      if (initialValues.direction === 'income' && !INCOME_CATEGORIES.find(c => c.value === cat)) return 'salary';
+      return cat;
+    }
+    return 'food';
+  });
+  const [date, setDate] = useState(initialValues?.date ?? initialDate ?? formatDate(new Date()));
   const [notes, setNotes] = useState(initialValues?.notes ?? '');
   const [saving, setSaving] = useState(false);
+
+  const activeCategories = direction === 'income' ? INCOME_CATEGORIES : FINANCE_CATEGORIES;
+
+  const handleDirectionChange = (newDir: FinanceDirection) => {
+    if (newDir === 'income' && !INCOME_CATEGORIES.find(c => c.value === category)) {
+      setCategory('salary');
+    } else if (newDir === 'expense' && !FINANCE_CATEGORIES.find(c => c.value === category)) {
+      setCategory('food');
+    }
+    setDirection(newDir);
+  };
 
   const handleSubmit = async () => {
     if (!user || !amount || Number(amount) <= 0) return;
@@ -46,13 +65,13 @@ export default function FinanceForm({ onSaved, initialValues, entryId }: Finance
         <div className="direction-toggle">
           <button
             className={`direction-btn ${direction === 'expense' ? 'active expense' : ''}`}
-            onClick={() => setDirection('expense')}
+            onClick={() => handleDirectionChange('expense')}
           >
             Expense
           </button>
           <button
             className={`direction-btn ${direction === 'income' ? 'active income' : ''}`}
-            onClick={() => setDirection('income')}
+            onClick={() => handleDirectionChange('income')}
           >
             Income
           </button>
@@ -78,7 +97,7 @@ export default function FinanceForm({ onSaved, initialValues, entryId }: Finance
       <div className="form-group">
         <label className="form-label">Category</label>
         <div className="category-chips">
-          {FINANCE_CATEGORIES.map((cat) => (
+          {activeCategories.map((cat) => (
             <button
               key={cat.value}
               className={`category-chip ${category === cat.value ? 'active' : ''}`}

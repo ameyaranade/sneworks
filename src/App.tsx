@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import Layout from './shared/Layout';
-import LandingPage from './pages/LandingPage';
 import NotFoundPage from './pages/NotFoundPage';
 import GamesHub from './games/GamesHub';
 import Connect4Game from './games/connect4/Connect4Game';
@@ -22,7 +21,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<Navigate to="/tracker" replace />} />
             <Route path="/games" element={<GamesHub />} />
             <Route path="/games/connect4" element={<Connect4Game />} />
             <Route path="/games/minesweeper" element={<MinesweeperGame />} />
