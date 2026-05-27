@@ -1,0 +1,158 @@
+.lg-group-create {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lg-gc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lg-gc-label {
+  font-family: var(--lg-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lg-text-muted);
+}
+
+.lg-gc-input {
+  background: var(--lg-bg-input);
+  border: 1px solid var(--lg-border);
+  border-radius: var(--lg-radius-input);
+  color: var(--lg-text);
+  font-family: var(--lg-font-body);
+  font-size: 16px;
+  padding: 13px 14px;
+  outline: none;
+  width: 100%;
+  transition: border-color var(--lg-transition-fast);
+}
+
+.lg-gc-input::placeholder {
+  color: var(--lg-text-muted);
+}
+
+.lg-gc-input:focus {
+  border-color: var(--lg-accent);
+}
+
+/* Kind picker */
+.lg-gc-kind-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lg-gc-kind-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--lg-bg-card);
+  border: 1.5px solid var(--lg-border);
+  border-radius: var(--lg-radius-card-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--lg-transition-fast);
+}
+
+.lg-gc-kind-btn--active {
+  border-color: var(--lg-accent);
+  background: var(--lg-accent-glow);
+}
+
+.lg-gc-kind-name {
+  font-family: var(--lg-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lg-text);
+}
+
+.lg-gc-kind-desc {
+  font-family: var(--lg-font-body);
+  font-size: 12px;
+  color: var(--lg-text-dim);
+}
+
+/* Toggles */
+.lg-gc-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.lg-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--lg-border);
+}
+
+.lg-toggle-row:last-child {
+  border-bottom: none;
+}
+
+.lg-toggle-label {
+  font-family: var(--lg-font-body);
+  font-size: 14px;
+  color: var(--lg-text);
+}
+
+/* Reuse switch styles from schema-field-input */
+.lg-switch {
+  width: 44px;
+  height: 26px;
+  background: var(--lg-bg-elev);
+  border: 1px solid var(--lg-border-strong);
+  border-radius: var(--lg-radius-pill);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--lg-transition-med), border-color var(--lg-transition-med);
+  flex-shrink: 0;
+}
+
+.lg-switch--on {
+  background: var(--lg-accent);
+  border-color: var(--lg-accent);
+}
+
+.lg-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--lg-text-muted);
+  border-radius: 50%;
+  transition: transform var(--lg-transition-med), background var(--lg-transition-med);
+}
+
+.lg-switch--on .lg-switch-thumb {
+  transform: translateX(18px);
+  background: var(--lg-bg);
+}
+
+/* Save button */
+.lg-gc-save-btn {
+  width: 100%;
+  background: var(--lg-accent);
+  border: none;
+  border-radius: var(--lg-radius-btn);
+  color: var(--lg-bg);
+  font-family: var(--lg-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 15px 20px;
+  cursor: pointer;
+  transition: opacity var(--lg-transition-fast);
+}
+
+.lg-gc-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

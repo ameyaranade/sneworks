@@ -1,0 +1,33 @@
+.lg-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--lg-bg-elev);
+  border: 1px solid var(--lg-border);
+  color: var(--lg-text-dim);
+  border-radius: var(--lg-radius-chip);
+  font-family: var(--lg-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--lg-transition-fast), border-color var(--lg-transition-fast), color var(--lg-transition-fast);
+  min-height: 34px;
+}
+
+.lg-chip--selected {
+  background: var(--lg-accent-glow);
+  border-color: var(--lg-accent);
+  color: var(--lg-accent);
+}
+
+.lg-chip--small {
+  font-size: 12px;
+  padding: 4px 10px;
+  min-height: 28px;
+}
+
+.lg-chip:hover:not(.lg-chip--selected) {
+  background: var(--lg-bg-card);
+  border-color: var(--lg-border-strong);
+}

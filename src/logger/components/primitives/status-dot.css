@@ -1,0 +1,38 @@
+.lg-dot {
+  display: inline-block;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Log: filled accent */
+.lg-dot--log {
+  background: var(--lg-accent);
+}
+
+/* Todo pending: open circle (border only) */
+.lg-dot--pending {
+  background: transparent;
+  border: 1.5px solid var(--lg-text-dim);
+}
+
+/* Done: filled success green */
+.lg-dot--done {
+  background: var(--lg-success);
+}
+
+/* Skipped: muted filled */
+.lg-dot--skipped {
+  background: var(--lg-text-muted);
+}
+
+/* Deferred: dashed border */
+.lg-dot--deferred {
+  background: transparent;
+  border: 1.5px dashed var(--lg-text-dim);
+}
+
+/* Recurring: dashed border with accent tint */
+.lg-dot--recurring {
+  background: transparent;
+  border: 1.5px dashed var(--lg-accent);
+}

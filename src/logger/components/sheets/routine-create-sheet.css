@@ -1,0 +1,157 @@
+.lg-rc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 8px;
+}
+
+.lg-rc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lg-rc-label {
+  font-family: var(--lg-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lg-text-muted);
+}
+
+.lg-rc-input {
+  background: var(--lg-bg-elev);
+  border: 1.5px solid var(--lg-border);
+  border-radius: var(--lg-radius-input);
+  color: var(--lg-text);
+  font-family: var(--lg-font-body);
+  font-size: 15px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color var(--lg-transition-fast);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lg-rc-input:focus {
+  border-color: var(--lg-accent);
+}
+
+.lg-rc-input--time {
+  width: auto;
+  max-width: 140px;
+  color-scheme: dark;
+}
+
+.lg-rc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lg-rc-chip {
+  background: var(--lg-bg-elev);
+  border: 1.5px solid var(--lg-border);
+  border-radius: var(--lg-radius-chip);
+  color: var(--lg-text-dim);
+  font-family: var(--lg-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: border-color var(--lg-transition-fast), color var(--lg-transition-fast);
+}
+
+.lg-rc-chip--active {
+  border-color: var(--lg-accent);
+  color: var(--lg-accent);
+  background: color-mix(in srgb, var(--lg-accent) 10%, transparent);
+}
+
+.lg-rc-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lg-rc-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lg-rc-input--item {
+  flex: 1;
+}
+
+.lg-rc-type-select {
+  background: var(--lg-bg-elev);
+  border: 1.5px solid var(--lg-border);
+  border-radius: var(--lg-radius-input);
+  color: var(--lg-text-dim);
+  font-family: var(--lg-font-body);
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  cursor: pointer;
+  max-width: 100px;
+}
+
+.lg-rc-remove-btn {
+  background: none;
+  border: none;
+  color: var(--lg-text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: color var(--lg-transition-fast), background var(--lg-transition-fast);
+  flex-shrink: 0;
+}
+
+.lg-rc-remove-btn:hover {
+  color: var(--lg-danger);
+  background: color-mix(in srgb, var(--lg-danger) 10%, transparent);
+}
+
+.lg-rc-add-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1.5px dashed var(--lg-border-strong);
+  border-radius: var(--lg-radius-input);
+  color: var(--lg-text-muted);
+  font-family: var(--lg-font-body);
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color var(--lg-transition-fast), color var(--lg-transition-fast);
+  width: 100%;
+}
+
+.lg-rc-add-item-btn:hover {
+  border-color: var(--lg-accent);
+  color: var(--lg-accent);
+}
+
+.lg-rc-save-btn {
+  background: var(--lg-accent);
+  border: none;
+  border-radius: var(--lg-radius-pill);
+  color: #0a0b10;
+  font-family: var(--lg-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 14px 24px;
+  cursor: pointer;
+  transition: opacity var(--lg-transition-fast);
+  margin-top: 4px;
+}
+
+.lg-rc-save-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

@@ -1,0 +1,402 @@
+import { useState, useMemo, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Archive, FolderOpen, ChevronRight, Plus } from 'lucide-react';
+import { useAuth, getCachedUid } from '../../auth/AuthContext';
+import { useToast } from '../../shared/components/Toast';
+import { useTodosStore } from '../stores/useTodosStore';
+import { useGroupsStore } from '../stores/useGroupsStore';
+import { recomputeGroupCounts } from '../firebase/groupQueries';
+import { useSandboxUI } from '../context/SandboxUIContext';
+import BottomSheet from '../components/primitives/BottomSheet';
+import TodoRow from '../components/rows/TodoRow';
+import { Timestamp } from 'firebase/firestore';
+import type { Group, Todo } from '../types';
+import './project-detail-page.css';
+
+// ── New Sub-project Sheet ─────────────────────────────────────────────────────
+
+interface NewSubProjectSheetProps {
+  parentGroupId: string;
+  parentAncestorPath: string[];
+  onClose: () => void;
+}
+
+function NewSubProjectSheet({ parentGroupId, parentAncestorPath, onClose }: NewSubProjectSheetProps) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const addGroup = useGroupsStore((s) => s.addGroup);
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const uid = user?.uid ?? getCachedUid();
+
+  const handleCreate = async () => {
+    if (!uid || !name.trim()) return;
+    setSaving(true);
+    try {
+      await addGroup(uid, {
+        groupKind: 'project',
+        name: name.trim(),
+        ancestorPath: [...parentAncestorPath, parentGroupId],
+        parentGroupId,
+        showProgress: true,
+        showSumMoney: false,
+        childCount: 0,
+        doneCount: 0,
+        completed: false,
+      } as Parameters<typeof addGroup>[1]);
+      showToast('Sub-project created', 'success');
+      recomputeGroupCounts(uid, parentGroupId).catch(console.error);
+      onClose();
+    } catch {
+      showToast('Could not create sub-project. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title="New sub-project">
+      <div className="sb-proj-sheet-form">
+        <input
+          type="text"
+          className="sb-proj-sheet-input"
+          placeholder="Sub-project name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
+          autoFocus
+          maxLength={80}
+        />
+        <div className="sb-proj-sheet-actions">
+          <button type="button" className="sb-compose-cancel-btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="sb-compose-save-btn"
+            disabled={!name.trim() || saving}
+            onClick={handleCreate}
+          >
+            {saving ? 'Creating…' : 'Create'}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── Sub-project card ──────────────────────────────────────────────────────────
+
+interface SubProjectCardProps {
+  group: Group;
+}
+
+function SubProjectCard({ group }: SubProjectCardProps) {
+  const navigate = useNavigate();
+  const pct = group.childCount > 0
+    ? Math.round((group.doneCount / group.childCount) * 100)
+    : 0;
+
+  return (
+    <button
+      type="button"
+      className={`sb-proj-sub-card${group.completed ? ' sb-proj-sub-card--done' : ''}`}
+      onClick={() => navigate(`/sandbox/projects/${group.id}`)}
+    >
+      <div className="sb-proj-sub-card__icon">
+        <FolderOpen size={14} strokeWidth={2} />
+      </div>
+      <div className="sb-proj-sub-card__body">
+        <span className="sb-proj-sub-card__name">{group.name}</span>
+        {group.childCount > 0 && (
+          <div className="sb-proj-sub-card__progress-track">
+            <div
+              className="sb-proj-sub-card__progress-fill"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
+      </div>
+      {group.completed ? (
+        <span className="sb-proj-sub-card__done-badge">Done</span>
+      ) : (
+        <span className="sb-proj-sub-card__count">
+          {group.doneCount}/{group.childCount}
+        </span>
+      )}
+      <ChevronRight size={12} strokeWidth={2} className="sb-proj-sub-card__chevron" />
+    </button>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export default function ProjectDetailPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { openComposeForGroup } = useSandboxUI();
+
+  const uid = user?.uid ?? getCachedUid();
+
+  // ── Store subscriptions ──────────────────────────────────────────────────
+
+  const groups = useGroupsStore((s) => s.groups);
+  const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const getSubGroups = useGroupsStore((s) => s.getSubGroups);
+
+  const todos = useTodosStore((s) => s.todos);
+  const addTodo = useTodosStore((s) => s.addTodo);
+  const getTodosForGroup = useTodosStore((s) => s.getTodosForGroup);
+
+  const project = useMemo(() => groups.find((g) => g.id === projectId), [groups, projectId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const subGroups = useMemo(() => getSubGroups(projectId ?? ''), [groups, projectId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allGroupTasks = useMemo(() => getTodosForGroup(projectId ?? ''), [todos, projectId]);
+
+  const sortedTasks = useMemo(() => {
+    const pending = allGroupTasks.filter((t) => t.status === 'pending' || t.status === 'deferred');
+    const done = allGroupTasks.filter((t) => t.status === 'done' || t.status === 'skipped');
+    return [
+      ...pending.sort((a, b) => a.sortOrder - b.sortOrder),
+      ...done.sort((a, b) => (b.completedAt?.toMillis() ?? 0) - (a.completedAt?.toMillis() ?? 0)),
+    ];
+  }, [allGroupTasks]);
+
+  // ── New sub-project sheet ────────────────────────────────────────────────
+
+  const [subProjectSheetOpen, setSubProjectSheetOpen] = useState(false);
+
+  // ── Inline add task ──────────────────────────────────────────────────────
+
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [addingTask, setAddingTask] = useState(false);
+
+  const handleAddTask = useCallback(async () => {
+    if (!uid || !projectId || !newTaskTitle.trim()) return;
+    setAddingTask(true);
+    try {
+      await addTodo(uid, {
+        todoType: 'generic-task',
+        title: newTaskTitle.trim(),
+        groupId: projectId,
+        status: 'pending',
+        sortOrder: Date.now(),
+      } as Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>);
+      setNewTaskTitle('');
+      recomputeGroupCounts(uid, projectId).catch(console.error);
+    } catch {
+      showToast('Could not add task. Try again.', 'error');
+    } finally {
+      setAddingTask(false);
+    }
+  }, [uid, projectId, newTaskTitle, addTodo, showToast]);
+
+  // ── Archive ──────────────────────────────────────────────────────────────
+
+  const handleArchive = useCallback(async () => {
+    if (!uid || !projectId) return;
+    try {
+      await updateGroup(uid, projectId, { archivedAt: Timestamp.now() });
+      showToast('Project archived', 'info');
+      const backTo = project?.parentGroupId
+        ? `/sandbox/projects/${project.parentGroupId}`
+        : '/sandbox/more';
+      navigate(backTo);
+    } catch {
+      showToast('Could not archive. Try again.', 'error');
+    }
+  }, [uid, projectId, project, updateGroup, showToast, navigate]);
+
+  // ── Back navigation ──────────────────────────────────────────────────────
+
+  const handleBack = useCallback(() => {
+    if (project?.parentGroupId) {
+      navigate(`/sandbox/projects/${project.parentGroupId}`);
+    } else {
+      navigate('/sandbox/more');
+    }
+  }, [project, navigate]);
+
+  // ── Guards ───────────────────────────────────────────────────────────────
+
+  if (!projectId || !uid) return null;
+
+  if (!project) {
+    return (
+      <div className="sb-proj">
+        <div className="sb-proj-header">
+          <button
+            type="button"
+            className="sb-proj-back-btn"
+            onClick={() => navigate('/sandbox/more')}
+          >
+            <ArrowLeft size={18} strokeWidth={2} />
+          </button>
+        </div>
+        <div className="sb-proj-loading">Loading…</div>
+      </div>
+    );
+  }
+
+  const isTopLevel = !project.parentGroupId;
+  const doneTaskCount = allGroupTasks.filter(
+    (t) => t.status === 'done' || t.status === 'skipped',
+  ).length;
+  const doneSubGroupCount = subGroups.filter((sg) => sg.completed).length;
+  const totalItems = allGroupTasks.length + subGroups.length;
+  const doneItems = doneTaskCount + doneSubGroupCount;
+  const progress = totalItems > 0 ? doneItems / totalItems : 0;
+
+  return (
+    <div className="sb-proj">
+      {/* ── Header ── */}
+      <div className="sb-proj-header">
+        <button
+          type="button"
+          className="sb-proj-back-btn"
+          onClick={handleBack}
+          aria-label="Back"
+        >
+          <ArrowLeft size={18} strokeWidth={2} />
+        </button>
+
+        <div className="sb-proj-title-wrap">
+          <h1 className="sb-proj-title">{project.name}</h1>
+          {project.description ? (
+            <span className="sb-proj-subtitle">{project.description}</span>
+          ) : totalItems > 0 ? (
+            <span className="sb-proj-subtitle">{doneItems}/{totalItems} done</span>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className="sb-proj-archive-btn"
+          onClick={handleArchive}
+          aria-label="Archive project"
+          title="Archive project"
+        >
+          <Archive size={16} strokeWidth={2} />
+        </button>
+      </div>
+
+      {/* ── Progress bar ── */}
+      {totalItems > 0 && (
+        <div className="sb-proj-progress-track">
+          <div
+            className={`sb-proj-progress-fill${project.completed ? ' sb-proj-progress-fill--complete' : ''}`}
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+      )}
+
+      {/* ── Completion banner ── */}
+      {project.completed && (
+        <div className="sb-proj-complete-banner">
+          Project complete
+        </div>
+      )}
+
+      {/* ── Scrollable body ── */}
+      <div className="sb-proj-body">
+
+        {/* ── Sub-projects section ── */}
+        {(isTopLevel) && (
+          <section className="sb-proj-section">
+            <div className="sb-proj-section-header">
+              <span className="sb-proj-section-title">
+                Sub-projects
+                {subGroups.length > 0 && (
+                  <span className="sb-proj-section-count">{subGroups.length}</span>
+                )}
+              </span>
+              <button
+                type="button"
+                className="sb-proj-action-btn"
+                onClick={() => setSubProjectSheetOpen(true)}
+              >
+                <Plus size={13} strokeWidth={2.5} />
+                Add
+              </button>
+            </div>
+
+            {subGroups.length === 0 ? (
+              <p className="sb-proj-section-empty">No sub-projects yet.</p>
+            ) : (
+              <div className="sb-proj-sub-list">
+                {subGroups.map((sg) => (
+                  <SubProjectCard key={sg.id} group={sg} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── Tasks section ── */}
+        <section className="sb-proj-section">
+          <div className="sb-proj-section-header">
+            <span className="sb-proj-section-title">
+              Tasks
+              {allGroupTasks.length > 0 && (
+                <span className="sb-proj-section-count">{allGroupTasks.length}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              className="sb-proj-action-btn"
+              onClick={() => openComposeForGroup(projectId, 'generic-task')}
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              Add
+            </button>
+          </div>
+
+          {/* Inline quick-add row */}
+          <div className="sb-proj-add-row">
+            <input
+              type="text"
+              className="sb-proj-add-input"
+              placeholder="Quick add task…"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(); }}
+              disabled={addingTask}
+            />
+            {newTaskTitle.trim() && (
+              <button
+                type="button"
+                className="sb-proj-add-btn"
+                onClick={handleAddTask}
+                disabled={addingTask}
+              >
+                Add
+              </button>
+            )}
+          </div>
+
+          {sortedTasks.length === 0 ? (
+            <p className="sb-proj-section-empty">No tasks yet.</p>
+          ) : (
+            <div className="sb-proj-task-list">
+              {sortedTasks.map((t) => (
+                <TodoRow key={t.id} todo={t} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ── New sub-project sheet ── */}
+      {subProjectSheetOpen && (
+        <NewSubProjectSheet
+          parentGroupId={projectId}
+          parentAncestorPath={project.ancestorPath}
+          onClose={() => setSubProjectSheetOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

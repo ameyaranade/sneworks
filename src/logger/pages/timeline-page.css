@@ -1,0 +1,40 @@
+.lg-timeline-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.lg-timeline-header {
+  padding: 20px 20px 12px;
+  border-bottom: 1px solid var(--lg-border);
+  flex-shrink: 0;
+}
+
+.lg-timeline-title {
+  font-family: var(--lg-font-display);
+  font-weight: 300;
+  font-size: 22px;
+  color: var(--lg-text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.lg-timeline-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px 120px;
+  overscroll-behavior-y: contain;
+}
+
+.lg-timeline-day {
+  margin-bottom: 8px;
+}
+
+.lg-timeline-loading,
+.lg-timeline-empty {
+  font-family: var(--lg-font-body);
+  font-size: 14px;
+  color: var(--lg-text-muted);
+  text-align: center;
+  padding: 60px 0;
+}

@@ -1,6 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  connectFirestoreEmulator,
+} from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 
 // TODO: Replace with your Firebase config object from:
@@ -18,7 +22,11 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Use memory cache — the logger already manages its own localStorage cache via writeCache/readCache.
+// persistentLocalCache (IndexedDB) blocked the renderer on first write in Chrome.
+const db = initializeFirestore(app, { localCache: memoryLocalCache() });
+export { db };
 
 // Connect to local emulators when running E2E tests (VITE_USE_EMULATOR=true)
 if (import.meta.env.VITE_USE_EMULATOR === 'true') {

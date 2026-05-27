@@ -1,0 +1,96 @@
+.sb-swipe-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.sb-swipe-actions {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  z-index: 0;
+}
+
+.sb-swipe-actions--right {
+  left: 0;
+}
+
+.sb-swipe-actions--left {
+  right: 0;
+}
+
+.sb-swipe-action {
+  width: 72px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sb-font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: opacity var(--sb-transition-fast);
+  user-select: none;
+}
+
+.sb-swipe-action:active {
+  opacity: 0.75;
+}
+
+.sb-swipe-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Defer actions (right swipe) ── */
+.sb-swipe-action--plus1h {
+  background: var(--sb-accent-soft);
+  color: var(--sb-accent-text);
+}
+
+.sb-swipe-action--tomorrow {
+  background: var(--sb-purple);
+  color: var(--sb-accent-text);
+}
+
+.sb-swipe-action--pick {
+  background: var(--sb-bg-elev);
+  color: var(--sb-text-dim);
+  border-left: 1px solid var(--sb-border);
+}
+
+/* ── Left actions ── */
+.sb-swipe-action--edit {
+  background: var(--sb-bg-elev);
+  color: var(--sb-text-dim);
+  border-right: 1px solid var(--sb-border);
+}
+
+.sb-swipe-action--skip {
+  background: var(--sb-text-muted);
+  color: var(--sb-accent-text);
+}
+
+.sb-swipe-action--delete {
+  background: var(--sb-danger);
+  color: var(--sb-accent-text);
+}
+
+.sb-swipe-action--unmark {
+  background: var(--sb-warn-soft);
+  color: var(--sb-warn);
+  border-right: 1px solid var(--sb-border);
+}
+
+.sb-swipe-row {
+  position: relative;
+  z-index: 1;
+  background: var(--sb-bg);
+  will-change: transform;
+}

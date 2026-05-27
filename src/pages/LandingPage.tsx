@@ -12,6 +12,11 @@ const sections = [
     title: '📊 Tracker',
     description: 'Activity and health tracking. Sign in to get started.',
   },
+  {
+    to: '/logger',
+    title: '✦ Logger',
+    description: 'Schema-driven activity logger with logs, todos, and groups.',
+  },
 ];
 
 export default function LandingPage() {

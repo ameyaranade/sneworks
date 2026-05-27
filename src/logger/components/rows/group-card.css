@@ -1,0 +1,92 @@
+.lg-group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  background: var(--lg-bg-card);
+  border: 1px solid var(--lg-border);
+  border-left: 3px solid var(--stripe-color, var(--lg-accent));
+  border-radius: var(--lg-radius-card);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--lg-transition-fast), background var(--lg-transition-fast);
+}
+
+.lg-group-card:hover {
+  background: var(--lg-bg-elev);
+}
+
+.lg-group-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lg-group-name {
+  font-family: var(--lg-font-body);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--lg-text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lg-group-kind {
+  font-family: var(--lg-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--stripe-color, var(--lg-accent));
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* Aggregation strip */
+.lg-group-agg-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lg-agg-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.lg-agg-value {
+  font-family: var(--lg-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lg-text);
+}
+
+.lg-agg-label {
+  font-family: var(--lg-font-mono);
+  font-size: 10px;
+  color: var(--lg-text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* Progress bar */
+.lg-group-progress-track {
+  flex: 1;
+  height: 3px;
+  background: var(--lg-border-strong);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.lg-group-progress-fill {
+  height: 100%;
+  background: var(--lg-success);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}

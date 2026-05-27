@@ -1,0 +1,326 @@
+/* ── Type Picker ── */
+.sb-type-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sb-type-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--sb-bg-card);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-card);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+
+.sb-type-card:hover:not(:disabled),
+.sb-type-card:active:not(:disabled) {
+  background: var(--sb-bg-card-hover);
+  border-color: var(--sb-border-strong);
+}
+
+.sb-type-card--unavailable {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sb-type-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--sb-radius-card-sm);
+  background: var(--sb-bg-elev);
+  flex-shrink: 0;
+}
+
+.sb-type-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sb-type-card__label {
+  font-family: var(--sb-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sb-text);
+}
+
+.sb-type-card__sub {
+  font-family: var(--sb-font-body);
+  font-size: 12px;
+  color: var(--sb-text-muted);
+}
+
+/* ── Back button ── */
+.sb-compose-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--sb-accent);
+  font-family: var(--sb-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 0 14px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Form ── */
+.sb-compose-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sb-compose-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sb-compose-label {
+  font-family: var(--sb-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sb-compose-title-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--sb-border-strong);
+  padding: 6px 0;
+  color: var(--sb-text);
+  font-family: var(--sb-font-display);
+  font-size: 20px;
+  font-weight: 400;
+  outline: none;
+  letter-spacing: -0.01em;
+  box-sizing: border-box;
+  transition: border-color var(--sb-transition-fast);
+}
+
+.sb-compose-title-input:focus {
+  border-bottom-color: var(--sb-accent);
+}
+
+.sb-compose-title-input::placeholder {
+  color: var(--sb-text-muted);
+}
+
+.sb-compose-input {
+  padding: 10px 12px;
+  background: var(--sb-bg-input);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-input);
+  color: var(--sb-text);
+  font-family: var(--sb-font-body);
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--sb-transition-fast);
+  color-scheme: dark;
+  box-sizing: border-box;
+}
+
+.sb-compose-input:focus {
+  border-color: var(--sb-accent);
+}
+
+.sb-compose-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sb-compose-clear-btn {
+  background: none;
+  border: none;
+  color: var(--sb-text-muted);
+  font-family: var(--sb-font-body);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+}
+
+.sb-compose-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--sb-bg-input);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-input);
+  color: var(--sb-text);
+  font-family: var(--sb-font-body);
+  font-size: 13px;
+  outline: none;
+  resize: none;
+  line-height: 1.5;
+  transition: border-color var(--sb-transition-fast);
+  box-sizing: border-box;
+}
+
+.sb-compose-textarea:focus {
+  border-color: var(--sb-accent);
+}
+
+.sb-compose-textarea::placeholder {
+  color: var(--sb-text-muted);
+}
+
+/* ── Actions row ── */
+.sb-compose-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.sb-compose-cancel-btn {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--sb-btn-bg);
+  border: 1px solid var(--sb-btn-border);
+  border-radius: var(--sb-radius-btn);
+  color: var(--sb-text-dim);
+  font-family: var(--sb-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-compose-cancel-btn:hover,
+.sb-compose-cancel-btn:active {
+  background: var(--sb-btn-bg-hover);
+  border-color: var(--sb-border-strong);
+}
+
+.sb-compose-save-btn {
+  flex: 2;
+  padding: 12px 16px;
+  background: var(--sb-accent);
+  border: none;
+  border-radius: var(--sb-radius-btn);
+  color: var(--sb-accent-text);
+  font-family: var(--sb-font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-compose-save-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sb-compose-save-btn:not(:disabled):active {
+  opacity: 0.85;
+}
+
+/* ── Row layout for compact inputs ── */
+.sb-compose-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sb-compose-input--sm {
+  width: 100%;
+}
+
+/* ── Category chips ── */
+.sb-compose-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sb-compose-chip {
+  padding: 5px 12px;
+  background: var(--sb-bg-input);
+  border: 1px solid var(--sb-border);
+  border-radius: 20px;
+  color: var(--sb-text-muted);
+  font-family: var(--sb-font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast), color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-compose-chip:active {
+  background: var(--sb-bg-card-hover);
+}
+
+.sb-compose-chip--active {
+  background: var(--sb-accent);
+  border-color: var(--sb-accent);
+  color: var(--sb-accent-text);
+}
+
+/* ── Mood selector ── */
+.sb-compose-mood-row {
+  display: flex;
+  gap: 8px;
+}
+
+.sb-compose-mood-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  max-width: 44px;
+  background: var(--sb-bg-input);
+  border: 1px solid var(--sb-border);
+  border-radius: 50%;
+  color: var(--sb-text-muted);
+  font-family: var(--sb-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast), color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-compose-mood-btn:active {
+  background: var(--sb-bg-card-hover);
+}
+
+.sb-compose-mood-btn--active {
+  border-color: transparent;
+}
+
+/* ── Coming soon ── */
+.sb-compose-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+}
+
+.sb-compose-coming-soon__text {
+  font-family: var(--sb-font-body);
+  font-size: 14px;
+  color: var(--sb-text-muted);
+  text-align: center;
+  margin: 0;
+}

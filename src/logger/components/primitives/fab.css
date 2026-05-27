@@ -1,0 +1,28 @@
+.lg-fab {
+  position: fixed;
+  bottom: calc(var(--lg-nav-height) + env(safe-area-inset-bottom) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--lg-fab-size);
+  height: var(--lg-fab-size);
+  border-radius: 50%;
+  background: var(--lg-accent);
+  color: var(--lg-bg);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  box-shadow: var(--lg-shadow-fab);
+  transition: transform var(--lg-transition-med), box-shadow var(--lg-transition-med);
+}
+
+.lg-fab:hover {
+  transform: translateX(-50%) scale(1.06);
+  box-shadow: 0 6px 28px rgba(158, 179, 255, 0.45);
+}
+
+.lg-fab:active {
+  transform: translateX(-50%) scale(0.96);
+}

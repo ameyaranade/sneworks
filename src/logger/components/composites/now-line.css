@@ -1,0 +1,30 @@
+.lg-now-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  pointer-events: none;
+}
+
+.lg-now-label {
+  font-family: var(--lg-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--lg-accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lg-now-bar {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(to right, var(--lg-accent), transparent);
+  border-radius: 1px;
+  animation: lg-now-pulse 3s ease-in-out infinite;
+}
+
+@keyframes lg-now-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}

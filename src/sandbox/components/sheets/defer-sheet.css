@@ -1,0 +1,118 @@
+.sb-defer-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sb-defer-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--sb-bg-card);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-card-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-defer-btn:hover,
+.sb-defer-btn:active {
+  background: var(--sb-bg-card-hover);
+  border-color: var(--sb-border-strong);
+}
+
+.sb-defer-btn--someday {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sb-defer-btn__label {
+  font-family: var(--sb-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sb-text);
+}
+
+.sb-defer-btn__date {
+  font-family: var(--sb-font-body);
+  font-size: 11px;
+  color: var(--sb-text-muted);
+}
+
+.sb-defer-divider {
+  height: 1px;
+  background: var(--sb-border);
+  margin: 16px 0;
+}
+
+.sb-defer-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sb-defer-custom__label {
+  font-family: var(--sb-font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.sb-defer-custom__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sb-defer-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--sb-bg-input);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-input);
+  color: var(--sb-text);
+  font-family: var(--sb-font-body);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--sb-transition-fast);
+  color-scheme: dark;
+}
+
+.sb-defer-input:focus {
+  border-color: var(--sb-accent);
+}
+
+.sb-defer-confirm-btn {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--sb-accent);
+  color: var(--sb-accent-text);
+  border: none;
+  border-radius: var(--sb-radius-btn);
+  font-family: var(--sb-font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-defer-confirm-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sb-defer-confirm-btn:not(:disabled):active {
+  opacity: 0.85;
+}

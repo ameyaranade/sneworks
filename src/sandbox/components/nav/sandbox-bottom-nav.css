@@ -1,0 +1,53 @@
+.sb-bottom-nav {
+  display: flex;
+  align-items: stretch;
+  height: var(--sb-nav-height);
+  background: var(--sb-bg-elev);
+  border-top: 1px solid var(--sb-border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.sb-nav-left,
+.sb-nav-right {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+}
+
+.sb-nav-center {
+  /* Spacer for the floating pill — width matches the pill width + breathing room */
+  width: 128px;
+  flex-shrink: 0;
+}
+
+.sb-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--sb-text-muted);
+  text-decoration: none;
+  min-height: var(--sb-touch-target);
+  transition: color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-tab--active {
+  color: var(--sb-accent);
+}
+
+.sb-tab-icon {
+  display: block;
+}
+
+.sb-tab-label {
+  font-family: var(--sb-font-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}

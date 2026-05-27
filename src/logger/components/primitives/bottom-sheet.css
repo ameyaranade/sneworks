@@ -1,0 +1,56 @@
+.lg-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 200;
+  animation: lg-backdrop-in 0.2s ease-out;
+}
+
+.lg-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--lg-bg-sheet);
+  border-radius: var(--lg-radius-sheet) var(--lg-radius-sheet) 0 0;
+  border-top: 1px solid var(--lg-border-strong);
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 201;
+  animation: lg-sheet-up 0.3s cubic-bezier(0.2, 0.85, 0.3, 1.0);
+  box-shadow: var(--lg-shadow-sheet);
+  outline: none;
+  /* iOS safe area */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.lg-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--lg-border-strong);
+  border-radius: 2px;
+  margin: 10px auto 0;
+}
+
+.lg-sheet-title {
+  font-family: var(--lg-font-display);
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--lg-text);
+  padding: 16px 20px 8px;
+}
+
+.lg-sheet-body {
+  padding: 8px 20px 24px;
+}
+
+@keyframes lg-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes lg-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
