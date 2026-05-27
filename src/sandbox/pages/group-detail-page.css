@@ -1,4 +1,4 @@
-/* ── Page container ── */
+﻿/* ── Page container ── */
 .sb-gdp {
   display: flex;
   flex-direction: column;
@@ -44,7 +44,7 @@
 
 .sb-gdp-title {
   font-family: var(--sb-font-display);
-  font-size: 20px;
+  font-size: calc(20px * var(--sb-font-scale, 1));
   font-weight: 600;
   color: var(--sb-text);
   margin: 0;
@@ -55,7 +55,7 @@
 
 .sb-gdp-subtitle {
   font-family: var(--sb-font-body);
-  font-size: 11px;
+  font-size: calc(11px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
   display: block;
   margin-top: 1px;
@@ -111,7 +111,7 @@
   border: none;
   color: var(--sb-text);
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   outline: none;
   min-width: 0;
 }
@@ -127,7 +127,7 @@
   border-radius: var(--sb-radius-chip);
   color: var(--sb-accent-text);
   font-family: var(--sb-font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--sb-font-scale, 1));
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
@@ -152,7 +152,7 @@
   padding: 40px 20px;
   text-align: center;
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
 }
 
@@ -163,13 +163,13 @@
 
 .sb-gdp-empty p {
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
   margin: 0 0 4px;
 }
 
 .sb-gdp-empty p:last-child {
-  font-size: 12px;
+  font-size: calc(12px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
   opacity: 0.6;
 }
@@ -187,7 +187,7 @@
 
 .sb-gdp-footer-label {
   font-family: var(--sb-font-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--sb-font-scale, 1));
   font-weight: 500;
   color: var(--sb-text-muted);
   text-transform: uppercase;
@@ -196,7 +196,7 @@
 
 .sb-gdp-footer-total {
   font-family: var(--sb-font-mono);
-  font-size: 16px;
+  font-size: calc(16px * var(--sb-font-scale, 1));
   font-weight: 500;
   color: var(--sb-success);
 }
@@ -252,7 +252,7 @@
 
 .sb-shop-row-title {
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   color: var(--sb-text);
   line-height: 1.4;
 }
@@ -264,13 +264,13 @@
 
 .sb-shop-row-qty {
   font-family: var(--sb-font-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
 }
 
 .sb-shop-row-tag {
   font-family: var(--sb-font-body);
-  font-size: 10px;
+  font-size: calc(10px * var(--sb-font-scale, 1));
   font-weight: 500;
   color: var(--sb-accent);
   background: var(--sb-accent-glow);
@@ -281,7 +281,7 @@
 
 .sb-shop-row-price {
   font-family: var(--sb-font-mono);
-  font-size: 13px;
+  font-size: calc(13px * var(--sb-font-scale, 1));
   color: var(--sb-text-dim);
   flex-shrink: 0;
 }

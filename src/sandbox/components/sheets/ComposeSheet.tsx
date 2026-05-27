@@ -12,6 +12,8 @@ import { useTodosStore } from '../../stores/useTodosStore';
 import { useLogsStore } from '../../stores/useLogsStore';
 import { recomputeGroupCounts } from '../../firebase/groupQueries';
 import type { Todo, TodoType, Log, LogType, ShoppingItemTodo, MoneyReminderTodo, ExpenseLog, IncomeLog, HealthLog, GenericNoteLog } from '../../types';
+import { useGroupsStore } from '../../stores/useGroupsStore';
+import { spawnDueRecurringTodos } from '../../firebase/routineSpawner';
 import { buildTimestamp, tsToDateStr, tsToTimeStr } from '../../utils';
 import BottomSheet from '../primitives/BottomSheet';
 import './compose-sheet.css';
@@ -52,31 +54,136 @@ const LOG_TYPES: TypeCard[] = [
   { id: 'health-log', label: 'Health', sub: 'Workout, mood, weight', Icon: Heart, color: 'var(--sb-success)', available: true },
 ];
 
+// ── Shared recurrence UI ──────────────────────────────────────────────────────
+
+const RECUR_FREQ_OPTIONS = [
+  { value: 'daily',     label: 'Daily' },
+  { value: 'weekdays',  label: 'Weekdays' },
+  { value: 'weekly',    label: 'Weekly' },
+  { value: 'monthly',   label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly',    label: 'Yearly' },
+] as const;
+
+type RecurFreq = typeof RECUR_FREQ_OPTIONS[number]['value'];
+
+const WEEKDAY_CODES = [
+  { code: 'MON', label: 'Mon' }, { code: 'TUE', label: 'Tue' },
+  { code: 'WED', label: 'Wed' }, { code: 'THU', label: 'Thu' },
+  { code: 'FRI', label: 'Fri' }, { code: 'SAT', label: 'Sat' },
+  { code: 'SUN', label: 'Sun' },
+] as const;
+
+interface RecurrenceFieldsProps {
+  freq: RecurFreq;
+  setFreq: (f: RecurFreq) => void;
+  dayCode: string;     // for weekly
+  setDayCode: (d: string) => void;
+  dueDay: number;      // for monthly/quarterly/yearly
+  setDueDay: (n: number) => void;
+  /** subset of freq options to show (default: all) */
+  freqOptions?: readonly typeof RECUR_FREQ_OPTIONS[number][];
+}
+
+function RecurrenceFields({ freq, setFreq, dayCode, setDayCode, dueDay, setDueDay, freqOptions = RECUR_FREQ_OPTIONS }: RecurrenceFieldsProps) {
+  return (
+    <>
+      <div className="sb-compose-field">
+        <label className="sb-compose-label">Repeat</label>
+        <div className="sb-compose-chips">
+          {freqOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`sb-compose-chip${freq === opt.value ? ' sb-compose-chip--active' : ''}`}
+              onClick={() => setFreq(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {freq === 'weekly' && (
+        <div className="sb-compose-field">
+          <label className="sb-compose-label">Day</label>
+          <div className="sb-compose-chips">
+            {WEEKDAY_CODES.map((d) => (
+              <button
+                key={d.code}
+                type="button"
+                className={`sb-compose-chip${dayCode === d.code ? ' sb-compose-chip--active' : ''}`}
+                onClick={() => setDayCode(d.code)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(freq === 'monthly' || freq === 'quarterly' || freq === 'yearly') && (
+        <div className="sb-compose-field">
+          <label className="sb-compose-label">
+            {freq === 'monthly' ? 'Day of month' : freq === 'quarterly' ? 'Day of month (Jan/Apr/Jul/Oct)' : 'Day of year (in January)'}
+          </label>
+          <input
+            type="number"
+            className="sb-compose-input"
+            min={1}
+            max={28}
+            value={dueDay}
+            onChange={(e) => setDueDay(Math.min(28, Math.max(1, Number(e.target.value))))}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Build a recurrence string from freq + day fields */
+function buildRecurrence(freq: RecurFreq, dayCode: string, dueDay: number): string {
+  if (freq === 'weekly') return `weekly:${dayCode}`;
+  if (freq === 'monthly') return `monthly:${dueDay}`;
+  if (freq === 'quarterly') return `quarterly:${dueDay}`;
+  if (freq === 'yearly') return `yearly:${dueDay}`;
+  return freq; // daily | weekdays
+}
+
 // ── Generic Task Form ─────────────────────────────────────────────────────────
 
 interface GenericTaskFormProps {
   initialTitle?: string;
   initialNotes?: string;
   initialDueAt?: Timestamp;
-  onSave: (data: { title: string; notes?: string; dueAt?: Timestamp }) => Promise<void>;
+  onSave: (data: { title: string; notes?: string; dueAt?: Timestamp; recurring: false }) => Promise<void>;
+  onSaveRecurring: (data: { title: string; recurrence: string }) => Promise<void>;
   onCancel: () => void;
   isEdit: boolean;
 }
 
-function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, onSave, onCancel, isEdit }: GenericTaskFormProps) {
+function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, onSave, onSaveRecurring, onCancel, isEdit }: GenericTaskFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState(initialNotes);
   const [dateStr, setDateStr] = useState(initialDueAt ? tsToDateStr(initialDueAt) : '');
   const [timeStr, setTimeStr] = useState(initialDueAt ? tsToTimeStr(initialDueAt) : '');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurFreq, setRecurFreq] = useState<RecurFreq>('daily');
+  const [recurDayCode, setRecurDayCode] = useState('MON');
+  const [recurDueDay, setRecurDueDay] = useState(1);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
-    const dueAt = dateStr ? buildTimestamp(dateStr, timeStr || undefined) : undefined;
     try {
-      await onSave({ title: title.trim(), notes: notes.trim() || undefined, dueAt });
+      if (isRecurring) {
+        await onSaveRecurring({ title: title.trim(), recurrence: buildRecurrence(recurFreq, recurDayCode, recurDueDay) });
+      } else {
+        const dueAt = dateStr ? buildTimestamp(dateStr, timeStr || undefined) : undefined;
+        await onSave({ title: title.trim(), notes: notes.trim() || undefined, dueAt, recurring: false });
+      }
     } finally {
       setSaving(false);
     }
@@ -96,50 +203,73 @@ function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, o
         />
       </div>
 
+      {/* Recurring toggle */}
       <div className="sb-compose-field">
-        <label className="sb-compose-label">Due date</label>
-        <div className="sb-compose-date-row">
-          <input
-            type="date"
-            className="sb-compose-input"
-            value={dateStr}
-            min={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setDateStr(e.target.value)}
-          />
-          {dateStr && (
-            <input
-              type="time"
-              className="sb-compose-input"
-              value={timeStr}
-              onChange={(e) => setTimeStr(e.target.value)}
-              placeholder="Time (optional)"
-            />
-          )}
-        </div>
-        {dateStr && (
+        <label className="sb-compose-recurring-row">
+          <span className="sb-compose-label" style={{ margin: 0 }}>Recurring</span>
           <button
             type="button"
-            className="sb-compose-clear-btn"
-            onClick={() => { setDateStr(''); setTimeStr(''); }}
+            className={`sb-settings-toggle${isRecurring ? ' sb-settings-toggle--on' : ''}`}
+            onClick={() => setIsRecurring((v) => !v)}
+            aria-label="Toggle recurring"
           >
-            Clear date
+            <span className="sb-settings-toggle__knob" />
           </button>
-        )}
+        </label>
       </div>
 
-      <div className="sb-compose-field">
-        <label className="sb-compose-label">Notes</label>
-        <textarea
-          className="sb-compose-textarea"
-          placeholder="Add a note…"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          maxLength={500}
+      {isRecurring ? (
+        <RecurrenceFields
+          freq={recurFreq} setFreq={setRecurFreq}
+          dayCode={recurDayCode} setDayCode={setRecurDayCode}
+          dueDay={recurDueDay} setDueDay={setRecurDueDay}
         />
-      </div>
+      ) : (
+        <>
+          <div className="sb-compose-field">
+            <label className="sb-compose-label">Due date</label>
+            <div className="sb-compose-date-row">
+              <input
+                type="date"
+                className="sb-compose-input"
+                value={dateStr}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDateStr(e.target.value)}
+              />
+              {dateStr && (
+                <input
+                  type="time"
+                  className="sb-compose-input"
+                  value={timeStr}
+                  onChange={(e) => setTimeStr(e.target.value)}
+                  placeholder="Time (optional)"
+                />
+              )}
+            </div>
+            {dateStr && (
+              <button
+                type="button"
+                className="sb-compose-clear-btn"
+                onClick={() => { setDateStr(''); setTimeStr(''); }}
+              >
+                Clear date
+              </button>
+            )}
+          </div>
 
-      {/* Phase 2: Group picker goes here */}
+          <div className="sb-compose-field">
+            <label className="sb-compose-label">Notes</label>
+            <textarea
+              className="sb-compose-textarea"
+              placeholder="Add a note…"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              maxLength={500}
+            />
+          </div>
+        </>
+      )}
 
       <div className="sb-compose-actions">
         <button type="button" className="sb-compose-cancel-btn" onClick={onCancel}>
@@ -278,6 +408,7 @@ interface MoneyReminderFormProps {
   initialCategory?: string;
   initialDueAt?: Timestamp;
   onSave: (data: { title: string; amount?: number; category?: string; dueAt?: Timestamp }) => Promise<void>;
+  onSaveRecurring: (data: { title: string; amount?: number; category?: string; recurrence: string }) => Promise<void>;
   onCancel: () => void;
   isEdit: boolean;
 }
@@ -288,6 +419,7 @@ function MoneyReminderForm({
   initialCategory = '',
   initialDueAt,
   onSave,
+  onSaveRecurring,
   onCancel,
   isEdit,
 }: MoneyReminderFormProps) {
@@ -296,20 +428,33 @@ function MoneyReminderForm({
   const [category, setCategory] = useState(initialCategory);
   const [dateStr, setDateStr] = useState(initialDueAt ? tsToDateStr(initialDueAt) : '');
   const [timeStr, setTimeStr] = useState(initialDueAt ? tsToTimeStr(initialDueAt) : '');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurFreq, setRecurFreq] = useState<RecurFreq>('monthly');
+  const [recurDayCode, setRecurDayCode] = useState('MON');
+  const [recurDueDay, setRecurDueDay] = useState(1);
   const [saving, setSaving] = useState(false);
+
+  // Payments rarely need daily/weekdays — offer weekly, monthly, quarterly, yearly
+  const MONEY_FREQ_OPTIONS = RECUR_FREQ_OPTIONS.filter(
+    (o) => o.value !== 'daily' && o.value !== 'weekdays',
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
-    const dueAt = dateStr ? buildTimestamp(dateStr, timeStr || undefined) : undefined;
     try {
-      await onSave({
-        title: title.trim(),
-        amount: amount ? Number(amount) : undefined,
-        category: category.trim() || undefined,
-        dueAt,
-      });
+      if (isRecurring) {
+        await onSaveRecurring({
+          title: title.trim(),
+          amount: amount ? Number(amount) : undefined,
+          category: category.trim() || undefined,
+          recurrence: buildRecurrence(recurFreq, recurDayCode, recurDueDay),
+        });
+      } else {
+        const dueAt = dateStr ? buildTimestamp(dateStr, timeStr || undefined) : undefined;
+        await onSave({ title: title.trim(), amount: amount ? Number(amount) : undefined, category: category.trim() || undefined, dueAt });
+      }
     } finally {
       setSaving(false);
     }
@@ -321,7 +466,7 @@ function MoneyReminderForm({
         <input
           type="text"
           className="sb-compose-title-input"
-          placeholder="e.g. Netflix, Rent, EMI…"
+          placeholder="e.g. Netflix, Rent, Cook…"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           autoFocus
@@ -358,35 +503,59 @@ function MoneyReminderForm({
         </div>
       </div>
 
+      {/* Recurring toggle */}
       <div className="sb-compose-field">
-        <label className="sb-compose-label">Due date</label>
-        <div className="sb-compose-date-row">
-          <input
-            type="date"
-            className="sb-compose-input"
-            value={dateStr}
-            onChange={(e) => setDateStr(e.target.value)}
-          />
-          {dateStr && (
-            <input
-              type="time"
-              className="sb-compose-input"
-              value={timeStr}
-              onChange={(e) => setTimeStr(e.target.value)}
-              placeholder="Time (optional)"
-            />
-          )}
-        </div>
-        {dateStr && (
+        <label className="sb-compose-recurring-row">
+          <span className="sb-compose-label" style={{ margin: 0 }}>Recurring</span>
           <button
             type="button"
-            className="sb-compose-clear-btn"
-            onClick={() => { setDateStr(''); setTimeStr(''); }}
+            className={`sb-settings-toggle${isRecurring ? ' sb-settings-toggle--on' : ''}`}
+            onClick={() => setIsRecurring((v) => !v)}
+            aria-label="Toggle recurring"
           >
-            Clear date
+            <span className="sb-settings-toggle__knob" />
           </button>
-        )}
+        </label>
       </div>
+
+      {isRecurring ? (
+        <RecurrenceFields
+          freq={recurFreq} setFreq={setRecurFreq}
+          dayCode={recurDayCode} setDayCode={setRecurDayCode}
+          dueDay={recurDueDay} setDueDay={setRecurDueDay}
+          freqOptions={MONEY_FREQ_OPTIONS}
+        />
+      ) : (
+        <div className="sb-compose-field">
+          <label className="sb-compose-label">Due date</label>
+          <div className="sb-compose-date-row">
+            <input
+              type="date"
+              className="sb-compose-input"
+              value={dateStr}
+              onChange={(e) => setDateStr(e.target.value)}
+            />
+            {dateStr && (
+              <input
+                type="time"
+                className="sb-compose-input"
+                value={timeStr}
+                onChange={(e) => setTimeStr(e.target.value)}
+                placeholder="Time (optional)"
+              />
+            )}
+          </div>
+          {dateStr && (
+            <button
+              type="button"
+              className="sb-compose-clear-btn"
+              onClick={() => { setDateStr(''); setTimeStr(''); }}
+            >
+              Clear date
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="sb-compose-actions">
         <button type="button" className="sb-compose-cancel-btn" onClick={onCancel}>
@@ -958,7 +1127,7 @@ export default function ComposeSheet({
     }
   };
 
-  const handleSaveGenericTask = async (data: { title: string; notes?: string; dueAt?: Timestamp }) => {
+  const handleSaveGenericTask = async (data: { title: string; notes?: string; dueAt?: Timestamp; recurring: false }) => {
     // Use confirmed user uid, or fall back to optimistic cached uid (Firebase SDK
     // already holds a valid token from the previous session even before onAuthStateChanged fires).
     const uid = user?.uid ?? getCachedUid();
@@ -988,6 +1157,9 @@ export default function ComposeSheet({
     }
   };
 
+  const addGroup = useGroupsStore((s) => s.addGroup);
+
+  /** Saves a one-time money-reminder todo */
   const handleSaveMoneyReminder = async (data: {
     title: string;
     amount?: number;
@@ -1017,6 +1189,66 @@ export default function ComposeSheet({
         } as Omit<MoneyReminderTodo, 'id' | 'createdAt' | 'updatedAt'>);
         showToast('Reminder added', 'success');
       }
+      onClose();
+    } catch {
+      showToast('Could not save. Try again.', 'error');
+    }
+  };
+
+  /** Saves a recurring money-reminder as a RecurringTodoGroup, then spawns today's instance if due */
+  const handleSaveRecurringMoney = async (data: {
+    title: string;
+    amount?: number;
+    category?: string;
+    recurrence: string;
+  }) => {
+    const uid = user?.uid ?? getCachedUid();
+    if (!uid) { showToast('Not signed in. Please refresh.', 'error'); return; }
+    try {
+      await addGroup(uid, {
+        groupKind: 'recurring-todo',
+        recurTodoType: 'money-reminder',
+        name: data.title,
+        recurrence: data.recurrence,
+        amount: data.amount,
+        category: data.category,
+        streakCount: 0,
+        ancestorPath: [],
+        showProgress: false,
+        showSumMoney: false,
+        childCount: 0,
+        doneCount: 0,
+        completed: false,
+      } as Parameters<typeof addGroup>[1]);
+      // Spawn immediately if due today
+      spawnDueRecurringTodos(uid).catch(console.error);
+      showToast('Recurring reminder saved', 'success');
+      onClose();
+    } catch {
+      showToast('Could not save. Try again.', 'error');
+    }
+  };
+
+  /** Saves a recurring generic task as a RecurringTodoGroup */
+  const handleSaveRecurringTask = async (data: { title: string; recurrence: string }) => {
+    const uid = user?.uid ?? getCachedUid();
+    if (!uid) { showToast('Not signed in. Please refresh.', 'error'); return; }
+    try {
+      await addGroup(uid, {
+        groupKind: 'recurring-todo',
+        recurTodoType: 'generic-task',
+        name: data.title,
+        recurrence: data.recurrence,
+        streakCount: 0,
+        ancestorPath: [],
+        showProgress: false,
+        showSumMoney: false,
+        childCount: 0,
+        doneCount: 0,
+        completed: false,
+      } as Parameters<typeof addGroup>[1]);
+      spawnDueRecurringTodos(uid).catch(console.error);
+      showToast('Recurring task saved', 'success');
       onClose();
     } catch {
       showToast('Could not save. Try again.', 'error');
@@ -1229,6 +1461,7 @@ export default function ComposeSheet({
               initialNotes={editEntry?.notes}
               initialDueAt={editEntry && 'todoType' in editEntry ? editEntry.dueAt : undefined}
               onSave={handleSaveGenericTask}
+              onSaveRecurring={handleSaveRecurringTask}
               onCancel={onClose}
               isEdit={isEdit}
             />
@@ -1253,6 +1486,7 @@ export default function ComposeSheet({
               initialCategory={editEntry && 'todoType' in editEntry && editEntry.todoType === 'money-reminder' ? (editEntry as MoneyReminderTodo).category : undefined}
               initialDueAt={editEntry && 'todoType' in editEntry ? editEntry.dueAt : undefined}
               onSave={handleSaveMoneyReminder}
+              onSaveRecurring={handleSaveRecurringMoney}
               onCancel={onClose}
               isEdit={isEdit}
             />

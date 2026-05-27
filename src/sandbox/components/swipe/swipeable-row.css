@@ -1,4 +1,4 @@
-.sb-swipe-container {
+﻿.sb-swipe-container {
   position: relative;
   overflow: hidden;
 }
@@ -25,7 +25,7 @@
   border: none;
   cursor: pointer;
   font-family: var(--sb-font-body);
-  font-size: 10px;
+  font-size: calc(10px * var(--sb-font-scale, 1));
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;

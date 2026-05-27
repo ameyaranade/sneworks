@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CheckSquare, IndianRupee, ShoppingCart, Clock } from 'lucide-react';
 import type { Todo } from '../../types';
 import { formatDueLabel } from '../../utils';
@@ -7,6 +8,7 @@ import { tomorrowAt9 } from '../../stores/useTodosStore';
 import { useSandboxUI } from '../../context/SandboxUIContext';
 import { useAuth, getCachedUid } from '../../../auth/AuthContext';
 import { useToast } from '../../../shared/components/Toast';
+import ConfirmSheet from '../primitives/ConfirmSheet';
 import './todo-row.css';
 
 interface TodoRowProps {
@@ -33,6 +35,8 @@ export default function TodoRow({ todo }: TodoRowProps) {
   const markPending = useTodosStore((s) => s.markPending);
   const deferTodo = useTodosStore((s) => s.deferTodo);
   const deferTodoPlusHours = useTodosStore((s) => s.deferTodoPlusHours);
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const uid = user?.uid ?? getCachedUid();
   if (!uid || !todo.id) return null;
@@ -137,12 +141,12 @@ export default function TodoRow({ todo }: TodoRowProps) {
     ? [
         { label: 'Unmark', className: 'sb-swipe-action--unmark', onTrigger: handleUnmark },
         { label: 'Edit', className: 'sb-swipe-action--edit', onTrigger: () => openComposeForEdit(todo) },
-        { label: 'Delete', className: 'sb-swipe-action--delete', onTrigger: handleDelete },
+        { label: 'Delete', className: 'sb-swipe-action--delete', onTrigger: () => setConfirmDelete(true) },
       ]
     : [
         { label: 'Edit', className: 'sb-swipe-action--edit', onTrigger: () => openComposeForEdit(todo) },
         { label: 'Skip', className: 'sb-swipe-action--skip', onTrigger: handleSkip },
-        { label: 'Delete', className: 'sb-swipe-action--delete', onTrigger: handleDelete },
+        { label: 'Delete', className: 'sb-swipe-action--delete', onTrigger: () => setConfirmDelete(true) },
       ];
 
   // ── Breadcrumb ─────────────────────────────────────────────────────────────
@@ -155,6 +159,16 @@ export default function TodoRow({ todo }: TodoRowProps) {
   const dueLabel = todo.dueAt ? formatDueLabel(todo.dueAt) : null;
 
   return (
+    <>
+    {confirmDelete && (
+      <ConfirmSheet
+        title="Delete task?"
+        message={`"${todo.title}" will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { setConfirmDelete(false); handleDelete(); }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    )}
     <SwipeableRow
       leftActions={leftActions}
       rightActions={rightActions}
@@ -208,5 +222,6 @@ export default function TodoRow({ todo }: TodoRowProps) {
         </div>
       </div>
     </SwipeableRow>
+    </>
   );
 }

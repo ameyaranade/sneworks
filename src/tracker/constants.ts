@@ -53,6 +53,7 @@ export const DEFAULT_SETTINGS: Omit<TrackerSettings, 'updatedAt'> = {
   currencySymbol: '₹',
   darkMode: false,
   notificationsEnabled: false,
+  sbFontScale: 'medium',
 };
 
 export const ACTIVITY_TYPE_META = {

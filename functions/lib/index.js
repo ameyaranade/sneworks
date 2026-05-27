@@ -59,6 +59,23 @@ function localDateString(d) {
     const day = String(d.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
 }
+// ─── Recurrence helper ────────────────────────────────────────────────────────
+function isRoutineDueToday(recurrence, localNow) {
+    var _a;
+    const day = localNow.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    if (recurrence === 'daily')
+        return true;
+    if (recurrence === 'weekdays')
+        return day >= 1 && day <= 5;
+    const m = recurrence.match(/^weekly:([A-Z]+)$/);
+    if (m) {
+        const DAY_MAP = {
+            SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6,
+        };
+        return day === ((_a = DAY_MAP[m[1]]) !== null && _a !== void 0 ? _a : -1);
+    }
+    return false;
+}
 // ─── Next-due-date calculation (ported from client utils.ts) ───
 // All Date operations use UTC methods so they work correctly on the Cloud
 // Function server (which runs in UTC). `localNow` is a fake-UTC Date from
@@ -176,6 +193,53 @@ exports.sendReminders = (0, scheduler_1.onSchedule)('every 5 minutes', async () 
                 await admin.messaging().send({
                     token,
                     notification: { title: 'Bill Due Today', body: fr.name },
+                });
+            }
+            // ── 3. Sandbox routine spawn notifications ──
+            const sandboxGroupsSnap = await db
+                .collection(`users/${uid}/sandbox_groups`)
+                .where('groupKind', '==', 'routine')
+                .get();
+            for (const rdoc of sandboxGroupsSnap.docs) {
+                const r = rdoc.data();
+                if (r.archivedAt)
+                    continue;
+                if (r.deferUntil && r.deferUntil.toDate() > new Date(nowMs))
+                    continue;
+                if (!isRoutineDueToday(r.recurrence, localNow))
+                    continue;
+                if (!r.spawnTime)
+                    continue;
+                const parts = r.spawnTime.split(':').map(Number);
+                const spawnMs = (parts[0] * 60 + parts[1]) * 60000;
+                if (Math.abs(localTimeMs - spawnMs) <= WINDOW_MS) {
+                    await admin.messaging().send({
+                        token,
+                        notification: {
+                            title: r.name,
+                            body: r.childCount > 0
+                                ? `${r.childCount} task${r.childCount > 1 ? 's' : ''} for today`
+                                : 'Your routine is ready for today',
+                        },
+                    });
+                }
+            }
+            // ── 4. Sandbox overdue todos at 9 AM ──
+            const sandboxTodosSnap = await db
+                .collection(`users/${uid}/sandbox_todos`)
+                .where('status', '==', 'pending')
+                .get();
+            const overdueTodos = sandboxTodosSnap.docs.filter((d) => {
+                const data = d.data();
+                return data.dueDate && data.dueDate < todayStr;
+            });
+            if (overdueTodos.length > 0 && Math.abs(localTimeMs - nineAMMs) <= WINDOW_MS) {
+                await admin.messaging().send({
+                    token,
+                    notification: {
+                        title: 'Overdue tasks',
+                        body: `You have ${overdueTodos.length} overdue task${overdueTodos.length > 1 ? 's' : ''}`,
+                    },
                 });
             }
         })());

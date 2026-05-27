@@ -92,7 +92,7 @@ export type Log = ExpenseLog | IncomeLog | GenericNoteLog | HealthLog;
 
 // ─── Group Types ──────────────────────────────────────────────────────────────
 
-export type GroupKind = 'shopping-list' | 'project' | 'routine';
+export type GroupKind = 'shopping-list' | 'project' | 'routine' | 'recurring-todo';
 
 export interface GroupBase {
   id?: string;
@@ -139,9 +139,27 @@ export interface RoutineGroup extends GroupBase {
   templateChildren: TemplateItem[];
   lastSpawnedAt?: Timestamp;
   streakCount: number;
+  deferUntil?: Timestamp; // if set and > now, routine is paused (skip spawn)
 }
 
-export type Group = ShoppingListGroup | ProjectGroup | RoutineGroup;
+/** A recurring single-item routine: spawns one todo on each due date. */
+export interface RecurringTodoGroup extends GroupBase {
+  groupKind: 'recurring-todo';
+  /** What kind of todo to spawn each cycle. */
+  recurTodoType: 'generic-task' | 'money-reminder';
+  /**
+   * Recurrence pattern (same encoding as RoutineGroup):
+   *   'daily' | 'weekdays' | 'weekly:MON' |
+   *   'monthly:N' | 'quarterly:N' | 'yearly:N'
+   */
+  recurrence: string;
+  amount?: number;    // money-reminder only
+  category?: string;  // money-reminder only
+  lastSpawnedAt?: Timestamp;
+  streakCount: number;
+}
+
+export type Group = ShoppingListGroup | ProjectGroup | RoutineGroup | RecurringTodoGroup;
 
 // ─── UI Context ───────────────────────────────────────────────────────────────
 

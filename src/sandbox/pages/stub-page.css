@@ -1,4 +1,4 @@
-.sb-stub-page {
+﻿.sb-stub-page {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,13 +10,13 @@
 }
 
 .sb-stub-glyph {
-  font-size: 36px;
+  font-size: calc(36px * var(--sb-font-scale, 1));
   color: var(--sb-border-strong);
 }
 
 .sb-stub-title {
   font-family: var(--sb-font-display);
-  font-size: 20px;
+  font-size: calc(20px * var(--sb-font-scale, 1));
   font-weight: 400;
   color: var(--sb-text-dim);
   margin: 0;
@@ -25,7 +25,7 @@
 
 .sb-stub-sub {
   font-family: var(--sb-font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
   margin: 0;
   text-align: center;

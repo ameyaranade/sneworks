@@ -207,6 +207,7 @@ export const useTodosStore = create<TodosState>((set, get) => {
             sortOrder: Date.now(),
           } as Omit<ExpenseLog, 'id' | 'createdAt' | 'updatedAt'>).catch(console.error);
         }
+
       }
     },
 

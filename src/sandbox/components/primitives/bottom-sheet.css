@@ -1,4 +1,4 @@
-.sb-sheet-backdrop {
+﻿.sb-sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
@@ -36,14 +36,14 @@
 .sb-sheet-title {
   font-family: var(--sb-font-display);
   font-weight: 400;
-  font-size: 20px;
+  font-size: calc(20px * var(--sb-font-scale, 1));
   color: var(--sb-text);
   padding: 14px 20px 6px;
   letter-spacing: -0.01em;
 }
 
 .sb-sheet-body {
-  padding: 8px 20px 24px;
+  padding: 8px 20px max(32px, calc(env(safe-area-inset-bottom) + 20px));
 }
 
 @keyframes sb-backdrop-in {

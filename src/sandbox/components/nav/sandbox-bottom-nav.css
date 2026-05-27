@@ -1,4 +1,4 @@
-.sb-bottom-nav {
+﻿.sb-bottom-nav {
   display: flex;
   align-items: stretch;
   height: var(--sb-nav-height);
@@ -15,6 +15,8 @@
   display: flex;
   flex: 1;
   align-items: stretch;
+  /* Ensure empty right section still occupies space so FAB stays centred */
+  min-width: 0;
 }
 
 .sb-nav-center {
@@ -47,7 +49,7 @@
 
 .sb-tab-label {
   font-family: var(--sb-font-body);
-  font-size: 10px;
+  font-size: calc(10px * var(--sb-font-scale, 1));
   font-weight: 500;
   letter-spacing: 0.02em;
 }

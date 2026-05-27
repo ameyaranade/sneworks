@@ -156,6 +156,7 @@ export interface TrackerSettings {
   notificationsEnabled: boolean;
   fcmToken?: string;
   timezoneOffset?: number;
+  sbFontScale?: 'small' | 'medium' | 'large';
   updatedAt: Timestamp;
 }
 

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { CalendarCheck, Repeat, Clock, MoreHorizontal } from 'lucide-react';
+import { CalendarCheck, Repeat, FolderOpen, MoreHorizontal } from 'lucide-react';
 import SplitPillFAB from './SplitPillFAB';
 import './sandbox-bottom-nav.css';
 
@@ -9,7 +9,7 @@ const LEFT_TABS = [
 ];
 
 const RIGHT_TABS = [
-  { to: '/sandbox/timeline', label: 'Timeline', Icon: Clock, end: false },
+  { to: '/sandbox/projects', label: 'Projects', Icon: FolderOpen, end: false },
   { to: '/sandbox/more', label: 'More', Icon: MoreHorizontal, end: false },
 ];
 

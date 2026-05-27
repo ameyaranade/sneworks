@@ -1,4 +1,4 @@
-/* ── Page shell ── */
+﻿/* ── Page shell ── */
 .sb-health-page {
   display: flex;
   flex-direction: column;
@@ -8,12 +8,36 @@
 
 /* ── Header ── */
 .sb-health-header {
-  padding: 20px 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+}
+
+.sb-health-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--sb-radius-card-sm);
+  border: 1px solid var(--sb-border);
+  background: var(--sb-bg-card);
+  color: var(--sb-text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-health-back-btn:hover {
+  background: var(--sb-bg-card-hover);
+  border-color: var(--sb-border-strong);
 }
 
 .sb-health-heading {
   font-family: var(--sb-font-display);
-  font-size: 26px;
+  font-size: calc(22px * var(--sb-font-scale, 1));
   font-weight: 600;
   color: var(--sb-text);
   margin: 0;
@@ -50,7 +74,7 @@
 
 .sb-health-stat-value {
   font-family: var(--sb-font-display);
-  font-size: 28px;
+  font-size: calc(28px * var(--sb-font-scale, 1));
   font-weight: 600;
   color: var(--sb-success);
   letter-spacing: -0.02em;
@@ -59,7 +83,7 @@
 
 .sb-health-stat-label {
   font-family: var(--sb-font-body);
-  font-size: 11px;
+  font-size: calc(11px * var(--sb-font-scale, 1));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -80,7 +104,7 @@
 .sb-health-day-label {
   padding: 10px 16px 6px;
   font-family: var(--sb-font-body);
-  font-size: 11px;
+  font-size: calc(11px * var(--sb-font-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -137,20 +161,20 @@
 
 .sb-health-title {
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   font-weight: 500;
   color: var(--sb-text);
 }
 
 .sb-health-meta {
   font-family: var(--sb-font-body);
-  font-size: 11px;
+  font-size: calc(11px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
 }
 
 .sb-health-notes {
   font-family: var(--sb-font-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--sb-font-scale, 1));
   color: var(--sb-text-dim);
   font-style: italic;
   white-space: nowrap;
@@ -176,7 +200,7 @@
 
 .sb-health-time {
   font-family: var(--sb-font-body);
-  font-size: 11px;
+  font-size: calc(11px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
 }
 
@@ -214,14 +238,14 @@
 }
 
 .sb-health-empty-glyph {
-  font-size: 40px;
+  font-size: calc(40px * var(--sb-font-scale, 1));
   opacity: 0.25;
   line-height: 1;
 }
 
 .sb-health-empty-title {
   font-family: var(--sb-font-display);
-  font-size: 18px;
+  font-size: calc(18px * var(--sb-font-scale, 1));
   font-weight: 600;
   color: var(--sb-text);
   margin: 0;
@@ -229,7 +253,7 @@
 
 .sb-health-empty-sub {
   font-family: var(--sb-font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
   text-align: center;
   margin: 0;
@@ -243,7 +267,7 @@
   border-radius: var(--sb-radius-btn);
   color: var(--sb-accent-text);
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

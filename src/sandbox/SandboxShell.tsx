@@ -6,17 +6,22 @@ import { SandboxUIProvider, useSandboxUI } from './context/SandboxUIContext';
 import { useTodosStore } from './stores/useTodosStore';
 import { useGroupsStore } from './stores/useGroupsStore';
 import { useLogsStore } from './stores/useLogsStore';
-import { spawnDueRoutines } from './firebase/routineSpawner';
+import { spawnDueRoutines, spawnDueRecurringTodos } from './firebase/routineSpawner';
 import { subscribeToSettings } from '../tracker/firebase/trackerQueries';
 import SandboxBottomNav from './components/nav/SandboxBottomNav';
 import ComposeSheet from './components/sheets/ComposeSheet';
 import DeferSheet from './components/sheets/DeferSheet';
 import './sandbox-shell.css';
 import './styles/sandbox-tokens.css';
+import './styles/sandbox-shared.css';
 
 // Read the persisted dark-mode hint written by TrackerProvider on login
 function getInitialDark(): boolean {
   try { return localStorage.getItem('sneworks-dark') === '1'; } catch { return true; }
+}
+
+function getInitialFontScale(): string {
+  try { return localStorage.getItem('sneworks-font-scale') ?? 'medium'; } catch { return 'medium'; }
 }
 
 function SandboxShellInner() {
@@ -56,6 +61,7 @@ function SandboxShellInner() {
     if (!user || !groupsLoaded || spawnRanRef.current) return;
     spawnRanRef.current = true;
     spawnDueRoutines(user.uid).catch(console.error);
+    spawnDueRecurringTodos(user.uid).catch(console.error);
   }, [user, groupsLoaded]);
 
   // ── Dark mode — subscribe to the same settings doc as Tracker ───────────────
@@ -74,6 +80,9 @@ function SandboxShellInner() {
       if (!themeRef.current) return;
       themeRef.current.dataset.sandboxTheme = s.darkMode ? 'dark' : 'light';
       try { localStorage.setItem('sneworks-dark', s.darkMode ? '1' : '0'); } catch (_) {}
+      const scale = s.sbFontScale ?? 'medium';
+      themeRef.current.dataset.sandboxFont = scale;
+      try { localStorage.setItem('sneworks-font-scale', scale); } catch (_) {}
     });
     return unsub;
   }, [cachedUid]);
@@ -83,6 +92,7 @@ function SandboxShellInner() {
       ref={themeRef}
       className="sb-shell"
       data-sandbox-theme={getInitialDark() ? 'dark' : 'light'}
+      data-sandbox-font={getInitialFontScale()}
     >
       <div className="sb-content">
         <Outlet />

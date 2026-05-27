@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Archive, Flame, Pencil, Check, X, Plus } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Archive, Flame, Pencil, Check, X, Plus, PauseCircle, Edit2 } from 'lucide-react';
 import { useAuth, getCachedUid } from '../../auth/AuthContext';
 import { useToast } from '../../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';
@@ -9,12 +9,226 @@ import { recomputeGroupCounts } from '../firebase/groupQueries';
 import { recurrenceLabel } from '../firebase/routineSpawner';
 import { Timestamp } from 'firebase/firestore';
 import TodoRow from '../components/rows/TodoRow';
+import BottomSheet from '../components/primitives/BottomSheet';
+import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import type { RoutineGroup, TemplateItem } from '../types';
 import './routine-detail-page.css';
+
+// ── Recurrence options (shared with RoutinesPage) ─────────────────────────────
+
+const RECURRENCE_OPTIONS = [
+  { value: 'daily',    label: 'Daily' },
+  { value: 'weekdays', label: 'Weekdays' },
+  { value: 'weekly',   label: 'Weekly' },
+] as const;
+
+const WEEK_DAYS = [
+  { code: 'MON', label: 'Mon' }, { code: 'TUE', label: 'Tue' },
+  { code: 'WED', label: 'Wed' }, { code: 'THU', label: 'Thu' },
+  { code: 'FRI', label: 'Fri' }, { code: 'SAT', label: 'Sat' },
+  { code: 'SUN', label: 'Sun' },
+] as const;
+
+const DEFER_OPTIONS = [
+  { days: 1,  label: 'Tomorrow' },
+  { days: 3,  label: '3 days' },
+  { days: 5,  label: '5 days' },
+  { days: 7,  label: '1 week' },
+  { days: 14, label: '2 weeks' },
+];
+
+// ── Edit Routine Sheet ────────────────────────────────────────────────────────
+
+interface EditRoutineSheetProps {
+  routine: RoutineGroup;
+  onClose: () => void;
+}
+
+function EditRoutineSheet({ routine, onClose }: EditRoutineSheetProps) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const uid = user?.uid ?? getCachedUid();
+
+  const initRecurrenceType = (): 'daily' | 'weekdays' | 'weekly' => {
+    if (routine.recurrence === 'daily') return 'daily';
+    if (routine.recurrence === 'weekdays') return 'weekdays';
+    return 'weekly';
+  };
+  const initWeekDay = (): string => {
+    const m = routine.recurrence.match(/^weekly:([A-Z]+)$/);
+    return m ? m[1] : 'MON';
+  };
+
+  const [name, setName] = useState(routine.name);
+  const [recurrenceType, setRecurrenceType] = useState<'daily' | 'weekdays' | 'weekly'>(initRecurrenceType);
+  const [weekDay, setWeekDay] = useState(initWeekDay);
+  const [spawnTime, setSpawnTime] = useState(routine.spawnTime);
+  const [saving, setSaving] = useState(false);
+
+  const recurrenceValue = recurrenceType === 'weekly' ? `weekly:${weekDay}` : recurrenceType;
+
+  const handleSave = async () => {
+    if (!uid || !name.trim()) return;
+    setSaving(true);
+    try {
+      await updateGroup(uid, routine.id!, {
+        name: name.trim(),
+        recurrence: recurrenceValue,
+        spawnTime,
+        updatedAt: Timestamp.now(),
+      } as Parameters<typeof updateGroup>[2]);
+      showToast('Routine updated', 'success');
+      onClose();
+    } catch {
+      showToast('Could not save. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title="Edit routine">
+      <div className="sb-rtn-sheet-form">
+        <input
+          type="text"
+          className="sb-proj-sheet-input"
+          placeholder="Routine name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+          maxLength={80}
+        />
+        <div className="sb-rtn-field">
+          <label className="sb-rtn-field-label">Repeat</label>
+          <div className="sb-rtn-chips">
+            {RECURRENCE_OPTIONS.map((opt) => (
+              <button key={opt.value} type="button"
+                className={`sb-rtn-chip${recurrenceType === opt.value ? ' sb-rtn-chip--active' : ''}`}
+                onClick={() => setRecurrenceType(opt.value)}>{opt.label}</button>
+            ))}
+          </div>
+          {recurrenceType === 'weekly' && (
+            <div className="sb-rtn-chips sb-rtn-chips--days">
+              {WEEK_DAYS.map((d) => (
+                <button key={d.code} type="button"
+                  className={`sb-rtn-chip sb-rtn-chip--sm${weekDay === d.code ? ' sb-rtn-chip--active' : ''}`}
+                  onClick={() => setWeekDay(d.code)}>{d.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="sb-rtn-field">
+          <label className="sb-rtn-field-label">Spawns at</label>
+          <input type="time" className="sb-rtn-time-input" value={spawnTime}
+            onChange={(e) => setSpawnTime(e.target.value)} />
+        </div>
+        <div className="sb-proj-sheet-actions">
+          <button type="button" className="sb-compose-cancel-btn" onClick={onClose}>Cancel</button>
+          <button type="button" className="sb-compose-save-btn"
+            disabled={!name.trim() || saving} onClick={handleSave}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── Defer Routine Sheet ───────────────────────────────────────────────────────
+
+interface DeferRoutineSheetProps {
+  routine: RoutineGroup;
+  onClose: () => void;
+}
+
+function DeferRoutineSheet({ routine, onClose }: DeferRoutineSheetProps) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const uid = user?.uid ?? getCachedUid();
+  const [saving, setSaving] = useState(false);
+
+  const isCurrentlyDeferred =
+    routine.deferUntil && routine.deferUntil.toDate() > new Date();
+
+  const handleDefer = async (days: number) => {
+    if (!uid) return;
+    setSaving(true);
+    try {
+      const until = new Date();
+      until.setDate(until.getDate() + days);
+      until.setHours(0, 0, 0, 0);
+      await updateGroup(uid, routine.id!, {
+        deferUntil: Timestamp.fromDate(until),
+        updatedAt: Timestamp.now(),
+      } as Parameters<typeof updateGroup>[2]);
+      showToast(`Routine paused for ${days} day${days !== 1 ? 's' : ''}`, 'success');
+      onClose();
+    } catch {
+      showToast('Could not defer. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!uid) return;
+    setSaving(true);
+    try {
+      await updateGroup(uid, routine.id!, {
+        deferUntil: null,
+        updatedAt: Timestamp.now(),
+      } as Parameters<typeof updateGroup>[2]);
+      showToast('Routine resumed', 'success');
+      onClose();
+    } catch {
+      showToast('Could not resume. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deferUntilLabel = isCurrentlyDeferred
+    ? routine.deferUntil!.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    : null;
+
+  return (
+    <BottomSheet onClose={onClose} title="Defer routine">
+      <div className="sb-rtn-defer-sheet">
+        {isCurrentlyDeferred && (
+          <div className="sb-rtn-defer-current">
+            <span className="sb-rtn-defer-current__label">
+              Currently paused until {deferUntilLabel}
+            </span>
+            <button type="button" className="sb-compose-save-btn" onClick={handleResume} disabled={saving}>
+              Resume now
+            </button>
+          </div>
+        )}
+        <p className="sb-rtn-defer-hint">Pause this routine for:</p>
+        <div className="sb-rtn-chips">
+          {DEFER_OPTIONS.map((opt) => (
+            <button
+              key={opt.days}
+              type="button"
+              className="sb-rtn-chip"
+              onClick={() => handleDefer(opt.days)}
+              disabled={saving}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
 
 export default function RoutineDetailPage() {
   const { routineId } = useParams<{ routineId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -62,6 +276,12 @@ export default function RoutineDetailPage() {
       setAddingTask(false);
     }
   }, [quickAdd, uid, routineId, todayTasks.length, addTodo, showToast]);
+
+  // ── Edit / Defer / Archive sheet state ────────────────────────────────────
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [deferOpen, setDeferOpen] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   // ── Template editing ───────────────────────────────────────────────────────
 
@@ -130,6 +350,12 @@ export default function RoutineDetailPage() {
     }
   }, [uid, routineId, updateGroup, showToast, navigate]);
 
+  // ── Defer status ───────────────────────────────────────────────────────────
+
+  const isDeferred = routine
+    ? !!(routine.deferUntil && routine.deferUntil.toDate() > new Date())
+    : false;
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const sortedTasks = useMemo(
@@ -152,7 +378,10 @@ export default function RoutineDetailPage() {
           <button
             type="button"
             className="sb-rtn-detail-back"
-            onClick={() => navigate('/sandbox/routines')}
+            onClick={() => {
+                const from = (location.state as { from?: string } | null)?.from;
+                navigate(from ?? '/sandbox/routines');
+              }}
           >
             <ArrowLeft size={18} strokeWidth={2} />
           </button>
@@ -163,6 +392,19 @@ export default function RoutineDetailPage() {
   }
 
   return (
+    <>
+    {editOpen && <EditRoutineSheet routine={routine} onClose={() => setEditOpen(false)} />}
+    {deferOpen && <DeferRoutineSheet routine={routine} onClose={() => setDeferOpen(false)} />}
+    {confirmArchive && (
+      <ConfirmSheet
+        title="Archive routine?"
+        message={`"${routine.name}" will be archived. You can find it in the archived section.`}
+        confirmLabel="Archive"
+        danger={false}
+        onConfirm={() => { setConfirmArchive(false); handleArchive(); }}
+        onCancel={() => setConfirmArchive(false)}
+      />
+    )}
     <div className="sb-rtn-detail-page">
 
       {/* ── Header ── */}
@@ -179,11 +421,16 @@ export default function RoutineDetailPage() {
           <h1 className="sb-rtn-detail-title">{routine.name}</h1>
           <span className="sb-rtn-detail-subtitle">
             {recurrenceLabel(routine.recurrence)} · {routine.spawnTime}
+            {isDeferred && (
+              <span className="sb-rtn-detail-deferred-badge">
+                · Paused until {routine.deferUntil!.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </span>
+            )}
           </span>
         </div>
 
         <div className="sb-rtn-detail-header-right">
-          {routine.streakCount > 0 && (
+          {routine.streakCount > 0 && !isDeferred && (
             <div className="sb-rtn-detail-streak">
               <Flame size={14} strokeWidth={2} />
               <span>{routine.streakCount}</span>
@@ -192,7 +439,23 @@ export default function RoutineDetailPage() {
           <button
             type="button"
             className="sb-rtn-detail-archive-btn"
-            onClick={handleArchive}
+            onClick={() => setDeferOpen(true)}
+            title="Defer routine"
+          >
+            <PauseCircle size={15} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className="sb-rtn-detail-archive-btn"
+            onClick={() => setEditOpen(true)}
+            title="Edit routine"
+          >
+            <Edit2 size={15} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className="sb-rtn-detail-archive-btn"
+            onClick={() => setConfirmArchive(true)}
             title="Archive routine"
           >
             <Archive size={15} strokeWidth={2} />
@@ -350,5 +613,6 @@ export default function RoutineDetailPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

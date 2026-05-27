@@ -77,9 +77,7 @@ export function subscribeToAllGroups(
 ): Unsubscribe {
   const q = query(groupsCol(uid), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snap) => {
-    const groups = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as Group))
-      .filter((g) => !g.archivedAt);
+    const groups = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Group));
     cb(groups);
   });
 }

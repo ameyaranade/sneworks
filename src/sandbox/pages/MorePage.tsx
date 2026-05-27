@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ShoppingCart, ChevronRight, Heart, FolderOpen, Settings, LogOut, Moon, Sun } from 'lucide-react';
+import { Plus, ShoppingCart, ChevronRight, Heart, Settings, LogOut, Moon, Sun, Bell, Type } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { useAuth, getCachedUid } from '../../auth/AuthContext';
@@ -131,118 +131,6 @@ function GroupCard({ group }: GroupCardProps) {
   );
 }
 
-// ── New Project Sheet ──────────────────────────────────────────────────────────
-
-interface NewProjectSheetProps {
-  onClose: () => void;
-}
-
-function NewProjectSheet({ onClose }: NewProjectSheetProps) {
-  const { user } = useAuth();
-  const { showToast } = useToast();
-  const addGroup = useGroupsStore((s) => s.addGroup);
-  const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const uid = user?.uid ?? getCachedUid();
-
-  const handleCreate = async () => {
-    if (!uid || !name.trim()) return;
-    setSaving(true);
-    try {
-      const groupId = await addGroup(uid, {
-        groupKind: 'project',
-        name: name.trim(),
-        ancestorPath: [],
-        showProgress: true,
-        showSumMoney: false,
-        childCount: 0,
-        doneCount: 0,
-        completed: false,
-      } as Parameters<typeof addGroup>[1]);
-      showToast('Project created', 'success');
-      onClose();
-      navigate(`/sandbox/projects/${groupId}`);
-    } catch {
-      showToast('Could not create project. Try again.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <BottomSheet onClose={onClose} title="New project">
-      <div className="sb-new-list-form">
-        <input
-          type="text"
-          className="sb-new-list-input"
-          placeholder="Project name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
-          autoFocus
-          maxLength={80}
-        />
-        <div className="sb-new-list-actions">
-          <button type="button" className="sb-compose-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sb-compose-save-btn"
-            disabled={!name.trim() || saving}
-            onClick={handleCreate}
-          >
-            {saving ? 'Creating…' : 'Create'}
-          </button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
-
-// ── Project card ───────────────────────────────────────────────────────────────
-
-interface ProjectCardProps {
-  group: ShoppingListGroup;
-}
-
-function ProjectCard({ group }: ProjectCardProps) {
-  const navigate = useNavigate();
-  const pct = group.childCount > 0
-    ? Math.round((group.doneCount / group.childCount) * 100)
-    : 0;
-
-  return (
-    <button
-      type="button"
-      className="sb-more-group-card"
-      onClick={() => navigate(`/sandbox/projects/${group.id}`)}
-    >
-      <div className="sb-more-group-card__icon sb-more-group-card__icon--project">
-        <FolderOpen size={16} strokeWidth={2} />
-      </div>
-      <div className="sb-more-group-card__body">
-        <span className="sb-more-group-card__name">{group.name}</span>
-        <span className="sb-more-group-card__meta">
-          {group.childCount === 0
-            ? 'No tasks'
-            : `${group.doneCount}/${group.childCount} done`}
-        </span>
-        {group.showProgress && group.childCount > 0 && (
-          <div className="sb-more-group-card__progress-track">
-            <div
-              className="sb-more-group-card__progress-fill"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        )}
-      </div>
-      <ChevronRight size={14} strokeWidth={2} className="sb-more-group-card__chevron" />
-    </button>
-  );
-}
-
 // ── Settings Sheet ────────────────────────────────────────────────────────────
 
 function SettingsSheet({ onClose }: { onClose: () => void }) {
@@ -250,6 +138,8 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const uid = user?.uid ?? getCachedUid();
   const [settings, setSettings] = useState<Partial<TrackerSettings>>(DEFAULT_SETTINGS);
+  const [toggling, setToggling] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -261,11 +151,45 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
     updateSettings(uid, { darkMode: !settings.darkMode }).catch(console.error);
   };
 
+  const handleNotifications = async () => {
+    if (!uid || toggling) return;
+    setToggling(true);
+    setNotifError(null);
+    try {
+      if (!settings.notificationsEnabled) {
+        const { requestNotificationPermission } = await import('../../firebase/messaging');
+        const token = await requestNotificationPermission();
+        if (!token) {
+          setNotifError('Permission denied. Enable in browser settings.');
+          return;
+        }
+        await updateSettings(uid, {
+          notificationsEnabled: true,
+          fcmToken: token,
+          timezoneOffset: new Date().getTimezoneOffset(),
+        });
+      } else {
+        await updateSettings(uid, { notificationsEnabled: false, fcmToken: '' });
+      }
+    } catch {
+      setNotifError('Failed to update notification settings.');
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const handleFontScale = (scale: 'small' | 'medium' | 'large') => {
+    if (!uid) return;
+    updateSettings(uid, { sbFontScale: scale }).catch(console.error);
+  };
+
   const handleLogout = async () => {
     onClose();
     await signOut(auth);
     navigate('/login');
   };
+
+  const fontScale = settings.sbFontScale ?? 'medium';
 
   return (
     <BottomSheet onClose={onClose} title="Settings">
@@ -285,6 +209,45 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             <span className="sb-settings-toggle__knob" />
           </button>
         </div>
+
+        {/* Font size picker */}
+        <div className="sb-settings-row">
+          <span className="sb-settings-row__icon">
+            <Type size={16} strokeWidth={2} />
+          </span>
+          <span className="sb-settings-row__label">Font size</span>
+          <div className="sb-settings-font-picker">
+            {(['small', 'medium', 'large'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`sb-settings-font-btn${fontScale === s ? ' sb-settings-font-btn--active' : ''}`}
+                onClick={() => handleFontScale(s)}
+                aria-label={`Font size ${s}`}
+              >
+                {s === 'small' ? 'A' : s === 'medium' ? 'A' : 'A'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Notifications toggle */}
+        <div className="sb-settings-row">
+          <span className="sb-settings-row__icon">
+            <Bell size={16} strokeWidth={2} />
+          </span>
+          <span className="sb-settings-row__label">Notifications</span>
+          <button
+            type="button"
+            className={`sb-settings-toggle${settings.notificationsEnabled ? ' sb-settings-toggle--on' : ''}`}
+            onClick={handleNotifications}
+            disabled={toggling}
+            aria-label="Toggle notifications"
+          >
+            <span className="sb-settings-toggle__knob" />
+          </button>
+        </div>
+        {notifError && <p className="sb-settings-error">{notifError}</p>}
 
         {/* Account */}
         <div className="sb-settings-divider" />
@@ -311,8 +274,6 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
 
 export default function MorePage() {
   const [newListOpen, setNewListOpen] = useState(false);
-  const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [completedProjectsOpen, setCompletedProjectsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const navigate = useNavigate();
   const { openComposeTodo } = useSandboxUI();
@@ -322,8 +283,6 @@ export default function MorePage() {
 
   const groups = useGroupsStore((s) => s.groups);
   const getActiveShoppingLists = useGroupsStore((s) => s.getActiveShoppingLists);
-  const getActiveProjects = useGroupsStore((s) => s.getActiveProjects);
-  const getCompletedProjects = useGroupsStore((s) => s.getCompletedProjects);
 
   const todos = useTodosStore((s) => s.todos);
   const getUngroupedShoppingItems = useTodosStore((s) => s.getUngroupedShoppingItems);
@@ -331,10 +290,6 @@ export default function MorePage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const activeLists = useMemo(() => getActiveShoppingLists(), [groups]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeProjects = useMemo(() => getActiveProjects(), [groups]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const completedProjects = useMemo(() => getCompletedProjects(), [groups]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const ungroupedItems = useMemo(() => getUngroupedShoppingItems(), [todos]);
 
@@ -349,69 +304,13 @@ export default function MorePage() {
 
   return (
     <div className="sb-more-page">
-      {/* ── Projects ── */}
-      <section className="sb-more-section">
-        <div className="sb-more-section-header">
-          <span className="sb-more-section-title">Projects</span>
-          <button
-            type="button"
-            className="sb-more-new-btn"
-            onClick={() => setNewProjectOpen(true)}
-            aria-label="New project"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            New project
-          </button>
-        </div>
-
-        {activeProjects.length === 0 ? (
-          <div className="sb-more-empty">
-            <p>No active projects.</p>
-            <p>Tap New project to track tasks and goals.</p>
-          </div>
-        ) : (
-          <div className="sb-more-group-list">
-            {activeProjects.map((p) => (
-              <ProjectCard key={p.id} group={p as ShoppingListGroup} />
-            ))}
-          </div>
-        )}
-
-        {/* ── Completed projects toggle ── */}
-        {completedProjects.length > 0 && (
-          <div className="sb-more-completed-section">
-            <button
-              type="button"
-              className="sb-more-completed-toggle"
-              onClick={() => setCompletedProjectsOpen((v) => !v)}
-            >
-              <span>Completed</span>
-              <span className="sb-more-completed-toggle__count">{completedProjects.length}</span>
-              <svg
-                className={`sb-more-completed-toggle__chevron${completedProjectsOpen ? ' sb-more-completed-toggle__chevron--open' : ''}`}
-                viewBox="0 0 12 12" width="12" height="12" fill="none"
-              >
-                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {completedProjectsOpen && (
-              <div className="sb-more-group-list sb-more-group-list--completed">
-                {completedProjects.map((p) => (
-                  <ProjectCard key={p.id} group={p as ShoppingListGroup} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
       {/* ── Shopping Lists ── */}
       <section className="sb-more-section">
         <div className="sb-more-section-header">
           <span className="sb-more-section-title">Shopping lists</span>
           <button
             type="button"
-            className="sb-more-new-btn"
+            className="sb-action-chip"
             onClick={() => setNewListOpen(true)}
             aria-label="New list"
           >
@@ -441,7 +340,7 @@ export default function MorePage() {
             <span className="sb-more-section-title">Items to buy</span>
             <button
               type="button"
-              className="sb-more-new-btn"
+              className="sb-action-chip"
               onClick={() => openComposeTodo('shopping-item')}
               aria-label="Add item"
             >
@@ -471,7 +370,7 @@ export default function MorePage() {
             <span className="sb-more-section-title">Items to buy</span>
             <button
               type="button"
-              className="sb-more-new-btn"
+              className="sb-action-chip"
               onClick={() => openComposeTodo('shopping-item')}
               aria-label="Add item"
             >
@@ -521,7 +420,6 @@ export default function MorePage() {
       </section>
 
       {newListOpen && <NewListSheet onClose={() => setNewListOpen(false)} />}
-      {newProjectOpen && <NewProjectSheet onClose={() => setNewProjectOpen(false)} />}
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </div>
   );

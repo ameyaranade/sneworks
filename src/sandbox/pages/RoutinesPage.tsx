@@ -1,12 +1,12 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Repeat, ChevronRight, Flame } from 'lucide-react';
+import { Plus, Repeat, ChevronRight, Flame, RotateCcw, IndianRupee, CheckSquare, Trash2, Pencil } from 'lucide-react';
 import { useAuth, getCachedUid } from '../../auth/AuthContext';
 import { useToast } from '../../shared/components/Toast';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import { spawnDueRoutines, recurrenceLabel } from '../firebase/routineSpawner';
 import BottomSheet from '../components/primitives/BottomSheet';
-import type { Group, RoutineGroup, TemplateItem } from '../types';
+import type { Group, RoutineGroup, RecurringTodoGroup, TemplateItem } from '../types';
 import './routines-page.css';
 
 // ─── Recurrence options ───────────────────────────────────────────────────────
@@ -224,6 +224,10 @@ function RoutineCard({ group }: RoutineCardProps) {
   const pct = routine.childCount > 0
     ? Math.round((routine.doneCount / routine.childCount) * 100)
     : 0;
+  const isDeferred = !!(routine.deferUntil && routine.deferUntil.toDate() > new Date());
+  const deferLabel = isDeferred
+    ? routine.deferUntil!.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    : null;
 
   return (
     <button
@@ -237,11 +241,15 @@ function RoutineCard({ group }: RoutineCardProps) {
       <div className="sb-routines-card__body">
         <div className="sb-routines-card__top">
           <span className="sb-routines-card__name">{group.name}</span>
-          <span className="sb-routines-card__badge">
-            {recurrenceLabel(routine.recurrence)}
-          </span>
+          {isDeferred ? (
+            <span className="sb-routines-card__deferred">Paused until {deferLabel}</span>
+          ) : (
+            <span className="sb-routines-card__badge">
+              {recurrenceLabel(routine.recurrence)}
+            </span>
+          )}
         </div>
-        {routine.childCount > 0 && (
+        {!isDeferred && routine.childCount > 0 && (
           <>
             <span className="sb-routines-card__meta">
               {routine.doneCount}/{routine.childCount} today
@@ -251,11 +259,11 @@ function RoutineCard({ group }: RoutineCardProps) {
             </div>
           </>
         )}
-        {routine.childCount === 0 && (
+        {!isDeferred && routine.childCount === 0 && (
           <span className="sb-routines-card__meta">No items in template</span>
         )}
       </div>
-      {routine.streakCount > 0 && (
+      {routine.streakCount > 0 && !isDeferred && (
         <div className="sb-routines-card__streak">
           <Flame size={12} strokeWidth={2} />
           <span>{routine.streakCount}</span>
@@ -266,15 +274,338 @@ function RoutineCard({ group }: RoutineCardProps) {
   );
 }
 
+// ─── Archived routine row ─────────────────────────────────────────────────────
+
+interface ArchivedRoutineRowProps {
+  group: Group;
+  onRestore: (id: string) => void;
+}
+
+function ArchivedRoutineRow({ group, onRestore }: ArchivedRoutineRowProps) {
+  const routine = group as RoutineGroup;
+  return (
+    <div className="sb-routines-archived-row">
+      <div className="sb-routines-archived-row__icon">
+        <Repeat size={14} strokeWidth={2} />
+      </div>
+      <span className="sb-routines-archived-row__name">{routine.name}</span>
+      <span className="sb-routines-archived-row__badge">
+        {recurrenceLabel(routine.recurrence)}
+      </span>
+      <button
+        type="button"
+        className="sb-routines-archived-row__restore"
+        onClick={() => onRestore(group.id!)}
+        aria-label="Restore routine"
+        title="Restore"
+      >
+        <RotateCcw size={13} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Edit-recurring helpers ───────────────────────────────────────────────────
+
+const EXPENSE_CATS = ['Food', 'Transport', 'Bills', 'Health', 'Shopping', 'Entertainment', 'Other'];
+
+const RECUR_FREQ_OPTS = [
+  { value: 'daily',     label: 'Daily' },
+  { value: 'weekdays',  label: 'Weekdays' },
+  { value: 'weekly',    label: 'Weekly' },
+  { value: 'monthly',   label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly',    label: 'Yearly' },
+] as const;
+type EditRecurFreq = typeof RECUR_FREQ_OPTS[number]['value'];
+
+const MONEY_RECUR_FREQ_OPTS = RECUR_FREQ_OPTS.filter(
+  (o) => o.value !== 'daily' && o.value !== 'weekdays',
+);
+
+const WEEKDAY_CODES_EDIT = [
+  { code: 'MON', label: 'Mon' }, { code: 'TUE', label: 'Tue' },
+  { code: 'WED', label: 'Wed' }, { code: 'THU', label: 'Thu' },
+  { code: 'FRI', label: 'Fri' }, { code: 'SAT', label: 'Sat' },
+  { code: 'SUN', label: 'Sun' },
+] as const;
+
+function parseRecurrence(r: string): { freq: EditRecurFreq; dayCode: string; dueDay: number } {
+  if (r.startsWith('weekly:'))    return { freq: 'weekly',    dayCode: r.split(':')[1], dueDay: 1 };
+  if (r.startsWith('monthly:'))   return { freq: 'monthly',   dayCode: 'MON', dueDay: Number(r.split(':')[1]) };
+  if (r.startsWith('quarterly:')) return { freq: 'quarterly', dayCode: 'MON', dueDay: Number(r.split(':')[1]) };
+  if (r.startsWith('yearly:'))    return { freq: 'yearly',    dayCode: 'MON', dueDay: Number(r.split(':')[1]) };
+  return { freq: r as EditRecurFreq, dayCode: 'MON', dueDay: 1 };
+}
+
+function buildRecurrenceEdit(freq: EditRecurFreq, dayCode: string, dueDay: number): string {
+  if (freq === 'weekly')    return `weekly:${dayCode}`;
+  if (freq === 'monthly')   return `monthly:${dueDay}`;
+  if (freq === 'quarterly') return `quarterly:${dueDay}`;
+  if (freq === 'yearly')    return `yearly:${dueDay}`;
+  return freq;
+}
+
+// ─── Edit Recurring Sheet ─────────────────────────────────────────────────────
+
+interface EditRecurringSheetProps {
+  group: RecurringTodoGroup;
+  onClose: () => void;
+}
+
+function EditRecurringSheet({ group, onClose }: EditRecurringSheetProps) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const uid = user?.uid ?? getCachedUid();
+
+  const isPayment = group.recurTodoType === 'money-reminder';
+  const parsed = parseRecurrence(group.recurrence);
+
+  const [name, setName]       = useState(group.name);
+  const [amount, setAmount]   = useState(group.amount != null ? String(group.amount) : '');
+  const [category, setCategory] = useState(group.category ?? '');
+  const [freq, setFreq]       = useState<EditRecurFreq>(parsed.freq);
+  const [dayCode, setDayCode] = useState(parsed.dayCode);
+  const [dueDay, setDueDay]   = useState(parsed.dueDay || 1);
+  const [saving, setSaving]   = useState(false);
+
+  const freqOpts = isPayment ? MONEY_RECUR_FREQ_OPTS : RECUR_FREQ_OPTS;
+
+  const handleSave = async () => {
+    if (!name.trim() || !uid) return;
+    setSaving(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const patch: Record<string, any> = {
+        name: name.trim(),
+        recurrence: buildRecurrenceEdit(freq, dayCode, dueDay),
+      };
+      if (isPayment) {
+        patch.amount   = amount ? Number(amount) : undefined;
+        patch.category = category || undefined;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateGroup(uid, group.id!, patch as any);
+      showToast('Updated', 'success');
+      onClose();
+    } catch {
+      showToast('Could not update. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title="Edit recurring">
+      <div className="sb-rtn-sheet-form">
+        {/* Name */}
+        <input
+          type="text"
+          className="sb-proj-sheet-input"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+          maxLength={200}
+        />
+
+        {/* Payment-only fields */}
+        {isPayment && (
+          <>
+            <div className="sb-rtn-field">
+              <label className="sb-rtn-field-label">Amount (optional)</label>
+              <input
+                type="number"
+                className="sb-compose-input"
+                placeholder="₹ Amount"
+                value={amount}
+                min={0}
+                step={0.01}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <div className="sb-rtn-field">
+              <label className="sb-rtn-field-label">Category</label>
+              <div className="sb-rtn-chips">
+                {EXPENSE_CATS.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`sb-rtn-chip${category === cat ? ' sb-rtn-chip--active' : ''}`}
+                    onClick={() => setCategory(category === cat ? '' : cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Repeat frequency */}
+        <div className="sb-rtn-field">
+          <label className="sb-rtn-field-label">Repeat</label>
+          <div className="sb-rtn-chips">
+            {freqOpts.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`sb-rtn-chip${freq === opt.value ? ' sb-rtn-chip--active' : ''}`}
+                onClick={() => setFreq(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {freq === 'weekly' && (
+            <div className="sb-rtn-chips sb-rtn-chips--days" style={{ marginTop: 6 }}>
+              {WEEKDAY_CODES_EDIT.map((d) => (
+                <button
+                  key={d.code}
+                  type="button"
+                  className={`sb-rtn-chip sb-rtn-chip--sm${dayCode === d.code ? ' sb-rtn-chip--active' : ''}`}
+                  onClick={() => setDayCode(d.code)}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {(freq === 'monthly' || freq === 'quarterly' || freq === 'yearly') && (
+            <div className="sb-rtn-field" style={{ marginTop: 8 }}>
+              <label className="sb-rtn-field-label">
+                {freq === 'monthly'
+                  ? 'Day of month'
+                  : freq === 'quarterly'
+                  ? 'Day of month (Jan/Apr/Jul/Oct)'
+                  : 'Day of year (in January)'}
+              </label>
+              <input
+                type="number"
+                className="sb-compose-input"
+                min={1}
+                max={28}
+                value={dueDay}
+                onChange={(e) => setDueDay(Math.min(28, Math.max(1, Number(e.target.value))))}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="sb-proj-sheet-actions">
+          <button type="button" className="sb-compose-cancel-btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="sb-compose-save-btn"
+            disabled={!name.trim() || saving}
+            onClick={handleSave}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ─── Recurring single-todo card ───────────────────────────────────────────────
+
+interface RecurringTodoCardProps {
+  group: RecurringTodoGroup;
+  onDelete: (id: string) => void;
+  onEdit: (group: RecurringTodoGroup) => void;
+}
+
+function RecurringTodoCard({ group, onDelete, onEdit }: RecurringTodoCardProps) {
+  const isPayment = group.recurTodoType === 'money-reminder';
+  return (
+    <div className="sb-routines-recurring-card">
+      <div className={`sb-routines-recurring-card__icon${isPayment ? ' sb-routines-recurring-card__icon--payment' : ''}`}>
+        {isPayment
+          ? <IndianRupee size={14} strokeWidth={2} />
+          : <CheckSquare size={14} strokeWidth={2} />}
+      </div>
+      <div className="sb-routines-recurring-card__body">
+        <span className="sb-routines-recurring-card__name">{group.name}</span>
+        <span className="sb-routines-recurring-card__meta">
+          {recurrenceLabel(group.recurrence)}
+          {isPayment && group.amount != null ? ` · ₹${group.amount}` : ''}
+        </span>
+      </div>
+      <div className="sb-routines-recurring-card__btns">
+        <button
+          type="button"
+          className="sb-routines-recurring-card__edit"
+          onClick={() => onEdit(group)}
+          aria-label="Edit"
+          title="Edit"
+        >
+          <Pencil size={13} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className="sb-routines-recurring-card__delete"
+          onClick={() => onDelete(group.id!)}
+          aria-label="Delete"
+          title="Delete"
+        >
+          <Trash2 size={13} strokeWidth={2} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function RoutinesPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<RecurringTodoGroup | null>(null);
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
   const groups = useGroupsStore((s) => s.groups);
   const getActiveRoutines = useGroupsStore((s) => s.getActiveRoutines);
+  const getArchivedRoutines = useGroupsStore((s) => s.getArchivedRoutines);
+  const getActiveRecurringTodos = useGroupsStore((s) => s.getActiveRecurringTodos);
+  const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const deleteGroup = useGroupsStore((s) => s.deleteGroup);
+
+  const uid = user?.uid ?? getCachedUid();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const routines = useMemo(() => getActiveRoutines(), [groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const archivedRoutines = useMemo(() => getArchivedRoutines(), [groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const recurringTodos = useMemo(() => getActiveRecurringTodos(), [groups]);
+
+  const handleRestore = useCallback(async (id: string) => {
+    if (!uid) return;
+    try {
+      await updateGroup(uid, id, { archivedAt: undefined });
+      showToast('Routine restored', 'success');
+    } catch {
+      showToast('Could not restore routine', 'error');
+    }
+  }, [uid, updateGroup, showToast]);
+
+  const handleDeleteRecurring = useCallback(async (id: string) => {
+    if (!uid) return;
+    try {
+      await deleteGroup(uid, id);
+      showToast('Deleted', 'success');
+    } catch {
+      showToast('Could not delete', 'error');
+    }
+  }, [uid, deleteGroup, showToast]);
 
   return (
     <div className="sb-routines-page">
@@ -282,7 +613,7 @@ export default function RoutinesPage() {
         <h1 className="sb-routines-title">Routines</h1>
         <button
           type="button"
-          className="sb-routine-action-btn"
+          className="sb-action-chip"
           onClick={() => setSheetOpen(true)}
         >
           <Plus size={14} strokeWidth={2.5} />
@@ -304,9 +635,52 @@ export default function RoutinesPage() {
             ))}
           </div>
         )}
+
+        {recurringTodos.length > 0 && (
+          <div className="sb-routines-recurring-section">
+            <div className="sb-routines-recurring-section__header">
+              <span className="sb-routines-recurring-section__title">Recurring</span>
+              <span className="sb-routines-recurring-section__sub">Spawns a task each cycle</span>
+            </div>
+            <div className="sb-routines-recurring-list">
+              {recurringTodos.map((r) => (
+                <RecurringTodoCard key={r.id} group={r} onDelete={handleDeleteRecurring} onEdit={setEditingGroup} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {archivedRoutines.length > 0 && (
+          <div className="sb-routines-archived">
+            <button
+              type="button"
+              className="sb-routines-archived-toggle"
+              onClick={() => setArchivedOpen((v) => !v)}
+            >
+              <span>Archived</span>
+              <span className="sb-routines-archived-toggle__count">{archivedRoutines.length}</span>
+              <svg
+                className={`sb-routines-archived-toggle__chevron${archivedOpen ? ' sb-routines-archived-toggle__chevron--open' : ''}`}
+                viewBox="0 0 12 12" width="12" height="12" fill="none"
+              >
+                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {archivedOpen && (
+              <div className="sb-routines-archived-list">
+                {archivedRoutines.map((r) => (
+                  <ArchivedRoutineRow key={r.id} group={r} onRestore={handleRestore} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {sheetOpen && <NewRoutineSheet onClose={() => setSheetOpen(false)} />}
+      {editingGroup && (
+        <EditRecurringSheet group={editingGroup} onClose={() => setEditingGroup(null)} />
+      )}
     </div>
   );
 }

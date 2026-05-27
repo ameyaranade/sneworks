@@ -1,4 +1,4 @@
-.sb-defer-options {
+﻿.sb-defer-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -35,14 +35,14 @@
 
 .sb-defer-btn__label {
   font-family: var(--sb-font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--sb-font-scale, 1));
   font-weight: 500;
   color: var(--sb-text);
 }
 
 .sb-defer-btn__date {
   font-family: var(--sb-font-body);
-  font-size: 11px;
+  font-size: calc(11px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
 }
 
@@ -60,7 +60,7 @@
 
 .sb-defer-custom__label {
   font-family: var(--sb-font-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--sb-font-scale, 1));
   font-weight: 500;
   color: var(--sb-text-muted);
   text-transform: uppercase;
@@ -82,7 +82,7 @@
   border-radius: var(--sb-radius-input);
   color: var(--sb-text);
   font-family: var(--sb-font-body);
-  font-size: 13px;
+  font-size: calc(13px * var(--sb-font-scale, 1));
   outline: none;
   box-sizing: border-box;
   transition: border-color var(--sb-transition-fast);
@@ -101,7 +101,7 @@
   border: none;
   border-radius: var(--sb-radius-btn);
   font-family: var(--sb-font-body);
-  font-size: 14px;
+  font-size: calc(14px * var(--sb-font-scale, 1));
   font-weight: 600;
   cursor: pointer;
   transition: opacity var(--sb-transition-fast);

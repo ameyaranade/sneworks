@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Archive, FolderOpen, ChevronRight, Plus } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Archive, FolderOpen, ChevronRight, Plus, Copy } from 'lucide-react';
 import { useAuth, getCachedUid } from '../../auth/AuthContext';
 import { useToast } from '../../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';
@@ -8,6 +8,7 @@ import { useGroupsStore } from '../stores/useGroupsStore';
 import { recomputeGroupCounts } from '../firebase/groupQueries';
 import { useSandboxUI } from '../context/SandboxUIContext';
 import BottomSheet from '../components/primitives/BottomSheet';
+import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import TodoRow from '../components/rows/TodoRow';
 import { Timestamp } from 'firebase/firestore';
 import type { Group, Todo } from '../types';
@@ -134,6 +135,7 @@ function SubProjectCard({ group }: SubProjectCardProps) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { showToast } = useToast();
   const { openComposeForGroup } = useSandboxUI();
@@ -168,6 +170,8 @@ export default function ProjectDetailPage() {
   // ── New sub-project sheet ────────────────────────────────────────────────
 
   const [subProjectSheetOpen, setSubProjectSheetOpen] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+
 
   // ── Inline add task ──────────────────────────────────────────────────────
 
@@ -213,12 +217,15 @@ export default function ProjectDetailPage() {
   // ── Back navigation ──────────────────────────────────────────────────────
 
   const handleBack = useCallback(() => {
-    if (project?.parentGroupId) {
+    const from = (location.state as { from?: string } | null)?.from;
+    if (from) {
+      navigate(from);
+    } else if (project?.parentGroupId) {
       navigate(`/sandbox/projects/${project.parentGroupId}`);
     } else {
-      navigate('/sandbox/more');
+      navigate('/sandbox/projects');
     }
-  }, [project, navigate]);
+  }, [project, navigate, location]);
 
   // ── Guards ───────────────────────────────────────────────────────────────
 
@@ -231,7 +238,7 @@ export default function ProjectDetailPage() {
           <button
             type="button"
             className="sb-proj-back-btn"
-            onClick={() => navigate('/sandbox/more')}
+            onClick={() => navigate('/sandbox/projects')}
           >
             <ArrowLeft size={18} strokeWidth={2} />
           </button>
@@ -248,9 +255,48 @@ export default function ProjectDetailPage() {
   const doneSubGroupCount = subGroups.filter((sg) => sg.completed).length;
   const totalItems = allGroupTasks.length + subGroups.length;
   const doneItems = doneTaskCount + doneSubGroupCount;
+
+  const handleExport = () => {
+    const lines: string[] = [
+      project.name,
+      project.description ?? '',
+      `Progress: ${doneItems}/${totalItems}`,
+      '',
+    ];
+    if (subGroups.length > 0) {
+      lines.push('Sub-projects:');
+      for (const sg of subGroups) {
+        lines.push(`  ${sg.completed ? '✓' : '·'} ${sg.name} (${sg.doneCount}/${sg.childCount})`);
+      }
+      lines.push('');
+    }
+    if (sortedTasks.length > 0) {
+      lines.push('Tasks:');
+      for (const t of sortedTasks) {
+        const done = t.status === 'done' || t.status === 'skipped';
+        lines.push(`  ${done ? '✓' : '○'} ${t.title}`);
+      }
+    }
+    const text = lines.filter(Boolean).join('\n');
+    navigator.clipboard.writeText(text).then(
+      () => showToast('Copied to clipboard', 'success'),
+      () => showToast('Could not copy', 'error'),
+    );
+  };
   const progress = totalItems > 0 ? doneItems / totalItems : 0;
 
   return (
+    <>
+    {confirmArchive && (
+      <ConfirmSheet
+        title="Archive project?"
+        message={`"${project.name}" will be archived.`}
+        confirmLabel="Archive"
+        danger={false}
+        onConfirm={() => { setConfirmArchive(false); handleArchive(); }}
+        onCancel={() => setConfirmArchive(false)}
+      />
+    )}
     <div className="sb-proj">
       {/* ── Header ── */}
       <div className="sb-proj-header">
@@ -275,7 +321,16 @@ export default function ProjectDetailPage() {
         <button
           type="button"
           className="sb-proj-archive-btn"
-          onClick={handleArchive}
+          onClick={handleExport}
+          aria-label="Copy project"
+          title="Copy to clipboard"
+        >
+          <Copy size={15} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className="sb-proj-archive-btn"
+          onClick={() => setConfirmArchive(true)}
           aria-label="Archive project"
           title="Archive project"
         >
@@ -315,7 +370,7 @@ export default function ProjectDetailPage() {
               </span>
               <button
                 type="button"
-                className="sb-proj-action-btn"
+                className="sb-action-chip"
                 onClick={() => setSubProjectSheetOpen(true)}
               >
                 <Plus size={13} strokeWidth={2.5} />
@@ -346,7 +401,7 @@ export default function ProjectDetailPage() {
             </span>
             <button
               type="button"
-              className="sb-proj-action-btn"
+              className="sb-action-chip"
               onClick={() => openComposeForGroup(projectId, 'generic-task')}
             >
               <Plus size={13} strokeWidth={2.5} />
@@ -398,5 +453,6 @@ export default function ProjectDetailPage() {
         />
       )}
     </div>
+    </>
   );
 }

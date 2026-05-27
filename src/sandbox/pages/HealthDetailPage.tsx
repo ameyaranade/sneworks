@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Heart, Trash2 } from 'lucide-react';
+import { Heart, Trash2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth, getCachedUid } from '../../auth/AuthContext';
 import { useToast } from '../../shared/components/Toast';
 import { useLogsStore, type DayGroup } from '../stores/useLogsStore';
@@ -147,6 +148,7 @@ function EmptyState() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function HealthDetailPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -183,6 +185,14 @@ export default function HealthDetailPage() {
   return (
     <div className="sb-health-page">
       <div className="sb-health-header">
+        <button
+          type="button"
+          className="sb-health-back-btn"
+          onClick={() => navigate('/sandbox/more')}
+          aria-label="Back"
+        >
+          <ArrowLeft size={18} strokeWidth={2} />
+        </button>
         <h1 className="sb-health-heading">Health</h1>
       </div>
 

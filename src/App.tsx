@@ -32,6 +32,7 @@ const SandboxRoutinesPage = lazy(() => import('./sandbox/pages/RoutinesPage'));
 const SandboxTimelinePage = lazy(() => import('./sandbox/pages/TimelinePage'));
 const SandboxMorePage = lazy(() => import('./sandbox/pages/MorePage'));
 const SandboxGroupDetailPage = lazy(() => import('./sandbox/pages/GroupDetailPage'));
+const SandboxProjectsPage = lazy(() => import('./sandbox/pages/ProjectsPage'));
 const SandboxProjectPage = lazy(() => import('./sandbox/pages/ProjectDetailPage'));
 const SandboxRoutineDetailPage = lazy(() => import('./sandbox/pages/RoutineDetailPage'));
 const SandboxHealthPage = lazy(() => import('./sandbox/pages/HealthDetailPage'));
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="timeline" element={<SandboxTimelinePage />} />
               <Route path="more" element={<SandboxMorePage />} />
               <Route path="groups/:groupId" element={<SandboxGroupDetailPage />} />
+              <Route path="projects" element={<SandboxProjectsPage />} />
               <Route path="projects/:projectId" element={<SandboxProjectPage />} />
               <Route path="routines/:routineId" element={<SandboxRoutineDetailPage />} />
               <Route path="health" element={<SandboxHealthPage />} />

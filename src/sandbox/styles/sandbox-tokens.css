@@ -38,7 +38,14 @@
   /* ── Layout ── */
   --sb-nav-height: 64px;
   --sb-touch-target: 44px;
+
+  /* ── Font scale (overridden by data-sandbox-font attribute) ── */
+  --sb-font-scale: 1;
 }
+
+[data-sandbox-font="small"]  { --sb-font-scale: 0.88; }
+[data-sandbox-font="medium"] { --sb-font-scale: 1;    }
+[data-sandbox-font="large"]  { --sb-font-scale: 1.15; }
 
 /* ── Dark mode ─────────────────────────────────────────────────────────────── */
 [data-sandbox-theme="dark"] {
