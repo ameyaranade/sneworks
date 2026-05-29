@@ -344,7 +344,7 @@ export default function RoutineDetailPage() {
         updatedAt: Timestamp.now(),
       });
       showToast('Routine archived', 'success');
-      navigate('/sandbox/routines');
+      navigate('/routines');
     } catch {
       showToast('Could not archive', 'error');
     }
@@ -380,7 +380,7 @@ export default function RoutineDetailPage() {
             className="sb-rtn-detail-back"
             onClick={() => {
                 const from = (location.state as { from?: string } | null)?.from;
-                navigate(from ?? '/sandbox/routines');
+                navigate(from ?? '/routines');
               }}
           >
             <ArrowLeft size={18} strokeWidth={2} />
@@ -412,7 +412,7 @@ export default function RoutineDetailPage() {
         <button
           type="button"
           className="sb-rtn-detail-back"
-          onClick={() => navigate('/sandbox/routines')}
+          onClick={() => navigate('/routines')}
         >
           <ArrowLeft size={18} strokeWidth={2} />
         </button>

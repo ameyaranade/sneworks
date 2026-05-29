@@ -1,0 +1,166 @@
+/* ── EditRecurringSheet ───────────────────────────────────────────────────────
+   Styles for the shared recurring-todo edit bottom sheet.
+   Classes are extracted from routines-page.css / compose-sheet.css so this
+   component works regardless of which page CSS has been lazy-loaded. */
+
+/* ── Form wrapper ── */
+.sb-rtn-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Title input ── */
+.sb-proj-sheet-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--sb-border-strong);
+  padding: 6px 0;
+  color: var(--sb-text);
+  font-family: var(--sb-font-display);
+  font-size: calc(20px * var(--sb-font-scale, 1));
+  font-weight: 400;
+  outline: none;
+  letter-spacing: -0.01em;
+  box-sizing: border-box;
+  transition: border-color var(--sb-transition-fast);
+}
+
+.sb-proj-sheet-input:focus {
+  border-bottom-color: var(--sb-accent);
+}
+
+.sb-proj-sheet-input::placeholder {
+  color: var(--sb-text-muted);
+}
+
+/* ── Field group ── */
+.sb-rtn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sb-rtn-field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sb-font-body);
+  font-size: calc(11px * var(--sb-font-scale, 1));
+  font-weight: 600;
+  color: var(--sb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ── Number input (amount, day-of-month) ── */
+.sb-compose-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--sb-bg-input);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-input);
+  color: var(--sb-text);
+  font-family: var(--sb-font-body);
+  font-size: calc(13px * var(--sb-font-scale, 1));
+  outline: none;
+  transition: border-color var(--sb-transition-fast);
+  color-scheme: dark;
+  box-sizing: border-box;
+}
+
+.sb-compose-input:focus {
+  border-color: var(--sb-accent);
+}
+
+/* ── Chips ── */
+.sb-rtn-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sb-rtn-chips--days {
+  gap: 5px;
+}
+
+.sb-rtn-chip {
+  padding: 6px 14px;
+  border-radius: var(--sb-radius-chip);
+  border: 1px solid var(--sb-border);
+  background: var(--sb-bg-card);
+  color: var(--sb-text-dim);
+  font-family: var(--sb-font-body);
+  font-size: calc(13px * var(--sb-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast), color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-rtn-chip:hover {
+  background: var(--sb-bg-card-hover);
+}
+
+.sb-rtn-chip--active {
+  background: var(--sb-accent-glow);
+  border-color: var(--sb-accent);
+  color: var(--sb-accent);
+}
+
+.sb-rtn-chip--sm {
+  padding: 4px 10px;
+  font-size: calc(12px * var(--sb-font-scale, 1));
+}
+
+/* ── Action row (Cancel / Save) ── */
+.sb-proj-sheet-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sb-compose-cancel-btn {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--sb-btn-bg);
+  border: 1px solid var(--sb-btn-border);
+  border-radius: var(--sb-radius-btn);
+  color: var(--sb-text-dim);
+  font-family: var(--sb-font-body);
+  font-size: calc(14px * var(--sb-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--sb-transition-fast), border-color var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-compose-cancel-btn:hover,
+.sb-compose-cancel-btn:active {
+  background: var(--sb-btn-bg-hover);
+  border-color: var(--sb-border-strong);
+}
+
+.sb-compose-save-btn {
+  flex: 2;
+  padding: 12px 16px;
+  background: var(--sb-accent);
+  border: none;
+  border-radius: var(--sb-radius-btn);
+  color: var(--sb-accent-text);
+  font-family: var(--sb-font-body);
+  font-size: calc(14px * var(--sb-font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sb-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sb-compose-save-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sb-compose-save-btn:not(:disabled):active {
+  opacity: 0.85;
+}

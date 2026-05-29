@@ -39,7 +39,7 @@ function NewProjectSheet({ onClose }: NewProjectSheetProps) {
       } as Parameters<typeof addGroup>[1]);
       showToast('Project created', 'success');
       onClose();
-      navigate(`/sandbox/projects/${groupId}`);
+      navigate(`/projects/${groupId}`);
     } catch {
       showToast('Could not create project. Try again.', 'error');
     } finally {
@@ -94,7 +94,7 @@ function ProjectCard({ group }: ProjectCardProps) {
     <button
       type="button"
       className={`sb-projects-card${group.completed ? ' sb-projects-card--done' : ''}`}
-      onClick={() => navigate(`/sandbox/projects/${group.id}`)}
+      onClick={() => navigate(`/projects/${group.id}`)}
     >
       <div className="sb-projects-card__icon">
         <FolderOpen size={16} strokeWidth={2} />
@@ -134,7 +134,7 @@ function ArchivedProjectRow({ group, onRestore }: ArchivedProjectRowProps) {
       <button
         type="button"
         className="sb-projects-archived-row__name-btn"
-        onClick={() => navigate(`/sandbox/projects/${group.id}`)}
+        onClick={() => navigate(`/projects/${group.id}`)}
       >
         <FolderOpen size={13} strokeWidth={2} className="sb-projects-archived-row__icon" />
         <span className="sb-projects-archived-row__name">{group.name}</span>

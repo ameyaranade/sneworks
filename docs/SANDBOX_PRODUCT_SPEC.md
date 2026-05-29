@@ -138,7 +138,7 @@ Discriminated union on `groupKind` field.
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `id` | string | auto | Firestore ID | Document ID |
-| `groupKind` | `'shopping-list' \| 'project' \| 'routine'` | yes | — | Discriminator |
+| `groupKind` | `'shopping-list' \| 'project' \| 'routine' \| 'recurring-todo'` | yes | — | Discriminator |
 | `name` | string | yes | — | Display name |
 | `description` | string | no | — | Optional user notes about the group |
 | `color` | string | no | `'accent'` | Theme color key |
@@ -172,16 +172,30 @@ Discriminated union on `groupKind` field.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `recurrence` | string | yes | — | RRule string |
+| `recurrence` | string | yes | — | Recurrence string: `'daily'`, `'weekdays'`, `'weekly:MON'`, `'monthly:N'`, `'quarterly:N'`, `'yearly:N'` |
 | `spawnTime` | string | yes | `"06:00"` | When to create today's instance |
 | `templateChildren` | TemplateItem[] | yes | `[]` | Items to spawn each cycle |
 | `lastSpawnedAt` | Timestamp | no | — | Tracks most recent spawn |
 | `streakCount` | number | yes | 0 | Consecutive all-done days |
+| `deferUntil` | Timestamp | no | — | If set and > now, routine is paused (skip spawn) |
 
 **TemplateItem shape:**
 ```ts
 { title: string; todoType?: TodoType; scheduledTime?: string; estimatedDuration?: number }
 ```
+
+#### Recurring Todo Group specific fields:
+
+A `RecurringTodoGroup` (`groupKind: 'recurring-todo'`) represents a single repeating task that spawns one todo per due date — as opposed to a `RoutineGroup` which spawns multiple template items.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `recurTodoType` | `'generic-task' \| 'money-reminder'` | yes | — | What kind of todo to spawn each cycle |
+| `recurrence` | string | yes | — | Same encoding as Routine: `'daily'`, `'weekdays'`, `'weekly:MON'`, `'monthly:N'`, `'quarterly:N'`, `'yearly:N'` |
+| `amount` | number | no | — | Money-reminder only: expected payment amount |
+| `category` | string | no | — | Money-reminder only: expense category |
+| `lastSpawnedAt` | Timestamp | no | — | Tracks most recent spawn |
+| `streakCount` | number | yes | 0 | Consecutive completed cycles |
 
 ### 1.5 Recurrence Model
 
@@ -275,21 +289,31 @@ Same behavior on every page. Inside a group detail page, the FAB is context-awar
 
 1. **Overdue** (red section header)
    - All TODOs where `status` is `'pending'` or `'deferred'` AND `dueAt < startOfToday`
-   - Red left-border accent (`--sb-danger`)
-   - Sorted by how overdue (oldest first)
+   - Shopping items (`todoType === 'shopping-item'`) are **excluded** (they have no due-date concept)
+   - Red section title styling (`--sb-danger`)
    - Includes money reminders from previous unpaid cycles
+   - Items belonging to a group are shown as collapsible group cards (same behavior as Up Next)
 
 2. **Up Next** (default section)
    - All TODOs due today with `status` `'pending'` or `'deferred'`, sorted by `dueAt` then `sortOrder`
-   - Items with a `groupId` show an inline breadcrumb: `Diwali › Gifts` in accent text above the title (tapping breadcrumb navigates to group)
+   - **Shopping items (`todoType === 'shopping-item'`) are excluded** — they appear only in the Shopping section below
+   - Items with no `dueAt` (undated inbox tasks) also appear here
    - Items with `pinnedToday === true` also appear here (even if no `dueAt`)
    - Shows time component of `dueAt` if set: "Call mom · 3:00 PM"
    - Routine spawned items appear here with group breadcrumb
+   - Items belonging to a group are shown as **collapsible group cards** (see below)
 
-3. **Active Groups** (collapsed cards)
-   - Groups with pending items, shown as cards with progress ("4/12 done")
-   - Tap to navigate to group detail
-   - Shopping lists show "2/5 bought"
+   **Collapsible group card behavior:**
+   - Items sharing a `groupId` are combined into one card (default **collapsed**)
+   - Card shows: group icon (Repeat for routine/recurring, FolderOpen for project, ShoppingCart for shopping), group name, thin progress bar (if `childCount > 0`), meta line `"N pending · X/Y done"`
+   - Tap the card body to expand/collapse and reveal individual `TodoRow` items
+   - Separate right-side navigation arrow button (chevron-right) navigates directly to the group detail page without toggling expansion
+   - Ungrouped items render as a plain flat list (no card wrapper)
+
+3. **Active Shopping Lists** (cards)
+   - Shopping list groups with at least one item, shown as compact cards
+   - Each card shows: ShoppingCart icon, list name, thin progress bar, `done/total` count
+   - Tap navigates to `GroupDetailPage`
    - **Ungrouped shopping items** appear as a virtual "Shopping" card (only if ungrouped items exist). Tap drills into a checklist view.
 
 4. **Health Summary Card** (conditional)
@@ -311,21 +335,33 @@ Same behavior on every page. Inside a group detail page, the FAB is context-awar
 
 **Purpose:** Manage recurring items — setup, streaks, next-due.
 
-**Data sources:** `useGroupsStore` (filtered to `groupKind === 'routine'`), `useTodosStore` (filtered to those with `recurrence` field)
+**Data sources:** `useGroupsStore` (filtered to `groupKind === 'routine'` and `groupKind === 'recurring-todo'`)
 
 **Sections:**
 
 1. **Active Routines** (group cards)
-   - Each routine group as a card: name, recurrence badge ("Daily" / "Weekdays" / "Weekly"), streak count, next-due date
+   - Each `RoutineGroup` as a card: name, recurrence badge ("Daily" / "Weekdays" / "Weekly"), flame icon + streak count, next-due info
    - Progress shows today's spawned instance: "2/4 done today"
-   - Tap navigates to group detail
+   - Tap navigates to routine detail page (`/sandbox/routines/:groupId`)
+   - Empty state: "No routines yet. Build a daily habit — tap New routine."
 
-2. **Recurring TODOs** (standalone)
-   - Money reminders and generic tasks with `recurrence` field but no `groupId`
-   - Shows: name, next due date, last completed, recurrence badge
-   - Example: "Pay cook salary · Monthly on 1st · Due in 5 days"
+2. **Recurring** section (standalone single-todo recurrences)
+   - Only shown when `RecurringTodoGroup` items (`groupKind === 'recurring-todo'`) exist
+   - Section header: "Recurring" title + "Spawns a task each cycle" subtitle
+   - Each card shows: type icon (IndianRupee for `money-reminder`, CheckSquare for `generic-task`), name, recurrence label (e.g. "Monthly on 1st"), amount if a payment (e.g. `· ₹5000`)
+   - Each card has two action buttons: **edit** (pencil, accent on hover) and **delete** (trash, danger on hover)
+   - Edit opens `EditRecurringSheet` (bottom sheet) with editable fields:
+     - Name (text input)
+     - For `money-reminder`: Amount (optional number input), Category (chip selector from: Food, Transport, Bills, Health, Shopping, Entertainment, Other)
+     - Repeat frequency (chips): Daily/Weekdays/Weekly/Monthly/Quarterly/Yearly (money-reminder hides Daily/Weekdays)
+     - Day picker shown when Weekly (weekday chips Mon–Sun), Monthly/Quarterly/Yearly (day-of-month number input 1–28)
+   - Delete immediately removes the `RecurringTodoGroup` document (with toast)
 
-3. **Create** button → opens GroupCreateSheet with routine kind pre-selected, OR opens compose with recurrence field visible
+3. **Archived** section (collapsible)
+   - Archived routines (`archivedAt` set) shown in a muted collapsible section
+   - Each archived card has a "Restore" button (RotateCcw icon) that clears `archivedAt`
+
+4. **New routine** button → opens `NewRoutineSheet` (creates `RoutineGroup`), navigates to the new routine's detail page and runs `spawnDueRoutines()` immediately
 
 ### 3.3 Timeline Page
 
@@ -364,9 +400,7 @@ Same behavior on every page. Inside a group detail page, the FAB is context-awar
 
 4. **Health** — nav card → `/sandbox/health`
 
-5. **Routines** — nav card (disabled, Phase 6)
-
-6. *(Future)* **Settings** — notification toggle, custom note categories, currency
+5. *(Future)* **Settings** — notification toggle, custom note categories, currency, font size (Small / Medium / Large). Font scale is read from the tracker settings document (`sbFontScale` field) and applied via `data-sandbox-font` attribute on the shell root, which maps to `--sb-font-scale` CSS custom property (0.88 / 1 / 1.15).
 
 ### 3.5 Health Detail Page (`/sandbox/more/health`)
 
@@ -812,7 +846,19 @@ Scoped under `[data-sandbox-theme="dark"]` attribute. Variable prefix: `--sb-`.
 --sb-font-mono: 'JetBrains Mono', monospace;
 ```
 
-### 10.3 Layout
+### 10.3 Font Scale
+
+All font sizes use `calc(Npx * var(--sb-font-scale, 1))`. The shell reads `localStorage['sneworks-font-scale']` on mount and sets `data-sandbox-font` on the root element:
+
+```css
+[data-sandbox-font="small"]  { --sb-font-scale: 0.88; }
+[data-sandbox-font="medium"] { --sb-font-scale: 1;    }   /* default */
+[data-sandbox-font="large"]  { --sb-font-scale: 1.15; }
+```
+
+Persisted to `localStorage['sneworks-font-scale']`. Toggled via the Settings section on the More page.
+
+### 10.4 Layout
 
 ```css
 --sb-nav-height: 64px;
@@ -886,15 +932,31 @@ Scoped under `[data-sandbox-theme="dark"]` attribute. Variable prefix: `--sb-`.
 - `App.tsx` — `/sandbox/projects/:projectId` route
 **Test golden path:** Create project → add tasks → add sub-project → add tasks to sub-project → complete sub-project tasks (sub-project marks complete, parent shows 1/N done) → complete parent tasks (parent "PROJECT COMPLETE") → back to More (project disappears from Active, appears in Completed toggle) → expand Completed → tap project → add task → project re-activates in Active.
 
-### Phase 6: Routines
-**Scope:** Routine group kind, template spawner, routines page, streaks.
+### Phase 6: Routines ✅ Complete
+**Scope:** Routine group kind, `RecurringTodoGroup` kind, template spawner, RoutinesPage, streaks, routine detail page, recurring todo CRUD with edit.
 **Files:**
-- `RoutinesPage`
-- `RoutineCreateSheet`
-- `spawnDueRoutines()` in `routineSpawner.ts`
-- Routine variant of GroupDetailPage
-- Streak tracking
-**Test:** Create daily routines, see them spawn, track streaks.
+- `src/sandbox/pages/RoutinesPage.tsx` — Active routines, Recurring section (with edit/delete), Archived section (with restore), "New routine" button
+- `src/sandbox/pages/routines-page.css`
+- `src/sandbox/pages/RoutineDetailPage.tsx` — Routine detail view at `/sandbox/routines/:groupId`
+- `src/sandbox/pages/routine-detail-page.css`
+- `src/sandbox/firebase/routineSpawner.ts` — `spawnDueRoutines(uid)`, `recurrenceLabel(recurrence)` helper
+- `useGroupsStore` — added `getActiveRoutines()`, `getArchivedRoutines()`, `getActiveRecurringTodos()`
+- `App.tsx` — `/sandbox/routines/:groupId` route
+- `RecurringTodoGroup` interface in `types.ts`
+- `EditRecurringSheet` component inside `RoutinesPage.tsx` — edits name, recurrence, amount, category on `RecurringTodoGroup`
+- `routines-page.css` — `.sb-routines-recurring-card__btns`, `.sb-routines-recurring-card__edit`, `.sb-routines-recurring-card__delete`
+
+**Recurrence string encoding (actual implementation):**
+```
+'daily'           → every day
+'weekdays'        → Mon–Fri
+'weekly:MON'      → every Monday (any weekday code)
+'monthly:N'       → Nth of each month
+'quarterly:N'     → Nth of Jan/Apr/Jul/Oct
+'yearly:N'        → Nth of January each year
+```
+
+**Test golden path:** Create daily routine → see it appear → tap to open detail → see spawned items → complete all → streak increments. Create recurring money-reminder → see it in Recurring section → edit name/amount/frequency → save. Delete recurring item. Archive routine → appears in Archived → restore.
 
 ### Phase 7: Notifications + Polish
 **Scope:** FCM integration, Cloud Function extension, archive flows, search.

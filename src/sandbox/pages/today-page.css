@@ -133,52 +133,142 @@
   margin-bottom: 2px;
 }
 
-.sb-today-group-label {
+/* ── Collapsible group card ── */
+.sb-today-grouped-card {
+  margin: 2px 16px 6px;
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-card);
+  overflow: hidden;
+  background: var(--sb-bg-card);
+}
+
+.sb-today-grouped-card__header {
+  display: flex;
+  align-items: stretch;
+}
+
+.sb-today-grouped-card__toggle {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 20px 4px;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  flex: 1;
+  min-width: 0;
   background: none;
   border: none;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  width: 100%;
   text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--sb-transition-fast);
 }
 
-.sb-today-group-label:hover .sb-today-group-label__name {
-  color: var(--sb-text-dim);
+.sb-today-grouped-card__toggle:active {
+  background: var(--sb-bg-card-hover);
 }
 
-.sb-today-group-label__icon {
+.sb-today-grouped-card__icon {
   display: flex;
   align-items: center;
-  color: var(--sb-text-muted);
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   flex-shrink: 0;
 }
 
-.sb-today-group-label__name {
-  font-family: var(--sb-font-body);
-  font-size: calc(11px * var(--sb-font-scale, 1));
-  font-weight: 600;
-  color: var(--sb-text-muted);
-  letter-spacing: 0.04em;
+.sb-today-grouped-card__icon--routine {
+  background: color-mix(in srgb, var(--sb-purple) 14%, transparent);
+  color: var(--sb-purple);
+}
+
+.sb-today-grouped-card__icon--project {
+  background: var(--sb-accent-glow);
+  color: var(--sb-accent);
+}
+
+.sb-today-grouped-card__body {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color var(--sb-transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.sb-today-group-label__count {
-  font-family: var(--sb-font-mono);
-  font-size: calc(10px * var(--sb-font-scale, 1));
+.sb-today-grouped-card__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb-today-grouped-card__name {
+  font-family: var(--sb-font-body);
+  font-size: calc(13px * var(--sb-font-scale, 1));
+  font-weight: 500;
+  color: var(--sb-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-today-grouped-card__bar-track {
+  height: 2px;
+  background: var(--sb-border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.sb-today-grouped-card__bar-fill {
+  height: 100%;
+  background: var(--sb-accent);
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+.sb-today-grouped-card__meta {
+  font-family: var(--sb-font-body);
+  font-size: calc(11px * var(--sb-font-scale, 1));
   color: var(--sb-text-muted);
-  background: var(--sb-bg-card);
-  padding: 1px 5px;
-  border-radius: var(--sb-radius-chip);
+}
+
+.sb-today-grouped-card__chevron {
+  color: var(--sb-text-muted);
   flex-shrink: 0;
+  opacity: 0.55;
+  transition: transform 0.2s ease;
+}
+
+.sb-today-grouped-card__chevron--open {
+  transform: rotate(180deg);
+}
+
+.sb-today-grouped-card__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  border: none;
+  border-left: 1px solid var(--sb-border);
+  background: transparent;
+  color: var(--sb-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.45;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--sb-transition-fast), opacity var(--sb-transition-fast);
+}
+
+.sb-today-grouped-card__nav:active {
+  background: var(--sb-bg-card-hover);
+  opacity: 1;
+}
+
+/* Expanded rows — each TodoRow sits inside the card */
+.sb-today-grouped-card__rows {
+  border-top: 1px solid var(--sb-border);
+}
+
+.sb-today-grouped-card__rows > * + * {
+  border-top: 1px solid var(--sb-border);
 }
 
 .sb-today-content {
@@ -354,10 +444,11 @@
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
+  margin: 2px 16px 6px;
+  width: calc(100% - 32px);
   background: color-mix(in srgb, var(--sb-success) 8%, var(--sb-bg-card));
   border: 1px solid color-mix(in srgb, var(--sb-success) 25%, var(--sb-border));
   border-radius: var(--sb-radius-card);
-  width: 100%;
   cursor: pointer;
   text-align: left;
   -webkit-tap-highlight-color: transparent;

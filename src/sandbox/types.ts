@@ -181,4 +181,7 @@ export interface SandboxUIContextType {
   deferTodoId?: string;
   openDefer: (todoId: string) => void;
   closeDefer: () => void;
+  editRecurringGroup: RecurringTodoGroup | null;
+  openEditRecurring: (group: RecurringTodoGroup) => void;
+  closeEditRecurring: () => void;
 }

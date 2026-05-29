@@ -6,6 +6,7 @@ import { useToast } from '../../shared/components/Toast';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import { spawnDueRoutines, recurrenceLabel } from '../firebase/routineSpawner';
 import BottomSheet from '../components/primitives/BottomSheet';
+import EditRecurringSheet from '../components/sheets/EditRecurringSheet';
 import type { Group, RoutineGroup, RecurringTodoGroup, TemplateItem } from '../types';
 import './routines-page.css';
 
@@ -89,7 +90,7 @@ function NewRoutineSheet({ onClose }: NewRoutineSheetProps) {
       onClose();
       // Spawn today's instance immediately if due
       spawnDueRoutines(uid).catch(console.error);
-      navigate(`/sandbox/routines/${groupId}`);
+      navigate(`/routines/${groupId}`);
     } catch {
       showToast('Could not create routine. Try again.', 'error');
     } finally {
@@ -233,7 +234,7 @@ function RoutineCard({ group }: RoutineCardProps) {
     <button
       type="button"
       className="sb-routines-card"
-      onClick={() => navigate(`/sandbox/routines/${group.id}`)}
+      onClick={() => navigate(`/routines/${group.id}`)}
     >
       <div className="sb-routines-card__icon">
         <Repeat size={16} strokeWidth={2} />
@@ -305,214 +306,7 @@ function ArchivedRoutineRow({ group, onRestore }: ArchivedRoutineRowProps) {
   );
 }
 
-// ─── Edit-recurring helpers ───────────────────────────────────────────────────
-
-const EXPENSE_CATS = ['Food', 'Transport', 'Bills', 'Health', 'Shopping', 'Entertainment', 'Other'];
-
-const RECUR_FREQ_OPTS = [
-  { value: 'daily',     label: 'Daily' },
-  { value: 'weekdays',  label: 'Weekdays' },
-  { value: 'weekly',    label: 'Weekly' },
-  { value: 'monthly',   label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'yearly',    label: 'Yearly' },
-] as const;
-type EditRecurFreq = typeof RECUR_FREQ_OPTS[number]['value'];
-
-const MONEY_RECUR_FREQ_OPTS = RECUR_FREQ_OPTS.filter(
-  (o) => o.value !== 'daily' && o.value !== 'weekdays',
-);
-
-const WEEKDAY_CODES_EDIT = [
-  { code: 'MON', label: 'Mon' }, { code: 'TUE', label: 'Tue' },
-  { code: 'WED', label: 'Wed' }, { code: 'THU', label: 'Thu' },
-  { code: 'FRI', label: 'Fri' }, { code: 'SAT', label: 'Sat' },
-  { code: 'SUN', label: 'Sun' },
-] as const;
-
-function parseRecurrence(r: string): { freq: EditRecurFreq; dayCode: string; dueDay: number } {
-  if (r.startsWith('weekly:'))    return { freq: 'weekly',    dayCode: r.split(':')[1], dueDay: 1 };
-  if (r.startsWith('monthly:'))   return { freq: 'monthly',   dayCode: 'MON', dueDay: Number(r.split(':')[1]) };
-  if (r.startsWith('quarterly:')) return { freq: 'quarterly', dayCode: 'MON', dueDay: Number(r.split(':')[1]) };
-  if (r.startsWith('yearly:'))    return { freq: 'yearly',    dayCode: 'MON', dueDay: Number(r.split(':')[1]) };
-  return { freq: r as EditRecurFreq, dayCode: 'MON', dueDay: 1 };
-}
-
-function buildRecurrenceEdit(freq: EditRecurFreq, dayCode: string, dueDay: number): string {
-  if (freq === 'weekly')    return `weekly:${dayCode}`;
-  if (freq === 'monthly')   return `monthly:${dueDay}`;
-  if (freq === 'quarterly') return `quarterly:${dueDay}`;
-  if (freq === 'yearly')    return `yearly:${dueDay}`;
-  return freq;
-}
-
-// ─── Edit Recurring Sheet ─────────────────────────────────────────────────────
-
-interface EditRecurringSheetProps {
-  group: RecurringTodoGroup;
-  onClose: () => void;
-}
-
-function EditRecurringSheet({ group, onClose }: EditRecurringSheetProps) {
-  const { user } = useAuth();
-  const { showToast } = useToast();
-  const updateGroup = useGroupsStore((s) => s.updateGroup);
-  const uid = user?.uid ?? getCachedUid();
-
-  const isPayment = group.recurTodoType === 'money-reminder';
-  const parsed = parseRecurrence(group.recurrence);
-
-  const [name, setName]       = useState(group.name);
-  const [amount, setAmount]   = useState(group.amount != null ? String(group.amount) : '');
-  const [category, setCategory] = useState(group.category ?? '');
-  const [freq, setFreq]       = useState<EditRecurFreq>(parsed.freq);
-  const [dayCode, setDayCode] = useState(parsed.dayCode);
-  const [dueDay, setDueDay]   = useState(parsed.dueDay || 1);
-  const [saving, setSaving]   = useState(false);
-
-  const freqOpts = isPayment ? MONEY_RECUR_FREQ_OPTS : RECUR_FREQ_OPTS;
-
-  const handleSave = async () => {
-    if (!name.trim() || !uid) return;
-    setSaving(true);
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const patch: Record<string, any> = {
-        name: name.trim(),
-        recurrence: buildRecurrenceEdit(freq, dayCode, dueDay),
-      };
-      if (isPayment) {
-        patch.amount   = amount ? Number(amount) : undefined;
-        patch.category = category || undefined;
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await updateGroup(uid, group.id!, patch as any);
-      showToast('Updated', 'success');
-      onClose();
-    } catch {
-      showToast('Could not update. Try again.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <BottomSheet onClose={onClose} title="Edit recurring">
-      <div className="sb-rtn-sheet-form">
-        {/* Name */}
-        <input
-          type="text"
-          className="sb-proj-sheet-input"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-          maxLength={200}
-        />
-
-        {/* Payment-only fields */}
-        {isPayment && (
-          <>
-            <div className="sb-rtn-field">
-              <label className="sb-rtn-field-label">Amount (optional)</label>
-              <input
-                type="number"
-                className="sb-compose-input"
-                placeholder="₹ Amount"
-                value={amount}
-                min={0}
-                step={0.01}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-            <div className="sb-rtn-field">
-              <label className="sb-rtn-field-label">Category</label>
-              <div className="sb-rtn-chips">
-                {EXPENSE_CATS.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`sb-rtn-chip${category === cat ? ' sb-rtn-chip--active' : ''}`}
-                    onClick={() => setCategory(category === cat ? '' : cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Repeat frequency */}
-        <div className="sb-rtn-field">
-          <label className="sb-rtn-field-label">Repeat</label>
-          <div className="sb-rtn-chips">
-            {freqOpts.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`sb-rtn-chip${freq === opt.value ? ' sb-rtn-chip--active' : ''}`}
-                onClick={() => setFreq(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {freq === 'weekly' && (
-            <div className="sb-rtn-chips sb-rtn-chips--days" style={{ marginTop: 6 }}>
-              {WEEKDAY_CODES_EDIT.map((d) => (
-                <button
-                  key={d.code}
-                  type="button"
-                  className={`sb-rtn-chip sb-rtn-chip--sm${dayCode === d.code ? ' sb-rtn-chip--active' : ''}`}
-                  onClick={() => setDayCode(d.code)}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {(freq === 'monthly' || freq === 'quarterly' || freq === 'yearly') && (
-            <div className="sb-rtn-field" style={{ marginTop: 8 }}>
-              <label className="sb-rtn-field-label">
-                {freq === 'monthly'
-                  ? 'Day of month'
-                  : freq === 'quarterly'
-                  ? 'Day of month (Jan/Apr/Jul/Oct)'
-                  : 'Day of year (in January)'}
-              </label>
-              <input
-                type="number"
-                className="sb-compose-input"
-                min={1}
-                max={28}
-                value={dueDay}
-                onChange={(e) => setDueDay(Math.min(28, Math.max(1, Number(e.target.value))))}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="sb-proj-sheet-actions">
-          <button type="button" className="sb-compose-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sb-compose-save-btn"
-            disabled={!name.trim() || saving}
-            onClick={handleSave}
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
+// ─── EditRecurringSheet is imported from shared component ────────────────────
 
 // ─── Recurring single-todo card ───────────────────────────────────────────────
 

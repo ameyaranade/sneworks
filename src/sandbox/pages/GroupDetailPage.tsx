@@ -177,7 +177,7 @@ export default function GroupDetailPage() {
     try {
       await updateGroup(uid, groupId, { archivedAt: Timestamp.now() });
       showToast('List archived', 'info');
-      navigate('/sandbox/more');
+      navigate('/more');
     } catch {
       showToast('Could not archive. Try again.', 'error');
     }
@@ -192,7 +192,7 @@ export default function GroupDetailPage() {
     return (
       <div className="sb-gdp">
         <div className="sb-gdp-header">
-          <button type="button" className="sb-gdp-back-btn" onClick={() => navigate('/sandbox/more')}>
+          <button type="button" className="sb-gdp-back-btn" onClick={() => navigate('/more')}>
             <ArrowLeft size={18} strokeWidth={2} />
           </button>
         </div>
@@ -213,7 +213,7 @@ export default function GroupDetailPage() {
         <button
           type="button"
           className="sb-gdp-back-btn"
-          onClick={() => navigate('/sandbox/more')}
+          onClick={() => navigate('/more')}
           aria-label="Back"
         >
           <ArrowLeft size={18} strokeWidth={2} />

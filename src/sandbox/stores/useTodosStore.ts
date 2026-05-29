@@ -68,6 +68,7 @@ export const useTodosStore = create<TodosState>((set, get) => {
       return get().todos.filter(
         (t) =>
           (t.status === 'pending' || t.status === 'deferred') &&
+          t.todoType !== 'shopping-item' &&
           t.dueAt &&
           t.dueAt.toMillis() < todayStart,
       );
@@ -78,9 +79,11 @@ export const useTodosStore = create<TodosState>((set, get) => {
       const todayEnd = endOfDay(new Date()).getTime();
       return get().todos.filter((t) => {
         if (t.status !== 'pending' && t.status !== 'deferred') return false;
+        // Shopping items have their own section — exclude from Up Next
+        if (t.todoType === 'shopping-item') return false;
         // No due date at all = undated inbox item, always show in Up Next
         if (!t.dueAt) return true;
-        // Has due date: must be today (or earlier today via deferred) or pinned
+        // Has due date: must be today
         const ms = t.dueAt.toMillis();
         return ms >= todayStart && ms <= todayEnd;
       });

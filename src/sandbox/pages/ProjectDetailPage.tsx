@@ -102,7 +102,7 @@ function SubProjectCard({ group }: SubProjectCardProps) {
     <button
       type="button"
       className={`sb-proj-sub-card${group.completed ? ' sb-proj-sub-card--done' : ''}`}
-      onClick={() => navigate(`/sandbox/projects/${group.id}`)}
+      onClick={() => navigate(`/projects/${group.id}`)}
     >
       <div className="sb-proj-sub-card__icon">
         <FolderOpen size={14} strokeWidth={2} />
@@ -206,8 +206,8 @@ export default function ProjectDetailPage() {
       await updateGroup(uid, projectId, { archivedAt: Timestamp.now() });
       showToast('Project archived', 'info');
       const backTo = project?.parentGroupId
-        ? `/sandbox/projects/${project.parentGroupId}`
-        : '/sandbox/more';
+        ? `/projects/${project.parentGroupId}`
+        : '/more';
       navigate(backTo);
     } catch {
       showToast('Could not archive. Try again.', 'error');
@@ -221,9 +221,9 @@ export default function ProjectDetailPage() {
     if (from) {
       navigate(from);
     } else if (project?.parentGroupId) {
-      navigate(`/sandbox/projects/${project.parentGroupId}`);
+      navigate(`/projects/${project.parentGroupId}`);
     } else {
-      navigate('/sandbox/projects');
+      navigate('/projects');
     }
   }, [project, navigate, location]);
 
@@ -238,7 +238,7 @@ export default function ProjectDetailPage() {
           <button
             type="button"
             className="sb-proj-back-btn"
-            onClick={() => navigate('/sandbox/projects')}
+            onClick={() => navigate('/projects')}
           >
             <ArrowLeft size={18} strokeWidth={2} />
           </button>

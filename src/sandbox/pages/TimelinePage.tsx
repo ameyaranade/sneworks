@@ -226,7 +226,7 @@ export default function TimelinePage() {
             label: `${g.name} — all done`,
             sub: `${g.doneCount}/${g.childCount} tasks`,
             time: formatTime(d),
-            onClick: () => navigate(`/sandbox/routines/${g.id}`, { state: { from: '/sandbox/timeline' } }),
+            onClick: () => navigate(`/routines/${g.id}`, { state: { from: '/timeline' } }),
           });
         }
       } else if (g.groupKind === 'project') {
@@ -240,7 +240,7 @@ export default function TimelinePage() {
             label: `${g.name} — complete`,
             sub: `${g.doneCount}/${g.childCount} tasks`,
             time: formatTime(d),
-            onClick: () => navigate(`/sandbox/projects/${g.id}`, { state: { from: '/sandbox/timeline' } }),
+            onClick: () => navigate(`/projects/${g.id}`, { state: { from: '/timeline' } }),
           });
         }
       }
@@ -297,7 +297,7 @@ export default function TimelinePage() {
         <button
           type="button"
           className="sb-tl-back-btn"
-          onClick={() => navigate('/sandbox')}
+          onClick={() => navigate('/')}
           aria-label="Back to Today"
         >
           <ArrowLeft size={18} strokeWidth={2} />

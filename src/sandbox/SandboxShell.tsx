@@ -11,6 +11,7 @@ import { subscribeToSettings } from '../tracker/firebase/trackerQueries';
 import SandboxBottomNav from './components/nav/SandboxBottomNav';
 import ComposeSheet from './components/sheets/ComposeSheet';
 import DeferSheet from './components/sheets/DeferSheet';
+import EditRecurringSheet from './components/sheets/EditRecurringSheet';
 import './sandbox-shell.css';
 import './styles/sandbox-tokens.css';
 import './styles/sandbox-shared.css';
@@ -36,6 +37,7 @@ function SandboxShellInner() {
     closeCompose,
     deferOpen, deferTodoId,
     closeDefer,
+    editRecurringGroup, closeEditRecurring,
   } = useSandboxUI();
 
   // ── Store init ──────────────────────────────────────────────────────────────
@@ -113,6 +115,10 @@ function SandboxShellInner() {
 
       {deferOpen && deferTodoId && (
         <DeferSheet todoId={deferTodoId} onClose={closeDefer} />
+      )}
+
+      {editRecurringGroup && (
+        <EditRecurringSheet group={editRecurringGroup} onClose={closeEditRecurring} />
       )}
     </div>
   );

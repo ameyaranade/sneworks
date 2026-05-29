@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState, useMemo, ReactNode } from 'react';
-import type { SandboxUIContextType, Todo, Log, TodoType, LogType, ComposeMode } from '../types';
+import type { SandboxUIContextType, Todo, Log, TodoType, LogType, ComposeMode, RecurringTodoGroup } from '../types';
 
 const SandboxUIContext = createContext<SandboxUIContextType>({
   composeOpen: false,
@@ -12,6 +12,9 @@ const SandboxUIContext = createContext<SandboxUIContextType>({
   deferOpen: false,
   openDefer: () => {},
   closeDefer: () => {},
+  editRecurringGroup: null,
+  openEditRecurring: () => {},
+  closeEditRecurring: () => {},
 });
 
 export function useSandboxUI() {
@@ -28,6 +31,8 @@ export function SandboxUIProvider({ children }: { children: ReactNode }) {
 
   const [deferOpen, setDeferOpen] = useState(false);
   const [deferTodoId, setDeferTodoId] = useState<string | undefined>();
+
+  const [editRecurringGroup, setEditRecurringGroup] = useState<RecurringTodoGroup | null>(null);
 
   const resetCompose = useCallback(() => {
     setComposeEntry(undefined);
@@ -80,16 +85,26 @@ export function SandboxUIProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setDeferTodoId(undefined), 300);
   }, []);
 
+  const openEditRecurring = useCallback((group: RecurringTodoGroup) => {
+    setEditRecurringGroup(group);
+  }, []);
+
+  const closeEditRecurring = useCallback(() => {
+    setEditRecurringGroup(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       composeOpen, composeMode, composeTodoType, composeLogType, composeEntry, composeGroupId,
       openComposeTodo, openComposeLog, openComposeForEdit, openComposeForGroup, closeCompose,
       deferOpen, deferTodoId, openDefer, closeDefer,
+      editRecurringGroup, openEditRecurring, closeEditRecurring,
     }),
     [
       composeOpen, composeMode, composeTodoType, composeLogType, composeEntry, composeGroupId,
       openComposeTodo, openComposeLog, openComposeForEdit, openComposeForGroup, closeCompose,
       deferOpen, deferTodoId, openDefer, closeDefer,
+      editRecurringGroup, openEditRecurring, closeEditRecurring,
     ],
   );
 

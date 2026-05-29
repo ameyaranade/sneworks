@@ -1,8 +1,10 @@
 .nav {
   background-color: var(--nav-bg);
   color: var(--nav-text);
-  padding: 0 24px;
-  height: 56px;
+  /* In PWA standalone mode the status bar overlays the app edge-to-edge.
+     env(safe-area-inset-top) pushes content below the clock/battery row. */
+  padding: env(safe-area-inset-top) 24px 0;
+  height: calc(56px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   gap: 24px;

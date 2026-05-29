@@ -4,8 +4,9 @@ import { ShoppingCart, ChevronRight, Heart, ChevronDown, Clock, Repeat, FolderOp
 import { useTodosStore } from '../stores/useTodosStore';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import { useLogsStore } from '../stores/useLogsStore';
+import { useSandboxUI } from '../context/SandboxUIContext';
 import TodoRow from '../components/rows/TodoRow';
-import type { ShoppingListGroup, Group, Todo } from '../types';
+import type { ShoppingListGroup, Group, Todo, RecurringTodoGroup } from '../types';
 import { startOfDay } from '../utils';
 import './today-page.css';
 
@@ -39,7 +40,7 @@ function ActiveGroupCard({ group }: { group: ShoppingListGroup }) {
     <button
       type="button"
       className="sb-today-group-card"
-      onClick={() => navigate(`/sandbox/groups/${group.id}`)}
+      onClick={() => navigate(`/groups/${group.id}`)}
     >
       <div className="sb-today-group-card__icon">
         <ShoppingCart size={14} strokeWidth={2} />
@@ -63,41 +64,100 @@ function ActiveGroupCard({ group }: { group: ShoppingListGroup }) {
 interface GroupedTodoBlockProps {
   todoGroup: TodoGroup;
   navigate: ReturnType<typeof useNavigate>;
+  onEditRecurring: (group: RecurringTodoGroup) => void;
 }
 
-function GroupedTodoBlock({ todoGroup, navigate }: GroupedTodoBlockProps) {
+function GroupedTodoBlock({ todoGroup, navigate, onEditRecurring }: GroupedTodoBlockProps) {
   const { group, groupId, todos } = todoGroup;
+  const [expanded, setExpanded] = useState(false);
 
-  const groupIcon = group
-    ? group.groupKind === 'routine' ? <Repeat size={11} strokeWidth={2} />
-    : group.groupKind === 'project' ? <FolderOpen size={11} strokeWidth={2} />
-    : null
-    : null;
+  // Ungrouped items — plain flat list, no card wrapper
+  if (!group) {
+    return (
+      <div className="sb-today-group-block">
+        <div className="sb-todo-list">
+          {todos.map((t) => (
+            <TodoRow key={t.id} todo={t} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const groupPath = group
-    ? group.groupKind === 'routine' ? `/sandbox/routines/${groupId}`
-    : group.groupKind === 'project' ? `/sandbox/projects/${groupId}`
-    : null
-    : null;
+  const isRoutine  = group.groupKind === 'routine';
+  const isProject  = group.groupKind === 'project';
+  const isRecurring = group.groupKind === 'recurring-todo';
+
+  const iconEl = (isRoutine || isRecurring)
+    ? <Repeat size={14} strokeWidth={2} />
+    : isProject
+    ? <FolderOpen size={14} strokeWidth={2} />
+    : <ShoppingCart size={14} strokeWidth={2} />;
+
+  const iconClass = (isRoutine || isRecurring)
+    ? 'sb-today-grouped-card__icon--routine'
+    : 'sb-today-grouped-card__icon--project';
+
+  const groupPath = isRoutine || isRecurring
+    ? `/routines/${groupId}`
+    : isProject
+    ? `/projects/${groupId}`
+    : `/groups/${groupId}`;
+
+  const { doneCount, childCount } = group;
+  const pct = childCount > 0 ? Math.round((doneCount / childCount) * 100) : 0;
+  const meta = childCount > 0
+    ? `${todos.length} pending · ${doneCount}/${childCount} done`
+    : `${todos.length} pending`;
 
   return (
-    <div className="sb-today-group-block">
-      {group && (
+    <div className="sb-today-grouped-card">
+      <div className="sb-today-grouped-card__header">
         <button
           type="button"
-          className="sb-today-group-label"
-          onClick={() => groupPath && navigate(groupPath)}
+          className="sb-today-grouped-card__toggle"
+          onClick={() => setExpanded((v) => !v)}
         >
-          {groupIcon && <span className="sb-today-group-label__icon">{groupIcon}</span>}
-          <span className="sb-today-group-label__name">{group.name}</span>
-          <span className="sb-today-group-label__count">{todos.length}</span>
+          <span className={`sb-today-grouped-card__icon ${iconClass}`}>
+            {iconEl}
+          </span>
+          <div className="sb-today-grouped-card__body">
+            <div className="sb-today-grouped-card__top">
+              <span className="sb-today-grouped-card__name">{group.name}</span>
+            </div>
+            {childCount > 0 && (
+              <div className="sb-today-grouped-card__bar-track">
+                <div className="sb-today-grouped-card__bar-fill" style={{ width: `${pct}%` }} />
+              </div>
+            )}
+            <span className="sb-today-grouped-card__meta">{meta}</span>
+          </div>
+          <ChevronDown
+            size={13}
+            strokeWidth={2}
+            className={`sb-today-grouped-card__chevron${expanded ? ' sb-today-grouped-card__chevron--open' : ''}`}
+          />
         </button>
-      )}
-      <div className="sb-todo-list">
-        {todos.map((t) => (
-          <TodoRow key={t.id} todo={t} />
-        ))}
+        <button
+          type="button"
+          className="sb-today-grouped-card__nav"
+          onClick={() => isRecurring
+            ? onEditRecurring(group as RecurringTodoGroup)
+            : navigate(groupPath)
+          }
+          aria-label={isRecurring ? `Edit ${group.name}` : `Open ${group.name}`}
+        >
+          <ChevronRight size={13} strokeWidth={2} />
+        </button>
       </div>
+
+      {expanded && (
+        <div className="sb-today-grouped-card__rows">
+          {todos.map((t) => (
+            <TodoRow key={t.id} todo={t} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -141,6 +201,7 @@ export default function TodayPage() {
   const [doneExpanded, setDoneExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { openEditRecurring } = useSandboxUI();
   // Subscribe to `todos` so the component re-renders on any state change.
   const todos = useTodosStore((s) => s.todos);
   const loaded = useTodosStore((s) => s.loaded);
@@ -240,7 +301,7 @@ export default function TodayPage() {
           <button
             type="button"
             className="sb-today-timeline-btn"
-            onClick={() => navigate('/sandbox/timeline')}
+            onClick={() => navigate('/timeline')}
             aria-label="Open Timeline"
             title="Timeline"
           >
@@ -278,7 +339,7 @@ export default function TodayPage() {
                   <>
                     <SectionHeader title="Results" count={searchResults.length} />
                     {groupedSearch.map((tg) => (
-                      <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} />
+                      <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} onEditRecurring={openEditRecurring} />
                     ))}
                   </>
                 )}
@@ -290,7 +351,7 @@ export default function TodayPage() {
               <section className="sb-today-section">
                 <SectionHeader title="Overdue" count={overdue.length} danger />
                 {groupedOverdue.map((tg) => (
-                  <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} />
+                  <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} onEditRecurring={openEditRecurring} />
                 ))}
               </section>
             )}
@@ -300,7 +361,7 @@ export default function TodayPage() {
               <section className="sb-today-section">
                 <SectionHeader title="Up next" count={upNext.length} />
                 {groupedUpNext.map((tg) => (
-                  <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} />
+                  <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} onEditRecurring={openEditRecurring} />
                 ))}
               </section>
             )}
@@ -323,7 +384,7 @@ export default function TodayPage() {
                 <button
                   type="button"
                   className="sb-today-health-card"
-                  onClick={() => navigate('/sandbox/health')}
+                  onClick={() => navigate('/health')}
                 >
                   <span className="sb-today-health-card__icon">
                     <Heart size={14} strokeWidth={2} />
@@ -375,6 +436,7 @@ export default function TodayPage() {
           </>
         )}
       </div>
+
     </div>
   );
 }

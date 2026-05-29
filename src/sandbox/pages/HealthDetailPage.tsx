@@ -188,7 +188,7 @@ export default function HealthDetailPage() {
         <button
           type="button"
           className="sb-health-back-btn"
-          onClick={() => navigate('/sandbox/more')}
+          onClick={() => navigate('/more')}
           aria-label="Back"
         >
           <ArrowLeft size={18} strokeWidth={2} />

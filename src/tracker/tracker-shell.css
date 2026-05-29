@@ -4,8 +4,8 @@
   /* Stable height: fill viewport below nav bar using small viewport height
      (100svh = height when browser chrome is fully visible — never jumps).
      Falls back to 100vh on older iOS. */
-  height: calc(100vh - 56px);
-  height: calc(100svh - 56px);
+  height: calc(100vh - 56px - env(safe-area-inset-top));
+  height: calc(100svh - 56px - env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   overflow: hidden;

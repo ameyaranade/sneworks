@@ -4,13 +4,13 @@ import SplitPillFAB from './SplitPillFAB';
 import './sandbox-bottom-nav.css';
 
 const LEFT_TABS = [
-  { to: '/sandbox', label: 'Today', Icon: CalendarCheck, end: true },
-  { to: '/sandbox/routines', label: 'Routines', Icon: Repeat, end: false },
+  { to: '/', label: 'Today', Icon: CalendarCheck, end: true },
+  { to: '/routines', label: 'Routines', Icon: Repeat, end: false },
 ];
 
 const RIGHT_TABS = [
-  { to: '/sandbox/projects', label: 'Projects', Icon: FolderOpen, end: false },
-  { to: '/sandbox/more', label: 'More', Icon: MoreHorizontal, end: false },
+  { to: '/projects', label: 'Projects', Icon: FolderOpen, end: false },
+  { to: '/more', label: 'More', Icon: MoreHorizontal, end: false },
 ];
 
 export default function SandboxBottomNav() {

@@ -50,7 +50,7 @@ function NewListSheet({ onClose }: NewListSheetProps) {
       } as Parameters<typeof addGroup>[1]);
       showToast('List created', 'success');
       onClose();
-      navigate(`/sandbox/groups/${groupId}`);
+      navigate(`/groups/${groupId}`);
     } catch {
       showToast('Could not create list. Try again.', 'error');
     } finally {
@@ -105,7 +105,7 @@ function GroupCard({ group }: GroupCardProps) {
     <button
       type="button"
       className="sb-more-group-card"
-      onClick={() => navigate(`/sandbox/groups/${group.id}`)}
+      onClick={() => navigate(`/groups/${group.id}`)}
     >
       <div className="sb-more-group-card__icon">
         <ShoppingCart size={16} strokeWidth={2} />
@@ -392,7 +392,7 @@ export default function MorePage() {
         <button
           type="button"
           className="sb-more-nav-card"
-          onClick={() => navigate('/sandbox/health')}
+          onClick={() => navigate('/health')}
         >
           <span className="sb-more-nav-card__icon sb-more-nav-card__icon--health">
             <Heart size={16} strokeWidth={2} />

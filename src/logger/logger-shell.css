@@ -1,8 +1,8 @@
 .lg-shell {
   /* Escape the Layout page-content padding to go edge-to-edge */
   margin: -32px -24px 0;
-  height: calc(100vh - 56px);
-  height: calc(100svh - 56px);
+  height: calc(100vh - 56px - env(safe-area-inset-top));
+  height: calc(100svh - 56px - env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   overflow: hidden;

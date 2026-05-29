@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import Layout from './shared/Layout';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -43,8 +43,8 @@ export default function App() {
       <AuthProvider>
         <Suspense fallback={null}>
           <Routes>
-            {/* Sandbox — full-viewport, no Layout nav */}
-            <Route path="/sandbox" element={<ProtectedRoute><SandboxShell /></ProtectedRoute>}>
+            {/* Root app — full-viewport, no Layout nav */}
+            <Route path="/" element={<ProtectedRoute><SandboxShell /></ProtectedRoute>}>
               <Route index element={<SandboxTodayPage />} />
               <Route path="routines" element={<SandboxRoutinesPage />} />
               <Route path="timeline" element={<SandboxTimelinePage />} />
@@ -56,9 +56,8 @@ export default function App() {
               <Route path="health" element={<SandboxHealthPage />} />
             </Route>
 
-            {/* Everything else keeps the shared Layout nav */}
+            {/* Legacy apps — keep the shared Layout nav */}
             <Route element={<Layout />}>
-              <Route path="/" element={<Navigate to="/sandbox" replace />} />
               <Route path="/games" element={<GamesHub />} />
               <Route path="/games/connect4" element={<Connect4Game />} />
               <Route path="/games/minesweeper" element={<MinesweeperGame />} />

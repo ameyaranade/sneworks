@@ -7,6 +7,8 @@
   background: var(--sb-bg);
   color: var(--sb-text);
   font-family: var(--sb-font-body);
+  /* PWA standalone: push content below the iOS status bar */
+  padding-top: env(safe-area-inset-top);
 }
 
 .sb-content {
