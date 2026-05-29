@@ -9,6 +9,9 @@ import { recomputeGroupCounts } from '../firebase/groupQueries';
 import { useUI } from '../context/UIContext';
 import BottomSheet from '../components/primitives/BottomSheet';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
+import DetailPageHeader from '../components/primitives/DetailPageHeader';
+import ProgressBar from '../components/primitives/ProgressBar';
+import SheetFormActions from '../components/primitives/SheetFormActions';
 import TodoRow from '../components/rows/TodoRow';
 import { Timestamp } from 'firebase/firestore';
 import type { Group, Todo } from '../types';
@@ -60,7 +63,7 @@ function NewSubProjectSheet({ parentGroupId, parentAncestorPath, onClose }: NewS
       <div className="sn-proj-sheet-form">
         <input
           type="text"
-          className="sn-proj-sheet-input"
+          className="sn-sheet-title-input"
           placeholder="Sub-project name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -68,19 +71,13 @@ function NewSubProjectSheet({ parentGroupId, parentAncestorPath, onClose }: NewS
           autoFocus
           maxLength={80}
         />
-        <div className="sn-proj-sheet-actions">
-          <button type="button" className="sn-compose-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sn-compose-save-btn"
-            disabled={!name.trim() || saving}
-            onClick={handleCreate}
-          >
-            {saving ? 'Creating…' : 'Create'}
-          </button>
-        </div>
+        <SheetFormActions
+          onCancel={onClose}
+          onSave={handleCreate}
+          saveLabel="Create"
+          saving={saving}
+          disabled={!name.trim()}
+        />
       </div>
     </BottomSheet>
   );
@@ -110,12 +107,7 @@ function SubProjectCard({ group }: SubProjectCardProps) {
       <div className="sn-proj-sub-card__body">
         <span className="sn-proj-sub-card__name">{group.name}</span>
         {group.childCount > 0 && (
-          <div className="sn-proj-sub-card__progress-track">
-            <div
-              className="sn-proj-sub-card__progress-fill"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <ProgressBar pct={pct} color={group.completed ? 'success' : 'accent'} />
         )}
       </div>
       {group.completed ? (
@@ -234,15 +226,7 @@ export default function ProjectDetailPage() {
   if (!project) {
     return (
       <div className="sn-proj">
-        <div className="sn-proj-header">
-          <button
-            type="button"
-            className="sn-proj-back-btn"
-            onClick={() => navigate('/projects')}
-          >
-            <ArrowLeft size={18} strokeWidth={2} />
-          </button>
-        </div>
+        <DetailPageHeader onBack={() => navigate('/projects')} title="" />
         <div className="sn-proj-loading">Loading…</div>
       </div>
     );
@@ -299,44 +283,39 @@ export default function ProjectDetailPage() {
     )}
     <div className="sn-proj">
       {/* ── Header ── */}
-      <div className="sn-proj-header">
-        <button
-          type="button"
-          className="sn-proj-back-btn"
-          onClick={handleBack}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} strokeWidth={2} />
-        </button>
-
-        <div className="sn-proj-title-wrap">
-          <h1 className="sn-proj-title">{project.name}</h1>
-          {project.description ? (
-            <span className="sn-proj-subtitle">{project.description}</span>
-          ) : totalItems > 0 ? (
-            <span className="sn-proj-subtitle">{doneItems}/{totalItems} done</span>
-          ) : null}
-        </div>
-
-        <button
-          type="button"
-          className="sn-proj-archive-btn"
-          onClick={handleExport}
-          aria-label="Copy project"
-          title="Copy to clipboard"
-        >
-          <Copy size={15} strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          className="sn-proj-archive-btn"
-          onClick={() => setConfirmArchive(true)}
-          aria-label="Archive project"
-          title="Archive project"
-        >
-          <Archive size={16} strokeWidth={2} />
-        </button>
-      </div>
+      <DetailPageHeader
+        onBack={handleBack}
+        title={project.name}
+        subtitle={
+          project.description
+            ? project.description
+            : totalItems > 0
+              ? `${doneItems}/${totalItems} done`
+              : undefined
+        }
+        rightSlot={
+          <>
+            <button
+              type="button"
+              className="sn-proj-archive-btn"
+              onClick={handleExport}
+              aria-label="Copy project"
+              title="Copy to clipboard"
+            >
+              <Copy size={15} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="sn-proj-archive-btn"
+              onClick={() => setConfirmArchive(true)}
+              aria-label="Archive project"
+              title="Archive project"
+            >
+              <Archive size={16} strokeWidth={2} />
+            </button>
+          </>
+        }
+      />
 
       {/* ── Progress bar ── */}
       {totalItems > 0 && (
@@ -423,7 +402,7 @@ export default function ProjectDetailPage() {
             {newTaskTitle.trim() && (
               <button
                 type="button"
-                className="sn-proj-add-btn"
+                className="sn-inline-add-btn"
                 onClick={handleAddTask}
                 disabled={addingTask}
               >

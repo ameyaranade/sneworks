@@ -32,38 +32,6 @@
   gap: 0;
 }
 
-/* ── Empty state ── */
-.sn-projects-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.sn-projects-empty__glyph {
-  font-size: calc(40px * var(--sn-font-scale, 1));
-  color: var(--sn-text-muted);
-  opacity: 0.4;
-  line-height: 1;
-}
-
-.sn-projects-empty__title {
-  font-family: var(--sn-font-body);
-  font-size: calc(15px * var(--sn-font-scale, 1));
-  font-weight: 500;
-  color: var(--sn-text-dim);
-  margin: 0;
-}
-
-.sn-projects-empty__sub {
-  font-family: var(--sn-font-body);
-  font-size: calc(13px * var(--sn-font-scale, 1));
-  color: var(--sn-text-muted);
-  margin: 0;
-}
-
 /* ── Project list ── */
 .sn-projects-list {
   display: flex;
@@ -138,72 +106,15 @@
   color: var(--sn-text-muted);
 }
 
-.sn-projects-card__progress-track {
-  height: 2px;
-  background: var(--sn-border);
-  border-radius: 1px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-
-.sn-projects-card__progress-fill {
-  height: 100%;
-  background: var(--sn-accent);
-  border-radius: 1px;
-  transition: width 0.3s ease;
-}
-
 .sn-projects-card__chevron {
   color: var(--sn-text-muted);
   flex-shrink: 0;
   opacity: 0.6;
 }
 
-/* ── Completed toggle ── */
+/* ── Completed section ── */
 .sn-projects-completed {
   margin-top: 12px;
-}
-
-.sn-projects-completed-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  color: var(--sn-text-muted);
-  font-family: var(--sn-font-body);
-  font-size: calc(12px * var(--sn-font-scale, 1));
-  font-weight: 500;
-  padding: 8px 0;
-  cursor: pointer;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-projects-completed-toggle__count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  background: var(--sn-bg-card);
-  border: 1px solid var(--sn-border);
-  color: var(--sn-text-muted);
-  border-radius: 9px;
-  font-family: var(--sn-font-mono);
-  font-size: calc(10px * var(--sn-font-scale, 1));
-  font-weight: 700;
-}
-
-.sn-projects-completed-toggle__chevron {
-  margin-left: auto;
-  transition: transform 0.2s ease;
-  color: var(--sn-text-muted);
-}
-
-.sn-projects-completed-toggle__chevron--open {
-  transform: rotate(180deg);
 }
 
 /* ── Archived list ── */
@@ -288,34 +199,4 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.sn-projects-sheet-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px solid var(--sn-border-strong);
-  padding: 6px 0;
-  color: var(--sn-text);
-  font-family: var(--sn-font-display);
-  font-size: calc(20px * var(--sn-font-scale, 1));
-  font-weight: 400;
-  outline: none;
-  letter-spacing: -0.01em;
-  box-sizing: border-box;
-  transition: border-color var(--sn-transition-fast);
-}
-
-.sn-projects-sheet-input:focus {
-  border-bottom-color: var(--sn-accent);
-}
-
-.sn-projects-sheet-input::placeholder {
-  color: var(--sn-text-muted);
-}
-
-.sn-projects-sheet-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
 }

@@ -20,6 +20,7 @@ interface GroupsState {
 
   // Selectors
   getActiveShoppingLists: () => Group[];
+  getArchivedShoppingLists: () => Group[];
   getTodayShoppingListGroup: () => Group | undefined;
   getActiveProjects: () => Group[];
   getCompletedProjects: () => Group[];
@@ -58,6 +59,9 @@ export const useGroupsStore = create<GroupsState>((set, get) => {
 
     getActiveShoppingLists: () =>
       get().groups.filter((g) => g.groupKind === 'shopping-list' && !g.completed && !g.archivedAt),
+
+    getArchivedShoppingLists: () =>
+      get().groups.filter((g) => g.groupKind === 'shopping-list' && !!g.archivedAt),
 
     getTodayShoppingListGroup: () => {
       const today = new Date();

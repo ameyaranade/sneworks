@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { IndianRupee, TrendingUp, StickyNote, Heart, Trash2, ArrowLeft, Repeat, FolderOpen } from 'lucide-react';
+import { IndianRupee, TrendingUp, StickyNote, Heart, Trash2, Repeat, FolderOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
@@ -8,6 +8,8 @@ import { useGroupsStore } from '../stores/useGroupsStore';
 import { useUI } from '../context/UIContext';
 import SwipeableRow from '../components/swipe/SwipeableRow';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
+import DetailPageHeader from '../components/primitives/DetailPageHeader';
+import EmptyState from '../components/primitives/EmptyState';
 import type { Log, ExpenseLog, IncomeLog } from '../types';
 import './timeline-page.css';
 
@@ -166,26 +168,6 @@ function DaySection({ group, onRequestDelete, activityEntries = [] }: DaySection
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-function EmptyState() {
-  const { openComposeLog } = useUI();
-  return (
-    <div className="sn-tl-empty">
-      <span className="sn-tl-empty-glyph">◷</span>
-      <p className="sn-tl-empty-title">No logs yet</p>
-      <p className="sn-tl-empty-sub">Log an expense or income to see it here.</p>
-      <button
-        type="button"
-        className="sn-tl-empty-cta"
-        onClick={() => openComposeLog()}
-      >
-        Log something
-      </button>
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function TimelinePage() {
@@ -281,6 +263,8 @@ export default function TimelinePage() {
   const hasActivityEntries = Object.keys(activityByDay).length > 0;
   const hasContent = hasLogs || hasActivityEntries;
 
+  const { openComposeLog } = useUI();
+
   return (
     <>
     {pendingDelete && (
@@ -293,17 +277,7 @@ export default function TimelinePage() {
       />
     )}
     <div className="sn-timeline">
-      <div className="sn-tl-header">
-        <button
-          type="button"
-          className="sn-tl-back-btn"
-          onClick={() => navigate('/')}
-          aria-label="Back to Today"
-        >
-          <ArrowLeft size={18} strokeWidth={2} />
-        </button>
-        <h1 className="sn-tl-heading">Timeline</h1>
-      </div>
+      <DetailPageHeader onBack={() => navigate('/')} title="Timeline" />
 
       {hasWeekData && (
         <div className="sn-tl-week-stats">
@@ -380,7 +354,12 @@ export default function TimelinePage() {
             })}
         </div>
       ) : (
-        <EmptyState />
+        <EmptyState
+          glyph="◷"
+          title="No logs yet"
+          sub="Log an expense or income to see it here."
+          cta={{ label: 'Log something', onClick: () => openComposeLog() }}
+        />
       )}
     </div>
     </>

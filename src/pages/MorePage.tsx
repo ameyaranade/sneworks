@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ShoppingCart, ChevronRight, Heart, Settings, LogOut, Moon, Sun, Bell, Type } from 'lucide-react';
+import { Plus, ShoppingCart, ChevronRight, Heart, Settings, LogOut, Moon, Sun, Bell, Type, RotateCcw, Trash2 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
@@ -11,7 +11,11 @@ import { useUI } from '../context/UIContext';
 import { subscribeToSettings, updateSettings, DEFAULT_SETTINGS } from '../firebase/settingsQueries';
 import type { AppSettings } from '../firebase/settingsQueries';
 import BottomSheet from '../components/primitives/BottomSheet';
-import type { ShoppingListGroup } from '../types';
+import ConfirmSheet from '../components/primitives/ConfirmSheet';
+import CollapsibleSection from '../components/primitives/CollapsibleSection';
+import ProgressBar from '../components/primitives/ProgressBar';
+import SheetFormActions from '../components/primitives/SheetFormActions';
+import type { ShoppingListGroup, Group } from '../types';
 import './more-page.css';
 
 // ── New List Sheet ─────────────────────────────────────────────────────────────
@@ -62,7 +66,7 @@ function NewListSheet({ onClose }: NewListSheetProps) {
       <div className="sn-new-list-form">
         <input
           type="text"
-          className="sn-new-list-input"
+          className="sn-sheet-title-input"
           placeholder="List name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -70,19 +74,13 @@ function NewListSheet({ onClose }: NewListSheetProps) {
           autoFocus
           maxLength={80}
         />
-        <div className="sn-new-list-actions">
-          <button type="button" className="sn-compose-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sn-compose-save-btn"
-            disabled={!name.trim() || saving}
-            onClick={handleCreate}
-          >
-            {saving ? 'Creating…' : 'Create'}
-          </button>
-        </div>
+        <SheetFormActions
+          onCancel={onClose}
+          onSave={handleCreate}
+          saveLabel="Create"
+          saving={saving}
+          disabled={!name.trim()}
+        />
       </div>
     </BottomSheet>
   );
@@ -117,16 +115,48 @@ function GroupCard({ group }: GroupCardProps) {
             : `${group.doneCount}/${group.childCount} done${group.totalSpent > 0 ? ` · ₹${group.totalSpent}` : ''}`}
         </span>
         {group.showProgress && group.childCount > 0 && (
-          <div className="sn-more-group-card__progress-track">
-            <div
-              className="sn-more-group-card__progress-fill"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <ProgressBar pct={pct} color="success" />
         )}
       </div>
       <ChevronRight size={14} strokeWidth={2} className="sn-more-group-card__chevron" />
     </button>
+  );
+}
+
+// ── Archived list row ──────────────────────────────────────────────────────────
+
+interface ArchivedListRowProps {
+  group: Group;
+  onUnarchive: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function ArchivedListRow({ group, onUnarchive, onDelete }: ArchivedListRowProps) {
+  return (
+    <div className="sn-more-archived-row">
+      <div className="sn-more-archived-row__icon">
+        <ShoppingCart size={14} strokeWidth={2} />
+      </div>
+      <span className="sn-more-archived-row__name">{group.name}</span>
+      <button
+        type="button"
+        className="sn-more-archived-row__action"
+        onClick={() => onUnarchive(group.id!)}
+        aria-label="Unarchive list"
+        title="Unarchive"
+      >
+        <RotateCcw size={13} strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        className="sn-more-archived-row__action sn-more-archived-row__action--delete"
+        onClick={() => onDelete(group.id!)}
+        aria-label="Delete list"
+        title="Delete"
+      >
+        <Trash2 size={13} strokeWidth={2} />
+      </button>
+    </div>
   );
 }
 
@@ -274,6 +304,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
 export default function MorePage() {
   const [newListOpen, setNewListOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmDeleteListId, setConfirmDeleteListId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { openComposeTodo } = useUI();
   const { user } = useAuth();
@@ -282,6 +313,9 @@ export default function MorePage() {
 
   const groups = useGroupsStore((s) => s.groups);
   const getActiveShoppingLists = useGroupsStore((s) => s.getActiveShoppingLists);
+  const getArchivedShoppingLists = useGroupsStore((s) => s.getArchivedShoppingLists);
+  const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const deleteGroup = useGroupsStore((s) => s.deleteGroup);
 
   const todos = useTodosStore((s) => s.todos);
   const getUngroupedShoppingItems = useTodosStore((s) => s.getUngroupedShoppingItems);
@@ -289,6 +323,30 @@ export default function MorePage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const activeLists = useMemo(() => getActiveShoppingLists(), [groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const archivedLists = useMemo(() => getArchivedShoppingLists(), [groups]);
+
+  const handleUnarchiveList = useCallback(async (id: string) => {
+    if (!uid) return;
+    try {
+      await updateGroup(uid, id, { archivedAt: undefined });
+      showToast('List restored', 'success');
+    } catch {
+      showToast('Could not restore list', 'error');
+    }
+  }, [uid, updateGroup, showToast]);
+
+  const handleDeleteListConfirmed = useCallback(async () => {
+    const id = confirmDeleteListId;
+    setConfirmDeleteListId(null);
+    if (!id || !uid) return;
+    try {
+      await deleteGroup(uid, id);
+      showToast('List deleted', 'success');
+    } catch {
+      showToast('Could not delete list', 'error');
+    }
+  }, [confirmDeleteListId, uid, deleteGroup, showToast]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const ungroupedItems = useMemo(() => getUngroupedShoppingItems(), [todos]);
 
@@ -302,6 +360,17 @@ export default function MorePage() {
   };
 
   return (
+    <>
+    {confirmDeleteListId && (
+      <ConfirmSheet
+        title="Delete list?"
+        message="This archived list and all its items will be permanently deleted."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteListConfirmed}
+        onCancel={() => setConfirmDeleteListId(null)}
+      />
+    )}
     <div className="sn-more-page">
       {/* ── Shopping Lists ── */}
       <section className="sn-more-section">
@@ -329,6 +398,25 @@ export default function MorePage() {
               <GroupCard key={g.id} group={g as ShoppingListGroup} />
             ))}
           </div>
+        )}
+
+        {archivedLists.length > 0 && (
+          <CollapsibleSection
+            label="Archived"
+            count={archivedLists.length}
+            className="sn-more-archived-section"
+          >
+            <div className="sn-more-archived-list">
+              {archivedLists.map((g) => (
+                <ArchivedListRow
+                  key={g.id}
+                  group={g}
+                  onUnarchive={handleUnarchiveList}
+                  onDelete={setConfirmDeleteListId}
+                />
+              ))}
+            </div>
+          </CollapsibleSection>
         )}
       </section>
 
@@ -421,5 +509,6 @@ export default function MorePage() {
       {newListOpen && <NewListSheet onClose={() => setNewListOpen(false)} />}
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </div>
+    </>
   );
 }

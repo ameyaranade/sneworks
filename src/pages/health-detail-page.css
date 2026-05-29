@@ -6,44 +6,6 @@
   padding-bottom: 88px;
 }
 
-/* ── Header ── */
-.sn-health-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 16px 12px;
-}
-
-.sn-health-back-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--sn-radius-card-sm);
-  border: 1px solid var(--sn-border);
-  background: var(--sn-bg-card);
-  color: var(--sn-text-dim);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-health-back-btn:hover {
-  background: var(--sn-bg-card-hover);
-  border-color: var(--sn-border-strong);
-}
-
-.sn-health-heading {
-  font-family: var(--sn-font-display);
-  font-size: calc(22px * var(--sn-font-scale, 1));
-  font-weight: 600;
-  color: var(--sn-text);
-  margin: 0;
-  letter-spacing: -0.02em;
-}
-
 /* ── Stats bar ── */
 .sn-health-stats {
   display: flex;
@@ -226,49 +188,3 @@
   gap: 6px;
 }
 
-/* ── Empty state ── */
-.sn-health-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 1;
-  padding: 60px 32px;
-}
-
-.sn-health-empty-glyph {
-  font-size: calc(40px * var(--sn-font-scale, 1));
-  opacity: 0.25;
-  line-height: 1;
-}
-
-.sn-health-empty-title {
-  font-family: var(--sn-font-display);
-  font-size: calc(18px * var(--sn-font-scale, 1));
-  font-weight: 600;
-  color: var(--sn-text);
-  margin: 0;
-}
-
-.sn-health-empty-sub {
-  font-family: var(--sn-font-body);
-  font-size: calc(13px * var(--sn-font-scale, 1));
-  color: var(--sn-text-muted);
-  text-align: center;
-  margin: 0;
-}
-
-.sn-health-empty-cta {
-  margin-top: 8px;
-  padding: 10px 20px;
-  background: var(--sn-success);
-  border: none;
-  border-radius: var(--sn-radius-btn);
-  color: var(--sn-accent-text);
-  font-family: var(--sn-font-body);
-  font-size: calc(14px * var(--sn-font-scale, 1));
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}

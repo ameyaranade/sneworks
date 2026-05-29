@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Archive } from 'lucide-react';
+import { Archive } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';
@@ -8,6 +8,8 @@ import { useGroupsStore } from '../stores/useGroupsStore';
 import { recomputeGroupCounts } from '../firebase/groupQueries';
 import { useUI } from '../context/UIContext';
 import SwipeableRow, { SwipeAction } from '../components/swipe/SwipeableRow';
+import DetailPageHeader from '../components/primitives/DetailPageHeader';
+import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import { Timestamp } from 'firebase/firestore';
 import type { ShoppingItemTodo, Todo } from '../types';
 import './group-detail-page.css';
@@ -110,6 +112,31 @@ export default function GroupDetailPage() {
     (t): t is ShoppingItemTodo => t.todoType === 'shopping-item',
   );
 
+  // ── Pending delete confirmation ───────────────────────────────────────────
+
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const handleDeleteConfirmed = useCallback(async () => {
+    const todoId = pendingDeleteId;
+    setPendingDeleteId(null);
+    if (!todoId || !uid || !groupId) return;
+    const deleted = await deleteTodo(uid, todoId).catch(() => {
+      showToast('Could not delete. Try again.', 'error');
+      return undefined;
+    });
+    if (deleted) {
+      recomputeGroupCounts(uid, groupId).catch(console.error);
+      showToast('Deleted', 'info', {
+        action: {
+          label: 'Undo',
+          onClick: () =>
+            restoreTodo(uid, deleted).catch(() => showToast('Could not restore.', 'error')),
+        },
+        duration: 5000,
+      });
+    }
+  }, [pendingDeleteId, uid, groupId, deleteTodo, restoreTodo, showToast]);
+
   // ── Inline add ────────────────────────────────────────────────────────────
 
   const [newTitle, setNewTitle] = useState('');
@@ -151,24 +178,9 @@ export default function GroupDetailPage() {
     }
   }, [uid, groupId, completeTodo, markPending, showToast]);
 
-  const handleDelete = useCallback(async (todoId: string) => {
-    if (!uid || !groupId) return;
-    const deleted = await deleteTodo(uid, todoId).catch(() => {
-      showToast('Could not delete. Try again.', 'error');
-      return undefined;
-    });
-    if (deleted) {
-      recomputeGroupCounts(uid, groupId).catch(console.error);
-      showToast('Deleted', 'info', {
-        action: {
-          label: 'Undo',
-          onClick: () =>
-            restoreTodo(uid, deleted).catch(() => showToast('Could not restore.', 'error')),
-        },
-        duration: 5000,
-      });
-    }
-  }, [uid, groupId, deleteTodo, restoreTodo, showToast]);
+  const handleDelete = useCallback((todoId: string) => {
+    setPendingDeleteId(todoId);
+  }, []);
 
   // ── Archive ────────────────────────────────────────────────────────────────
 
@@ -191,11 +203,7 @@ export default function GroupDetailPage() {
   if (!group) {
     return (
       <div className="sn-gdp">
-        <div className="sn-gdp-header">
-          <button type="button" className="sn-gdp-back-btn" onClick={() => navigate('/more')}>
-            <ArrowLeft size={18} strokeWidth={2} />
-          </button>
-        </div>
+        <DetailPageHeader onBack={() => navigate('/more')} title="" />
         <div className="sn-gdp-loading">Loading…</div>
       </div>
     );
@@ -207,37 +215,35 @@ export default function GroupDetailPage() {
   const totalSpent = isShopping ? (group as { totalSpent?: number }).totalSpent ?? 0 : 0;
 
   return (
+    <>
+    {pendingDeleteId && (
+      <ConfirmSheet
+        title="Delete item?"
+        message="This item will be removed from the list."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setPendingDeleteId(null)}
+      />
+    )}
     <div className="sn-gdp">
       {/* ── Header ── */}
-      <div className="sn-gdp-header">
-        <button
-          type="button"
-          className="sn-gdp-back-btn"
-          onClick={() => navigate('/more')}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} strokeWidth={2} />
-        </button>
-
-        <div className="sn-gdp-title-wrap">
-          <h1 className="sn-gdp-title">{group.name}</h1>
-          {group.childCount > 0 && (
-            <span className="sn-gdp-subtitle">
-              {group.doneCount}/{group.childCount} done
-            </span>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="sn-gdp-archive-btn"
-          onClick={handleArchive}
-          aria-label="Archive list"
-          title="Archive list"
-        >
-          <Archive size={16} strokeWidth={2} />
-        </button>
-      </div>
+      <DetailPageHeader
+        onBack={() => navigate('/more')}
+        title={group.name}
+        subtitle={group.childCount > 0 ? `${group.doneCount}/${group.childCount} done` : undefined}
+        rightSlot={
+          <button
+            type="button"
+            className="sn-gdp-archive-btn"
+            onClick={handleArchive}
+            aria-label="Archive list"
+            title="Archive list"
+          >
+            <Archive size={16} strokeWidth={2} />
+          </button>
+        }
+      />
 
       {/* ── Progress bar ── */}
       {group.showProgress && group.childCount > 0 && (
@@ -264,7 +270,7 @@ export default function GroupDetailPage() {
         />
         <button
           type="button"
-          className="sn-gdp-add-btn"
+          className="sn-inline-add-btn"
           onClick={handleAddItem}
           disabled={!newTitle.trim() || adding}
         >
@@ -301,5 +307,6 @@ export default function GroupDetailPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

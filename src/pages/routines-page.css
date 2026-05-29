@@ -29,38 +29,6 @@
   padding: 16px 20px 0;
 }
 
-/* ── Empty state ── */
-.sn-routines-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.sn-routines-empty__glyph {
-  font-size: calc(40px * var(--sn-font-scale, 1));
-  color: var(--sn-text-muted);
-  opacity: 0.4;
-  line-height: 1;
-}
-
-.sn-routines-empty__title {
-  font-family: var(--sn-font-body);
-  font-size: calc(15px * var(--sn-font-scale, 1));
-  font-weight: 500;
-  color: var(--sn-text-dim);
-  margin: 0;
-}
-
-.sn-routines-empty__sub {
-  font-family: var(--sn-font-body);
-  font-size: calc(13px * var(--sn-font-scale, 1));
-  color: var(--sn-text-muted);
-  margin: 0;
-}
-
 /* ── Routine list ── */
 .sn-routines-list {
   display: flex;
@@ -71,48 +39,6 @@
 /* ── Archived section ── */
 .sn-routines-archived {
   margin-top: 16px;
-}
-
-.sn-routines-archived-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  color: var(--sn-text-muted);
-  font-family: var(--sn-font-body);
-  font-size: calc(12px * var(--sn-font-scale, 1));
-  font-weight: 500;
-  padding: 8px 0;
-  cursor: pointer;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-routines-archived-toggle__count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  background: var(--sn-bg-card);
-  border: 1px solid var(--sn-border);
-  color: var(--sn-text-muted);
-  border-radius: 9px;
-  font-family: var(--sn-font-mono);
-  font-size: calc(10px * var(--sn-font-scale, 1));
-  font-weight: 700;
-}
-
-.sn-routines-archived-toggle__chevron {
-  margin-left: auto;
-  transition: transform 0.2s ease;
-  color: var(--sn-text-muted);
-}
-
-.sn-routines-archived-toggle__chevron--open {
-  transform: rotate(180deg);
 }
 
 .sn-routines-archived-list {
@@ -184,6 +110,27 @@
   color: var(--sn-accent);
 }
 
+.sn-routines-archived-row__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--sn-border);
+  background: transparent;
+  color: var(--sn-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--sn-transition-fast), color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-routines-archived-row__delete:hover {
+  background: var(--sn-bg-card-hover);
+  color: var(--sn-danger);
+}
+
 /* ── Routine card ── */
 .sn-routines-card {
   display: flex;
@@ -233,31 +180,6 @@
   flex-wrap: wrap;
 }
 
-/* ── Section action button ── */
-.sn-routine-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--sn-bg-card);
-  border: 1px solid var(--sn-border);
-  border-radius: var(--sn-radius-chip);
-  color: var(--sn-accent);
-  font-family: var(--sn-font-body);
-  font-size: calc(12px * var(--sn-font-scale, 1));
-  font-weight: 500;
-  padding: 5px 11px;
-  cursor: pointer;
-  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-routine-action-btn:hover,
-.sn-routine-action-btn:active {
-  background: var(--sn-bg-card-hover);
-  border-color: var(--sn-border-strong);
-}
-
-
 .sn-routines-card__name {
   font-family: var(--sn-font-body);
   font-size: calc(14px * var(--sn-font-scale, 1));
@@ -283,21 +205,6 @@
   font-family: var(--sn-font-body);
   font-size: calc(11px * var(--sn-font-scale, 1));
   color: var(--sn-text-muted);
-}
-
-.sn-routines-card__progress-track {
-  height: 2px;
-  background: var(--sn-border);
-  border-radius: 1px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-
-.sn-routines-card__progress-fill {
-  height: 100%;
-  background: var(--sn-purple);
-  border-radius: 1px;
-  transition: width 0.3s ease;
 }
 
 .sn-routines-card__streak {
@@ -327,52 +234,6 @@
   border-radius: var(--sn-radius-chip);
   padding: 2px 7px;
   white-space: nowrap;
-}
-
-/* ── Shared sheet input (also in project-detail-page.css — duplicated here
-   so it works even when ProjectDetailPage hasn't been lazy-loaded yet) ── */
-.sn-proj-sheet-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px solid var(--sn-border-strong);
-  padding: 6px 0;
-  color: var(--sn-text);
-  font-family: var(--sn-font-display);
-  font-size: calc(20px * var(--sn-font-scale, 1));
-  font-weight: 400;
-  outline: none;
-  letter-spacing: -0.01em;
-  box-sizing: border-box;
-  transition: border-color var(--sn-transition-fast);
-}
-
-.sn-proj-sheet-input:focus {
-  border-bottom-color: var(--sn-accent);
-}
-
-.sn-proj-sheet-input::placeholder {
-  color: var(--sn-text-muted);
-}
-
-.sn-proj-add-btn {
-  padding: 5px 13px;
-  background: var(--sn-accent);
-  border: none;
-  border-radius: var(--sn-radius-chip);
-  color: var(--sn-accent-text);
-  font-family: var(--sn-font-body);
-  font-size: calc(13px * var(--sn-font-scale, 1));
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity var(--sn-transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-proj-add-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
 }
 
 /* ── New Routine Sheet form ── */

@@ -6,6 +6,8 @@ import { useGroupsStore } from '../stores/useGroupsStore';
 import { useLogsStore } from '../stores/useLogsStore';
 import { useUI } from '../context/UIContext';
 import TodoRow from '../components/rows/TodoRow';
+import EmptyState from '../components/primitives/EmptyState';
+import ProgressBar from '../components/primitives/ProgressBar';
 import type { ShoppingListGroup, Group, Todo, RecurringTodoGroup } from '../types';
 import { startOfDay } from '../utils';
 import './today-page.css';
@@ -47,9 +49,7 @@ function ActiveGroupCard({ group }: { group: ShoppingListGroup }) {
       </div>
       <div className="sn-today-group-card__body">
         <span className="sn-today-group-card__name">{group.name}</span>
-        <div className="sn-today-group-card__progress-track">
-          <div className="sn-today-group-card__progress-fill" style={{ width: `${pct}%` }} />
-        </div>
+        <ProgressBar pct={pct} color="success" />
       </div>
       <span className="sn-today-group-card__count">
         {group.doneCount}/{group.childCount}
@@ -125,11 +125,7 @@ function GroupedTodoBlock({ todoGroup, navigate, onEditRecurring }: GroupedTodoB
             <div className="sn-today-grouped-card__top">
               <span className="sn-today-grouped-card__name">{group.name}</span>
             </div>
-            {childCount > 0 && (
-              <div className="sn-today-grouped-card__bar-track">
-                <div className="sn-today-grouped-card__bar-fill" style={{ width: `${pct}%` }} />
-              </div>
-            )}
+            {childCount > 0 && <ProgressBar pct={pct} />}
             <span className="sn-today-grouped-card__meta">{meta}</span>
           </div>
           <ChevronDown
@@ -427,11 +423,7 @@ export default function TodayPage() {
 
             {/* ── Empty state ── */}
             {isEmpty && (
-              <div className="sn-today-empty">
-                <span className="sn-today-empty-glyph">✦</span>
-                <p className="sn-today-empty-text">Nothing planned today.</p>
-                <p className="sn-today-empty-sub">Tap TODO to add a task.</p>
-              </div>
+              <EmptyState glyph="✦" title="Nothing planned today." sub="Tap TODO to add a task." />
             )}
           </>
         )}

@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
-import { Heart, Trash2, ArrowLeft } from 'lucide-react';
+import { Heart, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useLogsStore, type DayGroup } from '../stores/useLogsStore';
 import { useUI } from '../context/UIContext';
 import SwipeableRow from '../components/swipe/SwipeableRow';
+import DetailPageHeader from '../components/primitives/DetailPageHeader';
+import EmptyState from '../components/primitives/EmptyState';
 import type { Log, HealthLog } from '../types';
 import './health-detail-page.css';
 
@@ -125,26 +127,6 @@ function DaySection({ group, onDelete }: { group: DayGroup; onDelete: (log: Log)
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-function EmptyState() {
-  const { openComposeLog } = useUI();
-  return (
-    <div className="sn-health-empty">
-      <span className="sn-health-empty-glyph">♡</span>
-      <p className="sn-health-empty-title">No health logs yet</p>
-      <p className="sn-health-empty-sub">Log a workout, mood, or weight to start your streak.</p>
-      <button
-        type="button"
-        className="sn-health-empty-cta"
-        onClick={() => openComposeLog('health-log')}
-      >
-        Log workout
-      </button>
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function HealthDetailPage() {
@@ -182,19 +164,11 @@ export default function HealthDetailPage() {
     });
   };
 
+  const { openComposeLog } = useUI();
+
   return (
     <div className="sn-health-page">
-      <div className="sn-health-header">
-        <button
-          type="button"
-          className="sn-health-back-btn"
-          onClick={() => navigate('/more')}
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} strokeWidth={2} />
-        </button>
-        <h1 className="sn-health-heading">Health</h1>
-      </div>
+      <DetailPageHeader onBack={() => navigate('/more')} title="Health" />
 
       {(hasLogs || loaded) && (
         <div className="sn-health-stats">
@@ -229,7 +203,12 @@ export default function HealthDetailPage() {
           ))}
         </div>
       ) : (
-        <EmptyState />
+        <EmptyState
+          glyph="♡"
+          title="No health logs yet"
+          sub="Log a workout, mood, or weight to start your streak."
+          cta={{ label: 'Log workout', onClick: () => openComposeLog('health-log'), variant: 'success' }}
+        />
       )}
     </div>
   );

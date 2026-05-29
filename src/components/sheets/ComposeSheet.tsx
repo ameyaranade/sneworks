@@ -160,9 +160,10 @@ interface GenericTaskFormProps {
   onSaveRecurring: (data: { title: string; recurrence: string }) => Promise<void>;
   onCancel: () => void;
   isEdit: boolean;
+  disableRecurring?: boolean;
 }
 
-function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, onSave, onSaveRecurring, onCancel, isEdit }: GenericTaskFormProps) {
+function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, onSave, onSaveRecurring, onCancel, isEdit, disableRecurring = false }: GenericTaskFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState(initialNotes);
   const [dateStr, setDateStr] = useState(initialDueAt ? tsToDateStr(initialDueAt) : '');
@@ -203,22 +204,24 @@ function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, o
         />
       </div>
 
-      {/* Recurring toggle */}
-      <div className="sn-compose-field">
-        <label className="sn-compose-recurring-row">
-          <span className="sn-compose-label" style={{ margin: 0 }}>Recurring</span>
-          <button
-            type="button"
-            className={`sn-settings-toggle${isRecurring ? ' sn-settings-toggle--on' : ''}`}
-            onClick={() => setIsRecurring((v) => !v)}
-            aria-label="Toggle recurring"
-          >
-            <span className="sn-settings-toggle__knob" />
-          </button>
-        </label>
-      </div>
+      {/* Recurring toggle — hidden when task belongs to a project */}
+      {!disableRecurring && (
+        <div className="sn-compose-field">
+          <label className="sn-compose-recurring-row">
+            <span className="sn-compose-label" style={{ margin: 0 }}>Recurring</span>
+            <button
+              type="button"
+              className={`sn-settings-toggle${isRecurring ? ' sn-settings-toggle--on' : ''}`}
+              onClick={() => setIsRecurring((v) => !v)}
+              aria-label="Toggle recurring"
+            >
+              <span className="sn-settings-toggle__knob" />
+            </button>
+          </label>
+        </div>
+      )}
 
-      {isRecurring ? (
+      {isRecurring && !disableRecurring ? (
         <RecurrenceFields
           freq={recurFreq} setFreq={setRecurFreq}
           dayCode={recurDayCode} setDayCode={setRecurDayCode}
@@ -1464,6 +1467,7 @@ export default function ComposeSheet({
               onSaveRecurring={handleSaveRecurringTask}
               onCancel={onClose}
               isEdit={isEdit}
+              disableRecurring={!!preselectedGroupId}
             />
           )}
 

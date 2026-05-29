@@ -7,70 +7,6 @@
   padding-bottom: 40px;
 }
 
-/* ── Header ── */
-.sn-rtn-detail-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 20px 0;
-}
-
-.sn-rtn-detail-back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--sn-radius-card-sm);
-  border: 1px solid var(--sn-border);
-  background: var(--sn-bg-card);
-  color: var(--sn-text-dim);
-  cursor: pointer;
-  flex-shrink: 0;
-  margin-top: 2px;
-  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-rtn-detail-back:hover {
-  background: var(--sn-bg-card-hover);
-  border-color: var(--sn-border-strong);
-}
-
-.sn-rtn-detail-title-block {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.sn-rtn-detail-title {
-  font-family: var(--sn-font-display);
-  font-size: calc(20px * var(--sn-font-scale, 1));
-  font-weight: 600;
-  color: var(--sn-text);
-  margin: 0;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sn-rtn-detail-subtitle {
-  font-family: var(--sn-font-body);
-  font-size: calc(12px * var(--sn-font-scale, 1));
-  color: var(--sn-text-muted);
-}
-
-.sn-rtn-detail-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
 .sn-rtn-detail-streak {
   display: flex;
   align-items: center;
@@ -328,27 +264,6 @@
   color: var(--sn-error);
 }
 
-/* ── Shared: add button (accent pill) ── */
-.sn-proj-add-btn {
-  padding: 5px 13px;
-  background: var(--sn-accent);
-  border: none;
-  border-radius: var(--sn-radius-chip);
-  color: var(--sn-accent-text);
-  font-family: var(--sn-font-body);
-  font-size: calc(13px * var(--sn-font-scale, 1));
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity var(--sn-transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sn-proj-add-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
 /* ── Template add row ── */
 .sn-rtn-detail-tmpl-add-row {
   display: flex;
@@ -356,13 +271,6 @@
   gap: 8px;
   margin-top: 4px;
   padding: 0 2px;
-}
-
-/* ── Template action buttons ── */
-.sn-rtn-detail-tmpl-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
 }
 
 /* ── Deferred badge in subtitle ── */

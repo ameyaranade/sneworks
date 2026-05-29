@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Archive, Flame, Pencil, Check, X, Plus, PauseCircle, Edit2 } from 'lucide-react';
+import { Archive, Flame, Pencil, Check, X, Plus, PauseCircle, Edit2 } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';
@@ -11,6 +11,8 @@ import { Timestamp } from 'firebase/firestore';
 import TodoRow from '../components/rows/TodoRow';
 import BottomSheet from '../components/primitives/BottomSheet';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
+import DetailPageHeader from '../components/primitives/DetailPageHeader';
+import SheetFormActions from '../components/primitives/SheetFormActions';
 import type { RoutineGroup, TemplateItem } from '../types';
 import './routine-detail-page.css';
 
@@ -92,7 +94,7 @@ function EditRoutineSheet({ routine, onClose }: EditRoutineSheetProps) {
       <div className="sn-rtn-sheet-form">
         <input
           type="text"
-          className="sn-proj-sheet-input"
+          className="sn-sheet-title-input"
           placeholder="Routine name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -123,13 +125,12 @@ function EditRoutineSheet({ routine, onClose }: EditRoutineSheetProps) {
           <input type="time" className="sn-rtn-time-input" value={spawnTime}
             onChange={(e) => setSpawnTime(e.target.value)} />
         </div>
-        <div className="sn-proj-sheet-actions">
-          <button type="button" className="sn-compose-cancel-btn" onClick={onClose}>Cancel</button>
-          <button type="button" className="sn-compose-save-btn"
-            disabled={!name.trim() || saving} onClick={handleSave}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+        <SheetFormActions
+          onCancel={onClose}
+          onSave={handleSave}
+          saving={saving}
+          disabled={!name.trim()}
+        />
       </div>
     </BottomSheet>
   );
@@ -374,18 +375,13 @@ export default function RoutineDetailPage() {
   if (!routine) {
     return (
       <div className="sn-rtn-detail-page">
-        <div className="sn-rtn-detail-header">
-          <button
-            type="button"
-            className="sn-rtn-detail-back"
-            onClick={() => {
-                const from = (location.state as { from?: string } | null)?.from;
-                navigate(from ?? '/routines');
-              }}
-          >
-            <ArrowLeft size={18} strokeWidth={2} />
-          </button>
-        </div>
+        <DetailPageHeader
+          onBack={() => {
+            const from = (location.state as { from?: string } | null)?.from;
+            navigate(from ?? '/routines');
+          }}
+          title=""
+        />
         <div className="sn-rtn-detail-notfound">Routine not found.</div>
       </div>
     );
@@ -408,60 +404,55 @@ export default function RoutineDetailPage() {
     <div className="sn-rtn-detail-page">
 
       {/* ── Header ── */}
-      <div className="sn-rtn-detail-header">
-        <button
-          type="button"
-          className="sn-rtn-detail-back"
-          onClick={() => navigate('/routines')}
-        >
-          <ArrowLeft size={18} strokeWidth={2} />
-        </button>
-
-        <div className="sn-rtn-detail-title-block">
-          <h1 className="sn-rtn-detail-title">{routine.name}</h1>
-          <span className="sn-rtn-detail-subtitle">
+      <DetailPageHeader
+        onBack={() => navigate('/routines')}
+        title={routine.name}
+        subtitle={
+          <>
             {recurrenceLabel(routine.recurrence)} · {routine.spawnTime}
             {isDeferred && (
               <span className="sn-rtn-detail-deferred-badge">
-                · Paused until {routine.deferUntil!.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                {' · Paused until '}
+                {routine.deferUntil!.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               </span>
             )}
-          </span>
-        </div>
-
-        <div className="sn-rtn-detail-header-right">
-          {routine.streakCount > 0 && !isDeferred && (
-            <div className="sn-rtn-detail-streak">
-              <Flame size={14} strokeWidth={2} />
-              <span>{routine.streakCount}</span>
-            </div>
-          )}
-          <button
-            type="button"
-            className="sn-rtn-detail-archive-btn"
-            onClick={() => setDeferOpen(true)}
-            title="Defer routine"
-          >
-            <PauseCircle size={15} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            className="sn-rtn-detail-archive-btn"
-            onClick={() => setEditOpen(true)}
-            title="Edit routine"
-          >
-            <Edit2 size={15} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            className="sn-rtn-detail-archive-btn"
-            onClick={() => setConfirmArchive(true)}
-            title="Archive routine"
-          >
-            <Archive size={15} strokeWidth={2} />
-          </button>
-        </div>
-      </div>
+          </>
+        }
+        rightSlot={
+          <>
+            {routine.streakCount > 0 && !isDeferred && (
+              <div className="sn-rtn-detail-streak">
+                <Flame size={14} strokeWidth={2} />
+                <span>{routine.streakCount}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className="sn-rtn-detail-archive-btn"
+              onClick={() => setDeferOpen(true)}
+              title="Defer routine"
+            >
+              <PauseCircle size={15} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="sn-rtn-detail-archive-btn"
+              onClick={() => setEditOpen(true)}
+              title="Edit routine"
+            >
+              <Edit2 size={15} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="sn-rtn-detail-archive-btn"
+              onClick={() => setConfirmArchive(true)}
+              title="Archive routine"
+            >
+              <Archive size={15} strokeWidth={2} />
+            </button>
+          </>
+        }
+      />
 
       {/* ── Progress bar ── */}
       {routine.childCount > 0 && (
@@ -518,7 +509,7 @@ export default function RoutineDetailPage() {
           {quickAdd.trim() && (
             <button
               type="button"
-              className="sn-proj-add-btn"
+              className="sn-inline-add-btn"
               onClick={handleQuickAdd}
               disabled={addingTask}
             >
@@ -586,29 +577,18 @@ export default function RoutineDetailPage() {
                 autoFocus
               />
               {newTemplateItem.trim() && (
-                <button type="button" className="sn-proj-add-btn" onClick={addDraftItem}>
+                <button type="button" className="sn-inline-add-btn" onClick={addDraftItem}>
                   Add
                 </button>
               )}
             </div>
 
-            <div className="sn-rtn-detail-tmpl-actions">
-              <button
-                type="button"
-                className="sn-compose-cancel-btn"
-                onClick={cancelEditTemplate}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="sn-compose-save-btn"
-                onClick={saveTemplate}
-                disabled={savingTemplate}
-              >
-                {savingTemplate ? 'Saving…' : 'Save template'}
-              </button>
-            </div>
+            <SheetFormActions
+              onCancel={cancelEditTemplate}
+              onSave={saveTemplate}
+              saveLabel="Save template"
+              saving={savingTemplate}
+            />
           </div>
         )}
       </div>

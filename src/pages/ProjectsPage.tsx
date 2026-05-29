@@ -5,6 +5,10 @@ import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import BottomSheet from '../components/primitives/BottomSheet';
+import EmptyState from '../components/primitives/EmptyState';
+import CollapsibleSection from '../components/primitives/CollapsibleSection';
+import ProgressBar from '../components/primitives/ProgressBar';
+import SheetFormActions from '../components/primitives/SheetFormActions';
 import type { Group } from '../types';
 import './projects-page.css';
 
@@ -52,7 +56,7 @@ function NewProjectSheet({ onClose }: NewProjectSheetProps) {
       <div className="sn-projects-sheet-form">
         <input
           type="text"
-          className="sn-projects-sheet-input"
+          className="sn-sheet-title-input"
           placeholder="Project name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -60,19 +64,13 @@ function NewProjectSheet({ onClose }: NewProjectSheetProps) {
           autoFocus
           maxLength={80}
         />
-        <div className="sn-projects-sheet-actions">
-          <button type="button" className="sn-compose-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sn-compose-save-btn"
-            disabled={!name.trim() || saving}
-            onClick={handleCreate}
-          >
-            {saving ? 'Creating…' : 'Create'}
-          </button>
-        </div>
+        <SheetFormActions
+          onCancel={onClose}
+          onSave={handleCreate}
+          saveLabel="Create"
+          saving={saving}
+          disabled={!name.trim()}
+        />
       </div>
     </BottomSheet>
   );
@@ -107,12 +105,7 @@ function ProjectCard({ group }: ProjectCardProps) {
             : `${group.doneCount}/${group.childCount} done`}
         </span>
         {group.showProgress && group.childCount > 0 && (
-          <div className="sn-projects-card__progress-track">
-            <div
-              className="sn-projects-card__progress-fill"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <ProgressBar pct={pct} />
         )}
       </div>
       <ChevronRight size={14} strokeWidth={2} className="sn-projects-card__chevron" />
@@ -159,8 +152,6 @@ function ArchivedProjectRow({ group, onRestore }: ArchivedProjectRowProps) {
 
 export default function ProjectsPage() {
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [completedOpen, setCompletedOpen] = useState(false);
-  const [archivedOpen, setArchivedOpen] = useState(false);
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -205,11 +196,11 @@ export default function ProjectsPage() {
 
       <div className="sn-projects-body">
         {activeProjects.length === 0 ? (
-          <div className="sn-projects-empty">
-            <span className="sn-projects-empty__glyph">◫</span>
-            <p className="sn-projects-empty__title">No active projects.</p>
-            <p className="sn-projects-empty__sub">Tap New project to track tasks and goals.</p>
-          </div>
+          <EmptyState
+            glyph="◫"
+            title="No active projects."
+            sub="Tap New project to track tasks and goals."
+          />
         ) : (
           <div className="sn-projects-list">
             {activeProjects.map((p) => (
@@ -219,55 +210,31 @@ export default function ProjectsPage() {
         )}
 
         {completedProjects.length > 0 && (
-          <div className="sn-projects-completed">
-            <button
-              type="button"
-              className="sn-projects-completed-toggle"
-              onClick={() => setCompletedOpen((v) => !v)}
-            >
-              <span>Completed</span>
-              <span className="sn-projects-completed-toggle__count">{completedProjects.length}</span>
-              <svg
-                className={`sn-projects-completed-toggle__chevron${completedOpen ? ' sn-projects-completed-toggle__chevron--open' : ''}`}
-                viewBox="0 0 12 12" width="12" height="12" fill="none"
-              >
-                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {completedOpen && (
-              <div className="sn-projects-list sn-projects-list--completed">
-                {completedProjects.map((p) => (
-                  <ProjectCard key={p.id} group={p} />
-                ))}
-              </div>
-            )}
-          </div>
+          <CollapsibleSection
+            label="Completed"
+            count={completedProjects.length}
+            className="sn-projects-completed"
+          >
+            <div className="sn-projects-list sn-projects-list--completed">
+              {completedProjects.map((p) => (
+                <ProjectCard key={p.id} group={p} />
+              ))}
+            </div>
+          </CollapsibleSection>
         )}
 
         {archivedProjects.length > 0 && (
-          <div className="sn-projects-completed">
-            <button
-              type="button"
-              className="sn-projects-completed-toggle"
-              onClick={() => setArchivedOpen((v) => !v)}
-            >
-              <span>Archived</span>
-              <span className="sn-projects-completed-toggle__count">{archivedProjects.length}</span>
-              <svg
-                className={`sn-projects-completed-toggle__chevron${archivedOpen ? ' sn-projects-completed-toggle__chevron--open' : ''}`}
-                viewBox="0 0 12 12" width="12" height="12" fill="none"
-              >
-                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {archivedOpen && (
-              <div className="sn-projects-archived-list">
-                {archivedProjects.map((p) => (
-                  <ArchivedProjectRow key={p.id} group={p} onRestore={handleRestore} />
-                ))}
-              </div>
-            )}
-          </div>
+          <CollapsibleSection
+            label="Archived"
+            count={archivedProjects.length}
+            className="sn-projects-completed"
+          >
+            <div className="sn-projects-archived-list">
+              {archivedProjects.map((p) => (
+                <ArchivedProjectRow key={p.id} group={p} onRestore={handleRestore} />
+              ))}
+            </div>
+          </CollapsibleSection>
         )}
       </div>
 

@@ -7,6 +7,11 @@ import { useGroupsStore } from '../stores/useGroupsStore';
 import { spawnDueRoutines, recurrenceLabel } from '../firebase/routineSpawner';
 import BottomSheet from '../components/primitives/BottomSheet';
 import EditRecurringSheet from '../components/sheets/EditRecurringSheet';
+import ConfirmSheet from '../components/primitives/ConfirmSheet';
+import EmptyState from '../components/primitives/EmptyState';
+import CollapsibleSection from '../components/primitives/CollapsibleSection';
+import ProgressBar from '../components/primitives/ProgressBar';
+import SheetFormActions from '../components/primitives/SheetFormActions';
 import type { Group, RoutineGroup, RecurringTodoGroup, TemplateItem } from '../types';
 import './routines-page.css';
 
@@ -104,7 +109,7 @@ function NewRoutineSheet({ onClose }: NewRoutineSheetProps) {
         {/* Name */}
         <input
           type="text"
-          className="sn-proj-sheet-input"
+          className="sn-sheet-title-input"
           placeholder="Routine name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -186,7 +191,7 @@ function NewRoutineSheet({ onClose }: NewRoutineSheetProps) {
                 onKeyDown={(e) => { if (e.key === 'Enter') addTemplateItem(); }}
               />
               {newItem.trim() && (
-                <button type="button" className="sn-proj-add-btn" onClick={addTemplateItem}>
+                <button type="button" className="sn-inline-add-btn" onClick={addTemplateItem}>
                   Add
                 </button>
               )}
@@ -194,20 +199,13 @@ function NewRoutineSheet({ onClose }: NewRoutineSheetProps) {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="sn-proj-sheet-actions">
-          <button type="button" className="sn-compose-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sn-compose-save-btn"
-            disabled={!name.trim() || saving}
-            onClick={handleCreate}
-          >
-            {saving ? 'Creating…' : 'Create'}
-          </button>
-        </div>
+        <SheetFormActions
+          onCancel={onClose}
+          onSave={handleCreate}
+          saveLabel="Create"
+          saving={saving}
+          disabled={!name.trim()}
+        />
       </div>
     </BottomSheet>
   );
@@ -255,9 +253,7 @@ function RoutineCard({ group }: RoutineCardProps) {
             <span className="sn-routines-card__meta">
               {routine.doneCount}/{routine.childCount} today
             </span>
-            <div className="sn-routines-card__progress-track">
-              <div className="sn-routines-card__progress-fill" style={{ width: `${pct}%` }} />
-            </div>
+            <ProgressBar pct={pct} color="purple" />
           </>
         )}
         {!isDeferred && routine.childCount === 0 && (
@@ -280,9 +276,10 @@ function RoutineCard({ group }: RoutineCardProps) {
 interface ArchivedRoutineRowProps {
   group: Group;
   onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-function ArchivedRoutineRow({ group, onRestore }: ArchivedRoutineRowProps) {
+function ArchivedRoutineRow({ group, onRestore, onDelete }: ArchivedRoutineRowProps) {
   const routine = group as RoutineGroup;
   return (
     <div className="sn-routines-archived-row">
@@ -301,6 +298,15 @@ function ArchivedRoutineRow({ group, onRestore }: ArchivedRoutineRowProps) {
         title="Restore"
       >
         <RotateCcw size={13} strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        className="sn-routines-archived-row__delete"
+        onClick={() => onDelete(group.id!)}
+        aria-label="Delete routine"
+        title="Delete"
+      >
+        <Trash2 size={13} strokeWidth={2} />
       </button>
     </div>
   );
@@ -360,8 +366,8 @@ function RecurringTodoCard({ group, onDelete, onEdit }: RecurringTodoCardProps) 
 
 export default function RoutinesPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [archivedOpen, setArchivedOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<RecurringTodoGroup | null>(null);
+  const [confirmDeleteArchivedId, setConfirmDeleteArchivedId] = useState<string | null>(null);
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -401,7 +407,30 @@ export default function RoutinesPage() {
     }
   }, [uid, deleteGroup, showToast]);
 
+  const handleDeleteArchivedConfirmed = useCallback(async () => {
+    const id = confirmDeleteArchivedId;
+    setConfirmDeleteArchivedId(null);
+    if (!id || !uid) return;
+    try {
+      await deleteGroup(uid, id);
+      showToast('Routine deleted', 'success');
+    } catch {
+      showToast('Could not delete', 'error');
+    }
+  }, [confirmDeleteArchivedId, uid, deleteGroup, showToast]);
+
   return (
+    <>
+    {confirmDeleteArchivedId && (
+      <ConfirmSheet
+        title="Delete routine?"
+        message="This archived routine will be permanently deleted."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteArchivedConfirmed}
+        onCancel={() => setConfirmDeleteArchivedId(null)}
+      />
+    )}
     <div className="sn-routines-page">
       <div className="sn-routines-header">
         <h1 className="sn-routines-title">Routines</h1>
@@ -417,11 +446,11 @@ export default function RoutinesPage() {
 
       <div className="sn-routines-body">
         {routines.length === 0 ? (
-          <div className="sn-routines-empty">
-            <span className="sn-routines-empty__glyph">⟳</span>
-            <p className="sn-routines-empty__title">No routines yet.</p>
-            <p className="sn-routines-empty__sub">Build a daily habit — tap New routine.</p>
-          </div>
+          <EmptyState
+            glyph="⟳"
+            title="No routines yet."
+            sub="Build a daily habit — tap New routine."
+          />
         ) : (
           <div className="sn-routines-list">
             {routines.map((r) => (
@@ -445,29 +474,17 @@ export default function RoutinesPage() {
         )}
 
         {archivedRoutines.length > 0 && (
-          <div className="sn-routines-archived">
-            <button
-              type="button"
-              className="sn-routines-archived-toggle"
-              onClick={() => setArchivedOpen((v) => !v)}
-            >
-              <span>Archived</span>
-              <span className="sn-routines-archived-toggle__count">{archivedRoutines.length}</span>
-              <svg
-                className={`sn-routines-archived-toggle__chevron${archivedOpen ? ' sn-routines-archived-toggle__chevron--open' : ''}`}
-                viewBox="0 0 12 12" width="12" height="12" fill="none"
-              >
-                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {archivedOpen && (
-              <div className="sn-routines-archived-list">
-                {archivedRoutines.map((r) => (
-                  <ArchivedRoutineRow key={r.id} group={r} onRestore={handleRestore} />
-                ))}
-              </div>
-            )}
-          </div>
+          <CollapsibleSection
+            label="Archived"
+            count={archivedRoutines.length}
+            className="sn-routines-archived"
+          >
+            <div className="sn-routines-archived-list">
+              {archivedRoutines.map((r) => (
+                <ArchivedRoutineRow key={r.id} group={r} onRestore={handleRestore} onDelete={setConfirmDeleteArchivedId} />
+              ))}
+            </div>
+          </CollapsibleSection>
         )}
       </div>
 
@@ -476,5 +493,6 @@ export default function RoutinesPage() {
         <EditRecurringSheet group={editingGroup} onClose={() => setEditingGroup(null)} />
       )}
     </div>
+    </>
   );
 }
