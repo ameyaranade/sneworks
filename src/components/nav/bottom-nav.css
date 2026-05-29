@@ -1,0 +1,55 @@
+﻿.sn-bottom-nav {
+  display: flex;
+  align-items: stretch;
+  height: var(--sn-nav-height);
+  background: var(--sn-bg-elev);
+  border-top: 1px solid var(--sn-border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.sn-nav-left,
+.sn-nav-right {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  /* Ensure empty right section still occupies space so FAB stays centred */
+  min-width: 0;
+}
+
+.sn-nav-center {
+  /* Spacer for the floating pill — width matches the pill width + breathing room */
+  width: 128px;
+  flex-shrink: 0;
+}
+
+.sn-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--sn-text-muted);
+  text-decoration: none;
+  min-height: var(--sn-touch-target);
+  transition: color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-tab--active {
+  color: var(--sn-accent);
+}
+
+.sn-tab-icon {
+  display: block;
+}
+
+.sn-tab-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}

@@ -1,0 +1,52 @@
+﻿.sn-split-pill {
+  position: absolute;
+  /* Horizontally center over the nav center slot */
+  left: 50%;
+  transform: translateX(-50%);
+  /* Float above the nav bar */
+  bottom: calc(var(--sn-nav-height) - 20px);
+  display: flex;
+  align-items: center;
+  border-radius: var(--sn-radius-pill);
+  background: var(--sn-accent);
+  box-shadow: var(--sn-shadow-fab);
+  z-index: 20;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-split-pill__half {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 18px;
+  color: var(--sn-accent-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--sn-transition-fast);
+  min-width: 56px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-split-pill__half:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sn-split-pill__label {
+  font-family: var(--sn-font-body);
+  font-size: calc(9px * var(--sn-font-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.sn-split-pill__divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(10, 11, 16, 0.25);
+  flex-shrink: 0;
+}

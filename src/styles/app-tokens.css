@@ -1,0 +1,154 @@
+/* ─── App Design Tokens ───────────────────────────────────────────────────────
+   Scoped under [data-theme] — never leaks into tracker, logger or games.
+   All app CSS custom properties use the --sn- prefix.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Shared tokens (theme-independent) ────────────────────────────────────── */
+[data-theme] {
+  /* ── Typography ── */
+  --sn-font-display: 'Fraunces', Georgia, serif;
+  --sn-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sn-font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
+
+  /* ── Spacing (4px grid) ── */
+  --sn-space-1: 4px;
+  --sn-space-2: 8px;
+  --sn-space-3: 12px;
+  --sn-space-4: 16px;
+  --sn-space-5: 20px;
+  --sn-space-6: 24px;
+  --sn-space-8: 32px;
+
+  /* ── Border radii ── */
+  --sn-radius-pill: 100px;
+  --sn-radius-card: 14px;
+  --sn-radius-card-sm: 10px;
+  --sn-radius-sheet: 28px;
+  --sn-radius-btn: 12px;
+  --sn-radius-input: 10px;
+  --sn-radius-chip: 100px;
+
+  /* ── Transitions ── */
+  --sn-transition-fast: 0.15s ease;
+  --sn-transition-med: 0.2s ease;
+  --sn-transition-swipe: 0.28s cubic-bezier(0.2, 0.85, 0.3, 1.0);
+
+  /* ── Layout ── */
+  --sn-nav-height: 64px;
+  --sn-touch-target: 44px;
+
+  /* ── Font scale (overridden by data-font attribute) ── */
+  --sn-font-scale: 1;
+}
+
+[data-font="small"]  { --sn-font-scale: 0.88; }
+[data-font="medium"] { --sn-font-scale: 1;    }
+[data-font="large"]  { --sn-font-scale: 1.15; }
+
+/* ── Dark mode ─────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --sn-bg: #0a0b10;
+  --sn-bg-elev: #14151c;
+  --sn-bg-card: #181a23;
+  --sn-bg-card-hover: #1f2230;
+  --sn-bg-input: #12141c;
+  --sn-bg-sheet: #1a1c26;
+
+  /* Borders */
+  --sn-border: #2e3145;
+  --sn-border-strong: #444860;
+
+  /* Text */
+  --sn-text: #f0f1f5;
+  --sn-text-dim: #9da3ba;
+  --sn-text-muted: #6b7189;
+
+  /* Brand */
+  --sn-accent: #a8beff;
+  --sn-accent-soft: #7a98ff;
+  --sn-accent-glow: rgba(168, 190, 255, 0.14);
+  --sn-success: #6ee7a8;
+  --sn-success-soft: rgba(110, 231, 168, 0.15);
+  --sn-danger: #ff8a8a;
+  --sn-danger-soft: rgba(255, 138, 138, 0.12);
+  --sn-warning: #fcd34d;
+  --sn-warn: #fcd34d;
+  --sn-warn-soft: rgba(252, 211, 77, 0.12);
+  --sn-gold: #e5c07b;
+  --sn-gold-glow: rgba(229, 192, 123, 0.1);
+  --sn-purple: #c5b4ff;
+
+  /* Type stripe colors */
+  --sn-stripe-shopping: var(--sn-accent);
+  --sn-stripe-project: var(--sn-gold);
+  --sn-stripe-routine: var(--sn-purple);
+
+  /* Shadows */
+  --sn-shadow-card: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --sn-shadow-sheet: 0 -8px 40px rgba(0, 0, 0, 0.5);
+  --sn-shadow-fab: 0 4px 20px rgba(168, 190, 255, 0.35);
+
+  /* Button contrast boosters */
+  --sn-btn-border: #4a5070;
+  --sn-btn-text: #e8ecff;
+  --sn-btn-bg: #22253a;
+  --sn-btn-bg-hover: #2a2e48;
+  /* Text on accent-colored button backgrounds */
+  --sn-accent-text: #0d0e18;
+}
+
+/* ── Light mode ─────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  /* Backgrounds */
+  --sn-bg: #f4f5f9;
+  --sn-bg-elev: #eaeaef;
+  --sn-bg-card: #ffffff;
+  --sn-bg-card-hover: #f0f0f8;
+  --sn-bg-input: #f4f5f9;
+  --sn-bg-sheet: #ffffff;
+
+  /* Borders */
+  --sn-border: #d8d8e8;
+  --sn-border-strong: #b8b8cc;
+
+  /* Text */
+  --sn-text: #111118;
+  --sn-text-dim: #44445a;
+  --sn-text-muted: #777788;
+
+  /* Brand */
+  --sn-accent: #3d5be0;
+  --sn-accent-soft: #2a46cc;
+  --sn-accent-glow: rgba(61, 91, 224, 0.10);
+  --sn-success: #1a9e5c;
+  --sn-success-soft: rgba(26, 158, 92, 0.12);
+  --sn-danger: #cc2a2a;
+  --sn-danger-soft: rgba(204, 42, 42, 0.10);
+  --sn-warning: #a06a00;
+  --sn-warn: #a06a00;
+  --sn-warn-soft: rgba(160, 106, 0, 0.10);
+  --sn-gold: #8a6500;
+  --sn-gold-glow: rgba(138, 101, 0, 0.08);
+  --sn-purple: #6535d6;
+
+  /* Type stripe colors */
+  --sn-stripe-shopping: var(--sn-accent);
+  --sn-stripe-project: var(--sn-gold);
+  --sn-stripe-routine: var(--sn-purple);
+
+  /* Shadows */
+  --sn-shadow-card: 0 1px 6px rgba(0, 0, 0, 0.08);
+  --sn-shadow-sheet: 0 -4px 24px rgba(0, 0, 0, 0.12);
+  --sn-shadow-fab: 0 4px 16px rgba(61, 91, 224, 0.28);
+
+  /* Button contrast boosters */
+  --sn-btn-border: #b0b0c8;
+  --sn-btn-text: #111118;
+  --sn-btn-bg: #ffffff;
+  --sn-btn-bg-hover: #f0f0f8;
+  /* Text on accent-colored button backgrounds */
+  --sn-accent-text: #ffffff;
+}

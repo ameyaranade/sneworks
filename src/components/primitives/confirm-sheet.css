@@ -1,0 +1,43 @@
+﻿.sn-confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sn-confirm-message {
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  color: var(--sn-text-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.sn-confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Danger CTA */
+.sn-confirm-cta {
+  flex: 2;
+  padding: 12px 16px;
+  background: var(--sn-accent);
+  border: none;
+  border-radius: var(--sn-radius-btn);
+  color: var(--sn-accent-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-confirm-cta--danger {
+  background: var(--sn-danger, #ef4444);
+  color: #fff;
+}
+
+.sn-confirm-cta:active {
+  opacity: 0.85;
+}

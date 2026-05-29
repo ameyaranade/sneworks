@@ -12,8 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Where to go after login — default to /tracker if came from there, else /
-  const from = (location.state as { from?: string })?.from ?? '/tracker';
+  const from = (location.state as { from?: string })?.from ?? '/';
 
   useEffect(() => {
     if (user) navigate(from, { replace: true });
@@ -40,7 +39,7 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <h1 className="login-title">Sign in</h1>
-        <p className="login-subtitle">Track your finances, exercise, groceries, and reminders.</p>
+        <p className="login-subtitle">Your personal planner and daily tracker.</p>
         {error && <p className="login-error">{error}</p>}
         <button
           className="btn-google"

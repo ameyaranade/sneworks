@@ -1,0 +1,96 @@
+﻿.sn-swipe-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.sn-swipe-actions {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  z-index: 0;
+}
+
+.sn-swipe-actions--right {
+  left: 0;
+}
+
+.sn-swipe-actions--left {
+  right: 0;
+}
+
+.sn-swipe-action {
+  width: 72px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: opacity var(--sn-transition-fast);
+  user-select: none;
+}
+
+.sn-swipe-action:active {
+  opacity: 0.75;
+}
+
+.sn-swipe-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Defer actions (right swipe) ── */
+.sn-swipe-action--plus1h {
+  background: var(--sn-accent-soft);
+  color: var(--sn-accent-text);
+}
+
+.sn-swipe-action--tomorrow {
+  background: var(--sn-purple);
+  color: var(--sn-accent-text);
+}
+
+.sn-swipe-action--pick {
+  background: var(--sn-bg-elev);
+  color: var(--sn-text-dim);
+  border-left: 1px solid var(--sn-border);
+}
+
+/* ── Left actions ── */
+.sn-swipe-action--edit {
+  background: var(--sn-bg-elev);
+  color: var(--sn-text-dim);
+  border-right: 1px solid var(--sn-border);
+}
+
+.sn-swipe-action--skip {
+  background: var(--sn-text-muted);
+  color: var(--sn-accent-text);
+}
+
+.sn-swipe-action--delete {
+  background: var(--sn-danger);
+  color: var(--sn-accent-text);
+}
+
+.sn-swipe-action--unmark {
+  background: var(--sn-warn-soft);
+  color: var(--sn-warn);
+  border-right: 1px solid var(--sn-border);
+}
+
+.sn-swipe-row {
+  position: relative;
+  z-index: 1;
+  background: var(--sn-bg);
+  will-change: transform;
+}

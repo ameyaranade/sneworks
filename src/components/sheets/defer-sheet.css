@@ -1,0 +1,118 @@
+﻿.sn-defer-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sn-defer-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--sn-bg-card);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-card-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-defer-btn:hover,
+.sn-defer-btn:active {
+  background: var(--sn-bg-card-hover);
+  border-color: var(--sn-border-strong);
+}
+
+.sn-defer-btn--someday {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sn-defer-btn__label {
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-text);
+}
+
+.sn-defer-btn__date {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+.sn-defer-divider {
+  height: 1px;
+  background: var(--sn-border);
+  margin: 16px 0;
+}
+
+.sn-defer-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sn-defer-custom__label {
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.sn-defer-custom__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sn-defer-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--sn-bg-input);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-input);
+  color: var(--sn-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--sn-transition-fast);
+  color-scheme: dark;
+}
+
+.sn-defer-input:focus {
+  border-color: var(--sn-accent);
+}
+
+.sn-defer-confirm-btn {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--sn-accent);
+  color: var(--sn-accent-text);
+  border: none;
+  border-radius: var(--sn-radius-btn);
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-defer-confirm-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sn-defer-confirm-btn:not(:disabled):active {
+  opacity: 0.85;
+}

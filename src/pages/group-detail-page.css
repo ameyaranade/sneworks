@@ -1,0 +1,287 @@
+﻿/* ── Page container ── */
+.sn-gdp {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.sn-gdp-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+
+.sn-gdp-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--sn-bg-card);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-card-sm);
+  color: var(--sn-text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--sn-transition-fast), color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-gdp-back-btn:hover,
+.sn-gdp-back-btn:active {
+  background: var(--sn-bg-card-hover);
+  color: var(--sn-text);
+}
+
+.sn-gdp-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.sn-gdp-title {
+  font-family: var(--sn-font-display);
+  font-size: calc(20px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sn-gdp-subtitle {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  display: block;
+  margin-top: 1px;
+}
+
+.sn-gdp-archive-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--sn-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-gdp-archive-btn:hover,
+.sn-gdp-archive-btn:active {
+  color: var(--sn-text-dim);
+}
+
+/* ── Progress bar ── */
+.sn-gdp-progress-track {
+  height: 3px;
+  background: var(--sn-border);
+  flex-shrink: 0;
+}
+
+.sn-gdp-progress-fill {
+  height: 100%;
+  background: var(--sn-success);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Inline add row ── */
+.sn-gdp-add-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--sn-border);
+  flex-shrink: 0;
+}
+
+.sn-gdp-add-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--sn-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  outline: none;
+  min-width: 0;
+}
+
+.sn-gdp-add-input::placeholder {
+  color: var(--sn-text-muted);
+}
+
+.sn-gdp-add-btn {
+  padding: 6px 14px;
+  background: var(--sn-accent);
+  border: none;
+  border-radius: var(--sn-radius-chip);
+  color: var(--sn-accent-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-gdp-add-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Item list ── */
+.sn-gdp-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Loading / empty ── */
+.sn-gdp-loading {
+  padding: 40px 20px;
+  text-align: center;
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+.sn-gdp-empty {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.sn-gdp-empty p {
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  margin: 0 0 4px;
+}
+
+.sn-gdp-empty p:last-child {
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  opacity: 0.6;
+}
+
+/* ── Footer (price total) ── */
+.sn-gdp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--sn-border);
+  background: var(--sn-bg-elev);
+  flex-shrink: 0;
+}
+
+.sn-gdp-footer-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sn-gdp-footer-total {
+  font-family: var(--sn-font-mono);
+  font-size: calc(16px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-success);
+}
+
+/* ── Shopping item row ── */
+.sn-shop-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--sn-bg);
+  min-height: var(--sn-touch-target);
+  transition: background var(--sn-transition-fast);
+}
+
+.sn-shop-row--done {
+  opacity: 0.45;
+}
+
+.sn-shop-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sn-border-strong);
+  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--sn-transition-fast), background var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-shop-checkbox:hover {
+  border-color: var(--sn-success);
+}
+
+.sn-shop-checkbox--done {
+  background: var(--sn-success);
+  border-color: var(--sn-success);
+  color: var(--sn-accent-text);
+}
+
+.sn-shop-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sn-shop-row-title {
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  color: var(--sn-text);
+  line-height: 1.4;
+}
+
+.sn-shop-row-title--done {
+  text-decoration: line-through;
+  color: var(--sn-text-muted);
+}
+
+.sn-shop-row-qty {
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+.sn-shop-row-tag {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-accent);
+  background: var(--sn-accent-glow);
+  padding: 2px 7px;
+  border-radius: var(--sn-radius-chip);
+  white-space: nowrap;
+}
+
+.sn-shop-row-price {
+  font-family: var(--sn-font-mono);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  color: var(--sn-text-dim);
+  flex-shrink: 0;
+}
