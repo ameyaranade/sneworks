@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, FolderOpen, ChevronRight, RotateCcw } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
@@ -154,6 +154,15 @@ export default function ProjectsPage() {
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const { user } = useAuth();
   const { showToast } = useToast();
+  const location = useLocation();
+
+  // Auto-open new project sheet when navigated here with { openAdd: true }
+  useEffect(() => {
+    if ((location.state as { openAdd?: boolean } | null)?.openAdd) {
+      setNewProjectOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const groups = useGroupsStore((s) => s.groups);
   const getActiveProjects = useGroupsStore((s) => s.getActiveProjects);

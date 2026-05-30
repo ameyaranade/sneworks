@@ -42,8 +42,8 @@ export function isDueToday(recurrence: string): boolean {
   if (recurrence === 'daily') return true;
   if (recurrence === 'weekdays') return day >= 1 && day <= 5;
 
-  const weeklyM = recurrence.match(/^weekly:([A-Z]+)$/);
-  if (weeklyM) return DAY_MAP[weeklyM[1]] === day;
+  const weeklyM = recurrence.match(/^weekly:([A-Z,]+)$/);
+  if (weeklyM) return weeklyM[1].split(',').some((d) => DAY_MAP[d] === day);
 
   const monthlyM = recurrence.match(/^monthly:(\d+)$/);
   if (monthlyM) return now.getDate() === Number(monthlyM[1]);
@@ -66,8 +66,11 @@ export function recurrenceLabel(recurrence: string): string {
   if (recurrence === 'daily') return 'Daily';
   if (recurrence === 'weekdays') return 'Weekdays';
 
-  const weeklyM = recurrence.match(/^weekly:([A-Z]+)$/);
-  if (weeklyM) return `Weekly · ${DAY_NAMES[weeklyM[1]] ?? weeklyM[1]}`;
+  const weeklyM = recurrence.match(/^weekly:([A-Z,]+)$/);
+  if (weeklyM) {
+    const days = weeklyM[1].split(',').map((d) => DAY_NAMES[d] ?? d).join(', ');
+    return `Weekly · ${days}`;
+  }
 
   const monthlyM = recurrence.match(/^monthly:(\d+)$/);
   if (monthlyM) return `Monthly · ${ordinal(Number(monthlyM[1]))}`;
@@ -154,6 +157,7 @@ export async function spawnDueRoutines(uid: string): Promise<void> {
         todoType:  item.todoType ?? 'generic-task',
         title:     item.title,
         groupId:   routine.id,
+        dueAt:     now,
         status:    'pending',
         sortOrder: i,
         createdAt: now,

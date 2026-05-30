@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -11,7 +11,8 @@ import { useToast } from '../../shared/components/Toast';
 import { useTodosStore } from '../../stores/useTodosStore';
 import { useLogsStore } from '../../stores/useLogsStore';
 import { recomputeGroupCounts } from '../../firebase/groupQueries';
-import type { Todo, TodoType, Log, LogType, ShoppingItemTodo, MoneyReminderTodo, ExpenseLog, IncomeLog, HealthLog, GenericNoteLog } from '../../types';
+import type { Todo, TodoType, Log, LogType, ShoppingItemTodo, MoneyReminderTodo, ExpenseLog, IncomeLog, HealthLog, GenericNoteLog, HealthLogPrefill, WorkoutType, IntensityLevel } from '../../types';
+import { WORKOUT_TYPES, INTENSITY_LEVELS, INTENSITY_COLORS, calcCalories, showsDistance, showsSetsReps, distanceUnit as getDistUnit } from '../../constants/health';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { spawnDueRecurringTodos } from '../../firebase/routineSpawner';
 import { buildTimestamp, tsToDateStr, tsToTimeStr } from '../../utils';
@@ -28,6 +29,7 @@ interface ComposeSheetProps {
   preselectedTodoType?: TodoType;
   preselectedLogType?: LogType;
   preselectedGroupId?: string;
+  healthPrefill?: HealthLogPrefill;
 }
 
 // ── Type Picker Cards ─────────────────────────────────────────────────────────
@@ -782,46 +784,152 @@ function IncomeForm({
 
 // ── Health Log Form ───────────────────────────────────────────────────────────
 
-const WORKOUT_TYPES = ['Run', 'Walk', 'Gym', 'Yoga', 'Swim', 'Cycle', 'Other'];
 const MOOD_COLORS = ['', '#ff8a8a', '#ffb86c', '#fcd34d', '#a3d977', '#6ee7a8'];
 
+interface HealthLogSaveData {
+  title: string;
+  workoutType?: WorkoutType;
+  mood?: number;
+  weightKg?: number;
+  notes?: string;
+  date: string;
+  durationMin?: number;
+  durationSec?: number;
+  intensity?: IntensityLevel;
+  caloriesBurned?: number;
+  caloriesEstimated?: boolean;
+  distanceValue?: number;
+  distanceUnit?: 'km' | 'm';
+  sets?: number;
+  reps?: number;
+  sourceRoutineId?: string;
+  sourceTemplateIdx?: number;
+}
+
 interface HealthLogFormProps {
-  initialWorkoutType?: string;
+  initialWorkoutType?: WorkoutType;
   initialTitle?: string;
   initialMood?: number;
   initialWeightKg?: number;
   initialNotes?: string;
   initialDate?: string;
-  onSave: (data: { title: string; workoutType?: string; mood?: number; weightKg?: number; notes?: string; date: string }) => Promise<void>;
+  initialDurationMin?: number;
+  initialDurationSec?: number;
+  initialIntensity?: IntensityLevel;
+  initialCaloriesBurned?: number;
+  initialCaloriesEstimated?: boolean;
+  initialDistanceValue?: number;
+  initialDistanceUnit?: 'km' | 'm';
+  initialSets?: number;
+  initialReps?: number;
+  prefill?: HealthLogPrefill;
+  onSave: (data: HealthLogSaveData) => Promise<void>;
   onCancel: () => void;
   isEdit: boolean;
 }
 
 function HealthLogForm({
-  initialWorkoutType = '',
+  initialWorkoutType,
   initialTitle = '',
   initialMood,
   initialWeightKg,
   initialNotes = '',
   initialDate,
+  initialDurationMin,
+  initialDurationSec,
+  initialIntensity,
+  initialCaloriesBurned,
+  initialCaloriesEstimated,
+  initialDistanceValue,
+  initialDistanceUnit,
+  initialSets,
+  initialReps,
+  prefill,
   onSave,
   onCancel,
   isEdit,
 }: HealthLogFormProps) {
   const todayStr = new Date().toISOString().slice(0, 10);
-  const [workoutType, setWorkoutType] = useState(initialWorkoutType);
-  const [title, setTitle] = useState(initialTitle);
+  const logs = useLogsStore((s) => s.logs);
+
+  // Resolve initial values, preferring explicit > prefill
+  const resolveWorkoutType = (): WorkoutType | undefined =>
+    initialWorkoutType ?? prefill?.workoutType;
+  const resolveIntensity = (): IntensityLevel | undefined =>
+    initialIntensity ?? prefill?.targetIntensity ?? 'Moderate';
+  const resolveDurationMin = (): string =>
+    initialDurationMin != null ? String(initialDurationMin)
+    : prefill?.targetDurationMin != null ? String(prefill.targetDurationMin)
+    : '';
+
+  const [workoutType, setWorkoutType] = useState<WorkoutType | undefined>(resolveWorkoutType);
+  const [title, setTitle] = useState(() => initialTitle || resolveWorkoutType() || '');
   const [mood, setMood] = useState<number | undefined>(initialMood);
-  const [weightKg, setWeightKg] = useState(initialWeightKg !== undefined ? String(initialWeightKg) : '');
+  const [weightKg, setWeightKg] = useState(initialWeightKg != null ? String(initialWeightKg) : '');
   const [notes, setNotes] = useState(initialNotes);
   const [date, setDate] = useState(initialDate ?? todayStr);
+  const [durationMin, setDurationMin] = useState(resolveDurationMin);
+  const [durationSec, setDurationSec] = useState(initialDurationSec != null ? String(initialDurationSec) : '');
+  const [intensity, setIntensity] = useState<IntensityLevel>(resolveIntensity() ?? 'Moderate');
+  const [distanceValue, setDistanceValue] = useState(
+    initialDistanceValue != null ? String(initialDistanceValue)
+    : prefill?.targetDistanceValue != null ? String(prefill.targetDistanceValue)
+    : ''
+  );
+  const [sets, setSets] = useState(
+    initialSets != null ? String(initialSets)
+    : prefill?.targetSets != null ? String(prefill.targetSets)
+    : ''
+  );
+  const [reps, setReps] = useState(
+    initialReps != null ? String(initialReps)
+    : prefill?.targetReps != null ? String(prefill.targetReps)
+    : ''
+  );
+  const [editingCal, setEditingCal] = useState(!(initialCaloriesEstimated ?? true));
+  const [calOverride, setCalOverride] = useState<string>(
+    initialCaloriesBurned != null ? String(initialCaloriesBurned) : ''
+  );
   const [saving, setSaving] = useState(false);
 
-  const handleWorkoutSelect = (type: string) => {
-    const next = workoutType === type ? '' : type;
+  // Pre-fill weight from last log if not set
+  useEffect(() => {
+    if (weightKg || isEdit) return;
+    const lastWithWeight = [...logs]
+      .filter((l) => l.logType === 'health-log' && (l as HealthLog).weightKg != null)
+      .sort((a, b) => b.occurredAt.toMillis() - a.occurredAt.toMillis())[0] as HealthLog | undefined;
+    if (lastWithWeight?.weightKg != null) {
+      setWeightKg(String(lastWithWeight.weightKg));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const totalMins = parseFloat(durationMin || '0') + parseFloat(durationSec || '0') / 60;
+  const weightNum = parseFloat(weightKg || '70');
+  const estimatedCal = workoutType && totalMins > 0
+    ? calcCalories(workoutType, intensity, totalMins, weightNum)
+    : null;
+
+  const displayCal = editingCal ? (calOverride || null) : (estimatedCal != null ? String(estimatedCal) : null);
+
+  const dUnit = workoutType ? getDistUnit(workoutType) : null;
+  const distUnit = initialDistanceUnit ?? prefill?.targetDistanceUnit ?? dUnit ?? 'km';
+
+  const handleWorkoutSelect = (type: WorkoutType) => {
+    const next = workoutType === type ? undefined : type;
     setWorkoutType(next);
-    if (!title || WORKOUT_TYPES.includes(title)) {
-      setTitle(next);
+    if (!title || WORKOUT_TYPES.includes(title as WorkoutType)) {
+      setTitle(next ?? '');
+    }
+  };
+
+  const handleToggleCalEdit = () => {
+    if (editingCal) {
+      setEditingCal(false);
+      setCalOverride('');
+    } else {
+      setEditingCal(true);
+      setCalOverride(estimatedCal != null ? String(estimatedCal) : '');
     }
   };
 
@@ -829,14 +937,29 @@ function HealthLogForm({
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
+    const dMin = durationMin ? Number(durationMin) : undefined;
+    const dSec = durationSec ? Number(durationSec) : undefined;
+    const finalCal = editingCal && calOverride ? Number(calOverride)
+      : estimatedCal ?? undefined;
     try {
       await onSave({
         title: title.trim(),
-        workoutType: workoutType || undefined,
+        workoutType,
         mood,
         weightKg: weightKg ? Number(weightKg) : undefined,
         notes: notes.trim() || undefined,
         date,
+        durationMin: dMin,
+        durationSec: dSec,
+        intensity: workoutType ? intensity : undefined,
+        caloriesBurned: finalCal,
+        caloriesEstimated: finalCal != null ? !editingCal : undefined,
+        distanceValue: distanceValue ? Number(distanceValue) : undefined,
+        distanceUnit: distanceValue ? distUnit : undefined,
+        sets: sets ? Number(sets) : undefined,
+        reps: reps ? Number(reps) : undefined,
+        sourceRoutineId: prefill?.sourceRoutineId,
+        sourceTemplateIdx: prefill?.sourceTemplateIdx,
       });
     } finally {
       setSaving(false);
@@ -845,6 +968,8 @@ function HealthLogForm({
 
   return (
     <form className="sn-compose-form" onSubmit={handleSubmit}>
+
+      {/* Activity type */}
       <div className="sn-compose-field">
         <label className="sn-compose-label">Activity</label>
         <div className="sn-compose-chips">
@@ -861,6 +986,7 @@ function HealthLogForm({
         </div>
       </div>
 
+      {/* Title */}
       <div className="sn-compose-field">
         <input
           type="text"
@@ -873,6 +999,118 @@ function HealthLogForm({
         />
       </div>
 
+      {/* Duration — shown after activity selected */}
+      {workoutType && (
+        <div className="sn-compose-field">
+          <label className="sn-compose-label">Duration</label>
+          <div className="sn-compose-row">
+            <div className="sn-compose-input-unit-wrap">
+              <input type="number" className="sn-compose-input" placeholder="0" min={0} max={999}
+                value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
+              <span className="sn-compose-input-unit">min</span>
+            </div>
+            <div className="sn-compose-input-unit-wrap">
+              <input type="number" className="sn-compose-input" placeholder="0" min={0} max={59}
+                value={durationSec} onChange={(e) => setDurationSec(e.target.value)} />
+              <span className="sn-compose-input-unit">sec</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Intensity — shown after activity selected */}
+      {workoutType && (
+        <div className="sn-compose-field">
+          <label className="sn-compose-label">Intensity</label>
+          <div className="sn-compose-intensity-row">
+            {INTENSITY_LEVELS.map((lvl) => {
+              const ic = INTENSITY_COLORS[lvl];
+              const active = intensity === lvl;
+              return (
+                <button
+                  key={lvl}
+                  type="button"
+                  className="sn-compose-intensity-btn"
+                  style={active ? { background: ic.bg, borderColor: ic.border, color: ic.text, fontWeight: 700 } : {}}
+                  onClick={() => setIntensity(lvl)}
+                >
+                  {lvl}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Calorie estimate — shown when duration + activity set */}
+      {workoutType && (durationMin || durationSec) && (
+        <div className="sn-compose-field">
+          <label className="sn-compose-label">Calories</label>
+          <div className="sn-compose-cal-display">
+            <div>
+              <div className="sn-compose-cal-hint">{editingCal ? 'Custom' : 'Estimated'}</div>
+              {editingCal ? (
+                <input
+                  type="number"
+                  className="sn-compose-cal-value"
+                  value={calOverride}
+                  min={0}
+                  onChange={(e) => setCalOverride(e.target.value)}
+                  placeholder="—"
+                />
+              ) : (
+                <div className="sn-compose-cal-value" style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  {displayCal ?? '—'}
+                </div>
+              )}
+            </div>
+            <div className="sn-compose-cal-right">
+              <span className="sn-compose-cal-unit">kcal</span>
+              <button type="button" className="sn-compose-cal-edit-btn" onClick={handleToggleCalEdit}>
+                {editingCal ? 'reset' : 'edit'}
+              </button>
+            </div>
+          </div>
+          {!editingCal && estimatedCal != null && (
+            <span className="sn-compose-cal-hint" style={{ marginTop: 4 }}>
+              MET × {weightNum}kg × {totalMins.toFixed(1)}min
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Distance — conditional on activity */}
+      {workoutType && showsDistance(workoutType) && (
+        <div className="sn-compose-field">
+          <label className="sn-compose-label">Distance (optional)</label>
+          <div className="sn-compose-input-unit-wrap">
+            <input type="number" className="sn-compose-input" placeholder="0.0" min={0} step={0.01}
+              value={distanceValue} onChange={(e) => setDistanceValue(e.target.value)} />
+            <span className="sn-compose-input-unit">{distUnit}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Sets & Reps — Gym only */}
+      {workoutType && showsSetsReps(workoutType) && (
+        <div className="sn-compose-field">
+          <label className="sn-compose-label">Sets & Reps (average)</label>
+          <div className="sn-compose-row">
+            <div className="sn-compose-input-unit-wrap">
+              <input type="number" className="sn-compose-input" placeholder="3" min={1} max={99}
+                value={sets} onChange={(e) => setSets(e.target.value)} />
+              <span className="sn-compose-input-unit">sets</span>
+            </div>
+            <div className="sn-compose-input-unit-wrap">
+              <input type="number" className="sn-compose-input" placeholder="10" min={1} max={999}
+                value={reps} onChange={(e) => setReps(e.target.value)} />
+              <span className="sn-compose-input-unit">reps</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mood */}
       <div className="sn-compose-field">
         <label className="sn-compose-label">Mood</label>
         <div className="sn-compose-mood-row">
@@ -890,51 +1128,34 @@ function HealthLogForm({
         </div>
       </div>
 
+      {/* Weight */}
       <div className="sn-compose-field">
-        <label className="sn-compose-label">Weight (kg, optional)</label>
-        <input
-          type="number"
-          className="sn-compose-input"
-          placeholder="e.g. 72.5"
-          value={weightKg}
-          min={0}
-          step={0.1}
-          onChange={(e) => setWeightKg(e.target.value)}
-        />
+        <label className="sn-compose-label">Weight (optional)</label>
+        <div className="sn-compose-input-unit-wrap">
+          <input type="number" className="sn-compose-input" placeholder="72.5" min={0} step={0.1}
+            value={weightKg} onChange={(e) => setWeightKg(e.target.value)} />
+          <span className="sn-compose-input-unit">kg</span>
+        </div>
       </div>
 
+      {/* Date */}
       <div className="sn-compose-field">
         <label className="sn-compose-label">Date</label>
-        <input
-          type="date"
-          className="sn-compose-input"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <input type="date" className="sn-compose-input" value={date}
+          onChange={(e) => setDate(e.target.value)} />
       </div>
 
+      {/* Notes */}
       <div className="sn-compose-field">
         <label className="sn-compose-label">Notes</label>
-        <textarea
-          className="sn-compose-textarea"
-          placeholder="Optional notes…"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          maxLength={500}
-        />
+        <textarea className="sn-compose-textarea" placeholder="Optional notes…"
+          value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={500} />
       </div>
 
       <div className="sn-compose-actions">
-        <button type="button" className="sn-compose-cancel-btn" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="sn-compose-save-btn"
-          disabled={!title.trim() || saving}
-        >
-          {saving ? 'Saving…' : isEdit ? 'Update' : 'Log health'}
+        <button type="button" className="sn-compose-cancel-btn" onClick={onCancel}>Cancel</button>
+        <button type="submit" className="sn-compose-save-btn" disabled={!title.trim() || saving}>
+          {saving ? 'Saving…' : isEdit ? 'Update' : 'Log workout'}
         </button>
       </div>
     </form>
@@ -1057,11 +1278,14 @@ export default function ComposeSheet({
   preselectedTodoType,
   preselectedLogType,
   preselectedGroupId,
+  healthPrefill,
 }: ComposeSheetProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const addTodo = useTodosStore((s) => s.addTodo);
   const updateTodo = useTodosStore((s) => s.updateTodo);
+  const getTodosForGroup = useTodosStore((s) => s.getTodosForGroup);
+  const completeTodo = useTodosStore((s) => s.completeTodo);
   const addLog = useLogsStore((s) => s.addLog);
   const updateLog = useLogsStore((s) => s.updateLog);
 
@@ -1331,41 +1555,57 @@ export default function ComposeSheet({
     }
   };
 
-  const handleSaveHealthLog = async (data: {
-    title: string;
-    workoutType?: string;
-    mood?: number;
-    weightKg?: number;
-    notes?: string;
-    date: string;
-  }) => {
+  const handleSaveHealthLog = async (data: HealthLogSaveData) => {
     const uid = user?.uid ?? getCachedUid();
     if (!uid) { showToast('Not signed in. Please refresh.', 'error'); return; }
     const { Timestamp: FBTimestamp } = await import('firebase/firestore');
     const occurredAt = FBTimestamp.fromDate(new Date(data.date + 'T12:00:00'));
+    const healthFields: Partial<HealthLog> = {
+      title: data.title,
+      workoutType: data.workoutType,
+      mood: data.mood,
+      weightKg: data.weightKg,
+      notes: data.notes,
+      occurredAt,
+      durationMin: data.durationMin,
+      durationSec: data.durationSec,
+      intensity: data.intensity,
+      caloriesBurned: data.caloriesBurned,
+      caloriesEstimated: data.caloriesEstimated,
+      distanceValue: data.distanceValue,
+      distanceUnit: data.distanceUnit,
+      sets: data.sets,
+      reps: data.reps,
+      sourceRoutineId: data.sourceRoutineId,
+      sourceTemplateIdx: data.sourceTemplateIdx,
+    };
+    // Remove undefined keys so Firestore doesn't overwrite with undefined
+    Object.keys(healthFields).forEach((k) => {
+      if ((healthFields as Record<string, unknown>)[k] === undefined) {
+        delete (healthFields as Record<string, unknown>)[k];
+      }
+    });
     try {
       if (isEdit && editEntry?.id) {
-        await updateLog(uid, editEntry.id, {
-          title: data.title,
-          workoutType: data.workoutType,
-          mood: data.mood,
-          weightKg: data.weightKg,
-          notes: data.notes,
-          occurredAt,
-        } as Partial<HealthLog>);
+        await updateLog(uid, editEntry.id, healthFields);
         showToast('Updated', 'success');
       } else {
         await addLog(uid, {
           logType: 'health-log',
-          title: data.title,
-          workoutType: data.workoutType,
-          mood: data.mood,
-          weightKg: data.weightKg,
-          notes: data.notes,
-          occurredAt,
           sortOrder: Date.now(),
+          ...healthFields,
         } as Omit<HealthLog, 'id' | 'createdAt' | 'updatedAt'>);
-        showToast('Health logged', 'success');
+        // Mark the corresponding routine todo as done
+        if (data.sourceRoutineId && data.sourceTemplateIdx !== undefined) {
+          const routineTodos = getTodosForGroup(data.sourceRoutineId);
+          const matchingTodo = routineTodos.find(
+            (t) => t.sortOrder === data.sourceTemplateIdx && t.status === 'pending',
+          );
+          if (matchingTodo?.id) {
+            completeTodo(uid, matchingTodo.id).catch(console.error);
+          }
+        }
+        showToast('Workout logged', 'success');
       }
       onClose();
     } catch {
@@ -1523,19 +1763,33 @@ export default function ComposeSheet({
             />
           )}
 
-          {mode === 'log' && selectedLogType === 'health-log' && (
-            <HealthLogForm
-              initialWorkoutType={editEntry && 'logType' in editEntry && editEntry.logType === 'health-log' ? (editEntry as HealthLog).workoutType : undefined}
-              initialTitle={editEntry && 'logType' in editEntry ? editEntry.title : ''}
-              initialMood={editEntry && 'logType' in editEntry && editEntry.logType === 'health-log' ? (editEntry as HealthLog).mood : undefined}
-              initialWeightKg={editEntry && 'logType' in editEntry && editEntry.logType === 'health-log' ? (editEntry as HealthLog).weightKg : undefined}
-              initialNotes={editEntry?.notes}
-              initialDate={editEntry && 'logType' in editEntry ? editEntry.occurredAt.toDate().toISOString().slice(0, 10) : undefined}
-              onSave={handleSaveHealthLog}
-              onCancel={onClose}
-              isEdit={isEdit}
-            />
-          )}
+          {mode === 'log' && selectedLogType === 'health-log' && (() => {
+            const hl = editEntry && 'logType' in editEntry && editEntry.logType === 'health-log'
+              ? (editEntry as HealthLog) : null;
+            return (
+              <HealthLogForm
+                initialWorkoutType={hl?.workoutType}
+                initialTitle={editEntry && 'logType' in editEntry ? editEntry.title : ''}
+                initialMood={hl?.mood}
+                initialWeightKg={hl?.weightKg}
+                initialNotes={editEntry?.notes}
+                initialDate={editEntry && 'logType' in editEntry ? editEntry.occurredAt.toDate().toISOString().slice(0, 10) : undefined}
+                initialDurationMin={hl?.durationMin}
+                initialDurationSec={hl?.durationSec}
+                initialIntensity={hl?.intensity}
+                initialCaloriesBurned={hl?.caloriesBurned}
+                initialCaloriesEstimated={hl?.caloriesEstimated}
+                initialDistanceValue={hl?.distanceValue}
+                initialDistanceUnit={hl?.distanceUnit}
+                initialSets={hl?.sets}
+                initialReps={hl?.reps}
+                prefill={healthPrefill}
+                onSave={handleSaveHealthLog}
+                onCancel={onClose}
+                isEdit={isEdit}
+              />
+            );
+          })()}
 
           {mode === 'log' && selectedLogType === 'generic-note' && (
             <GenericNoteForm

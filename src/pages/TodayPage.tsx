@@ -8,7 +8,7 @@ import { useUI } from '../context/UIContext';
 import TodoRow from '../components/rows/TodoRow';
 import EmptyState from '../components/primitives/EmptyState';
 import ProgressBar from '../components/primitives/ProgressBar';
-import type { ShoppingListGroup, Group, Todo, RecurringTodoGroup } from '../types';
+import type { ShoppingListGroup, ProjectGroup, Group, Todo, RecurringTodoGroup } from '../types';
 import { startOfDay } from '../utils';
 import './today-page.css';
 
@@ -50,6 +50,32 @@ function ActiveGroupCard({ group }: { group: ShoppingListGroup }) {
       <div className="sn-today-group-card__body">
         <span className="sn-today-group-card__name">{group.name}</span>
         <ProgressBar pct={pct} color="success" />
+      </div>
+      <span className="sn-today-group-card__count">
+        {group.doneCount}/{group.childCount}
+      </span>
+      <ChevronRight size={12} strokeWidth={2} className="sn-today-group-card__chevron" />
+    </button>
+  );
+}
+
+function ActiveProjectCard({ group }: { group: ProjectGroup }) {
+  const navigate = useNavigate();
+  const pct = group.childCount > 0
+    ? Math.round((group.doneCount / group.childCount) * 100)
+    : 0;
+  return (
+    <button
+      type="button"
+      className="sn-today-group-card"
+      onClick={() => navigate(`/projects/${group.id}`)}
+    >
+      <div className="sn-today-group-card__icon">
+        <FolderOpen size={14} strokeWidth={2} />
+      </div>
+      <div className="sn-today-group-card__body">
+        <span className="sn-today-group-card__name">{group.name}</span>
+        <ProgressBar pct={pct} color="accent" />
       </div>
       <span className="sn-today-group-card__count">
         {group.doneCount}/{group.childCount}
@@ -207,8 +233,11 @@ export default function TodayPage() {
 
   const groups = useGroupsStore((s) => s.groups);
   const getActiveShoppingLists = useGroupsStore((s) => s.getActiveShoppingLists);
+  const getActiveProjects = useGroupsStore((s) => s.getActiveProjects);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const activeShoppingLists = useMemo(() => getActiveShoppingLists(), [groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activeProjects = useMemo(() => getActiveProjects(), [groups]);
 
   // Build groupId → Group map for quick lookups
   const groupMap = useMemo(
@@ -373,6 +402,19 @@ export default function TodayPage() {
                 </div>
               </section>
             )}
+
+            {/* ── Active Projects ── */}
+            {activeProjects.length > 0 && (
+              <section className="sn-today-section">
+                <SectionHeader title="Projects" count={activeProjects.length} />
+                <div className="sn-today-group-list">
+                  {activeProjects.map((p) => (
+                    <ActiveProjectCard key={p.id} group={p as ProjectGroup} />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* ── Health Summary ── */}
             {todayHealthCount > 0 && (
               <section className="sn-today-section">

@@ -16,6 +16,8 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const RoutineDetailPage = lazy(() => import('./pages/RoutineDetailPage'));
 const HealthDetailPage = lazy(() => import('./pages/HealthDetailPage'));
+const HealthRoutineEditPage = lazy(() => import('./pages/HealthRoutineEditPage'));
+const HealthRoutineDashPage = lazy(() => import('./pages/HealthRoutineDashPage'));
 
 export default function App() {
   return (
@@ -34,6 +36,9 @@ export default function App() {
               <Route path="projects/:projectId" element={<ProjectDetailPage />} />
               <Route path="routines/:routineId" element={<RoutineDetailPage />} />
               <Route path="health" element={<HealthDetailPage />} />
+              <Route path="health/routines/new" element={<HealthRoutineEditPage />} />
+              <Route path="health/routines/:routineId" element={<HealthRoutineDashPage />} />
+              <Route path="health/routines/:routineId/edit" element={<HealthRoutineEditPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

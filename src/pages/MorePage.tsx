@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ShoppingCart, ChevronRight, Heart, Settings, LogOut, Moon, Sun, Bell, Type, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, ShoppingCart, ChevronRight, FolderOpen, Settings, LogOut, Moon, Sun, Bell, Type, RotateCcw, Trash2 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
@@ -305,6 +305,7 @@ export default function MorePage() {
   const [newListOpen, setNewListOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmDeleteListId, setConfirmDeleteListId] = useState<string | null>(null);
+  const [projectsOpen, setProjectsOpen] = useState(false);
   const navigate = useNavigate();
   const { openComposeTodo } = useUI();
   const { user } = useAuth();
@@ -314,6 +315,7 @@ export default function MorePage() {
   const groups = useGroupsStore((s) => s.groups);
   const getActiveShoppingLists = useGroupsStore((s) => s.getActiveShoppingLists);
   const getArchivedShoppingLists = useGroupsStore((s) => s.getArchivedShoppingLists);
+  const getActiveProjects = useGroupsStore((s) => s.getActiveProjects);
   const updateGroup = useGroupsStore((s) => s.updateGroup);
   const deleteGroup = useGroupsStore((s) => s.deleteGroup);
 
@@ -323,6 +325,8 @@ export default function MorePage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const activeLists = useMemo(() => getActiveShoppingLists(), [groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activeProjects = useMemo(() => getActiveProjects(), [groups]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const archivedLists = useMemo(() => getArchivedShoppingLists(), [groups]);
 
@@ -471,25 +475,79 @@ export default function MorePage() {
         </section>
       )}
 
-      {/* ── Health ── */}
+      {/* ── Projects ── */}
       <section className="sn-more-section">
         <div className="sn-more-section-header">
-          <span className="sn-more-section-title">Health</span>
+          <button
+            type="button"
+            className="sn-more-section-expand-btn"
+            onClick={() => setProjectsOpen((v) => !v)}
+            aria-expanded={projectsOpen}
+          >
+            <FolderOpen size={14} strokeWidth={2} />
+            <span className="sn-more-section-title">Projects</span>
+            {activeProjects.length > 0 && (
+              <span className="sn-more-section-count">{activeProjects.length}</span>
+            )}
+            <svg
+              className={`sn-collapsible-toggle__chevron${projectsOpen ? ' sn-collapsible-toggle__chevron--open' : ''}`}
+              viewBox="0 0 12 12" width="12" height="12" fill="none"
+            >
+              <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
-        <button
-          type="button"
-          className="sn-more-nav-card"
-          onClick={() => navigate('/health')}
-        >
-          <span className="sn-more-nav-card__icon sn-more-nav-card__icon--health">
-            <Heart size={16} strokeWidth={2} />
-          </span>
-          <span className="sn-more-nav-card__body">
-            <span className="sn-more-nav-card__label">Health logs</span>
-            <span className="sn-more-nav-card__sub">Workouts, mood, weight</span>
-          </span>
-          <ChevronRight size={14} strokeWidth={2} className="sn-more-nav-card__chevron" />
-        </button>
+
+        {projectsOpen && (
+          <div className="sn-more-group-list">
+            <div className="sn-more-projects-actions">
+              <button
+                type="button"
+                className="sn-action-chip"
+                onClick={() => navigate('/projects')}
+              >
+                View all
+              </button>
+              <button
+                type="button"
+                className="sn-action-chip"
+                onClick={() => navigate('/projects', { state: { openAdd: true } })}
+              >
+                <Plus size={13} strokeWidth={2.5} />
+                New project
+              </button>
+            </div>
+            {activeProjects.length === 0 ? (
+              <div className="sn-more-empty">
+                <p>No active projects.</p>
+              </div>
+            ) : (
+              activeProjects.map((p) => {
+                const pct = p.childCount > 0 ? Math.round((p.doneCount / p.childCount) * 100) : 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="sn-more-group-card"
+                    onClick={() => navigate(`/projects/${p.id}`)}
+                  >
+                    <div className="sn-more-group-card__icon">
+                      <FolderOpen size={16} strokeWidth={2} />
+                    </div>
+                    <div className="sn-more-group-card__body">
+                      <span className="sn-more-group-card__name">{p.name}</span>
+                      <span className="sn-more-group-card__meta">
+                        {p.childCount === 0 ? 'No tasks' : `${p.doneCount}/${p.childCount} done`}
+                      </span>
+                      {p.childCount > 0 && <ProgressBar pct={pct} color="accent" />}
+                    </div>
+                    <ChevronRight size={14} strokeWidth={2} className="sn-more-group-card__chevron" />
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
       </section>
 
       {/* ── Settings ── */}

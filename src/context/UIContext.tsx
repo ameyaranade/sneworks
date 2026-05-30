@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useState, useMemo, ReactNode } from 'react';
-import type { UIContextType, Todo, Log, TodoType, LogType, ComposeMode, RecurringTodoGroup } from '../types';
+import type { UIContextType, Todo, Log, TodoType, LogType, ComposeMode, RecurringTodoGroup, HealthLogPrefill } from '../types';
 
 const UIContext = createContext<UIContextType>({
   composeOpen: false,
   composeMode: 'todo',
   openComposeTodo: () => {},
   openComposeLog: () => {},
+  openComposeHealthLog: () => {},
   openComposeForEdit: () => {},
   openComposeForGroup: () => {},
   closeCompose: () => {},
@@ -28,6 +29,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [composeLogType, setComposeLogType] = useState<LogType | undefined>();
   const [composeEntry, setComposeEntry] = useState<Todo | Log | undefined>();
   const [composeGroupId, setComposeGroupId] = useState<string | undefined>();
+  const [composeHealthPrefill, setComposeHealthPrefill] = useState<HealthLogPrefill | undefined>();
 
   const [deferOpen, setDeferOpen] = useState(false);
   const [deferTodoId, setDeferTodoId] = useState<string | undefined>();
@@ -39,6 +41,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setComposeTodoType(undefined);
     setComposeLogType(undefined);
     setComposeGroupId(undefined);
+    setComposeHealthPrefill(undefined);
   }, []);
 
   const openComposeTodo = useCallback((todoType?: TodoType) => {
@@ -52,6 +55,14 @@ export function UIProvider({ children }: { children: ReactNode }) {
     resetCompose();
     setComposeMode('log');
     setComposeLogType(logType);
+    setComposeOpen(true);
+  }, [resetCompose]);
+
+  const openComposeHealthLog = useCallback((prefill?: HealthLogPrefill) => {
+    resetCompose();
+    setComposeMode('log');
+    setComposeLogType('health-log');
+    if (prefill) setComposeHealthPrefill(prefill);
     setComposeOpen(true);
   }, [resetCompose]);
 
@@ -96,13 +107,15 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       composeOpen, composeMode, composeTodoType, composeLogType, composeEntry, composeGroupId,
-      openComposeTodo, openComposeLog, openComposeForEdit, openComposeForGroup, closeCompose,
+      composeHealthPrefill,
+      openComposeTodo, openComposeLog, openComposeHealthLog, openComposeForEdit, openComposeForGroup, closeCompose,
       deferOpen, deferTodoId, openDefer, closeDefer,
       editRecurringGroup, openEditRecurring, closeEditRecurring,
     }),
     [
       composeOpen, composeMode, composeTodoType, composeLogType, composeEntry, composeGroupId,
-      openComposeTodo, openComposeLog, openComposeForEdit, openComposeForGroup, closeCompose,
+      composeHealthPrefill,
+      openComposeTodo, openComposeLog, openComposeHealthLog, openComposeForEdit, openComposeForGroup, closeCompose,
       deferOpen, deferTodoId, openDefer, closeDefer,
       editRecurringGroup, openEditRecurring, closeEditRecurring,
     ],

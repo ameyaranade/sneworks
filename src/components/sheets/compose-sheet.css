@@ -316,6 +316,111 @@
   border-color: transparent;
 }
 
+/* ── Health form: intensity buttons ── */
+.sn-compose-intensity-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.sn-compose-intensity-btn {
+  padding: 8px 4px;
+  border-radius: var(--sn-radius-input);
+  border: 1.5px solid var(--sn-border);
+  background: var(--sn-bg-input);
+  color: var(--sn-text-muted);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast), color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
+}
+
+.sn-compose-intensity-desc {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  padding: 6px 10px;
+  border-radius: var(--sn-radius-input);
+  margin-top: 2px;
+}
+
+/* ── Health form: calorie display ── */
+.sn-compose-cal-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--sn-bg-input);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-input);
+}
+
+.sn-compose-cal-value {
+  font-family: var(--sn-font-display);
+  font-size: calc(22px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text);
+  letter-spacing: -0.02em;
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 80px;
+  padding: 0;
+}
+
+.sn-compose-cal-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.sn-compose-cal-unit {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+.sn-compose-cal-edit-btn {
+  background: none;
+  border: 1px solid var(--sn-border);
+  border-radius: 6px;
+  color: var(--sn-accent);
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.sn-compose-cal-hint {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+/* ── Health form: input with unit suffix ── */
+.sn-compose-input-unit-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sn-compose-input-unit-wrap .sn-compose-input {
+  padding-right: 36px;
+  width: 100%;
+}
+
+.sn-compose-input-unit {
+  position: absolute;
+  right: 10px;
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  pointer-events: none;
+}
+
 /* ── Coming soon ── */
 .sn-compose-coming-soon {
   display: flex;

@@ -34,6 +34,7 @@ function AppShellInner() {
 
   const {
     composeOpen, composeMode, composeTodoType, composeLogType, composeEntry, composeGroupId,
+    composeHealthPrefill,
     closeCompose,
     deferOpen, deferTodoId,
     closeDefer,
@@ -110,6 +111,7 @@ function AppShellInner() {
           preselectedTodoType={composeTodoType}
           preselectedLogType={composeLogType}
           preselectedGroupId={composeGroupId}
+          healthPrefill={composeHealthPrefill}
         />
       )}
 

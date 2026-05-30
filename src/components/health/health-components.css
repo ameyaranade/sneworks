@@ -1,0 +1,194 @@
+/* ── GoalRing ── */
+.sn-goal-ring {
+  flex-shrink: 0;
+}
+
+.sn-goal-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.sn-goal-ring__label {
+  font-family: var(--sn-font-display);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 700;
+  color: var(--sn-text);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.sn-goal-ring__sublabel {
+  font-family: var(--sn-font-body);
+  font-size: calc(9px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  text-align: center;
+  line-height: 1;
+}
+
+/* ── WorkoutCard ── */
+.sn-wc {
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-card);
+  background: var(--sn-bg-card);
+  overflow: hidden;
+  transition: border-color var(--sn-transition-fast);
+}
+
+.sn-wc--logged {
+  border-color: var(--sn-accent);
+  border-opacity: 0.4;
+}
+
+.sn-wc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.sn-wc-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--sn-radius-card-sm);
+  background: var(--sn-bg-elev);
+  flex-shrink: 0;
+  color: var(--sn-text-dim);
+}
+
+.sn-wc-icon--logged {
+  background: color-mix(in srgb, var(--sn-accent) 15%, transparent);
+  color: var(--sn-accent);
+}
+
+.sn-wc-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sn-wc-name {
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sn-wc-meta {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sn-wc-done-badge {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-accent);
+  background: color-mix(in srgb, var(--sn-accent) 12%, transparent);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sn-wc-log-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: var(--sn-accent);
+  border: none;
+  border-radius: var(--sn-radius-btn);
+  color: var(--sn-accent-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.sn-wc-log-btn--logged {
+  background: var(--sn-bg-input);
+  color: var(--sn-text-dim);
+  border: 1px solid var(--sn-border);
+}
+
+.sn-wc-log-btn:active {
+  opacity: 0.8;
+}
+
+.sn-wc-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--sn-border);
+  background: none;
+  color: var(--sn-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-wc-body {
+  padding: 12px 14px;
+  border-top: 1px solid var(--sn-border);
+  background: var(--sn-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sn-wc-section-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--sn-text-muted);
+}
+
+.sn-wc-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sn-wc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 60px;
+}
+
+.sn-wc-stat-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+.sn-wc-stat-value {
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text);
+}

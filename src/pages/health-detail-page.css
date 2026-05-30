@@ -166,6 +166,190 @@
   color: var(--sn-text-muted);
 }
 
+/* ── Routines section ── */
+.sn-health-routines-section {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.sn-health-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 2px;
+  border-bottom: 1px solid var(--sn-border);
+}
+
+.sn-health-section-header--list {
+  padding: 8px 16px 2px;
+  border-bottom: 1px solid var(--sn-border);
+  margin-bottom: 0;
+}
+
+.sn-health-section-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--sn-text-muted);
+}
+
+.sn-health-routines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Routine card ── */
+.sn-health-routine-card {
+  background: var(--sn-bg-card);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sn-health-routine-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sn-health-routine-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sn-health-routine-card__name {
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sn-health-routine-card__recurrence {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+.sn-health-routine-card__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sn-health-routine-card__streak {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+.sn-health-routine-card--clickable {
+  cursor: pointer;
+  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-health-routine-card--clickable:hover {
+  background: var(--sn-bg-elev);
+  border-color: var(--sn-border-strong);
+}
+
+.sn-health-routine-card--clickable:active {
+  background: var(--sn-surface-2);
+}
+
+.sn-health-routine-card__archive-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--sn-text-dim);
+  cursor: pointer;
+  transition: background var(--sn-transition-fast), color var(--sn-transition-fast), border-color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.sn-health-routine-card__archive-btn:hover {
+  background: var(--sn-bg-elev);
+  border-color: var(--sn-border);
+  color: var(--sn-text-muted);
+}
+
+.sn-health-routine-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sn-health-routine-card__progress-track {
+  height: 4px;
+  background: var(--sn-bg-elev);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sn-health-routine-card__progress-fill {
+  height: 100%;
+  background: var(--sn-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  min-width: 0;
+}
+
+.sn-health-routine-card__progress-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+
+/* ── New routine button ── */
+.sn-health-new-routine-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: none;
+  border: 1.5px dashed var(--sn-border-strong);
+  border-radius: var(--sn-radius-input);
+  color: var(--sn-text-muted);
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  padding: 10px;
+  cursor: pointer;
+  transition: border-color var(--sn-transition-fast), color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-health-new-routine-btn:hover {
+  border-color: var(--sn-accent);
+  color: var(--sn-accent);
+}
+
 /* ── Loading ── */
 .sn-health-loading {
   display: flex;
@@ -186,5 +370,73 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ── Archived routines section ── */
+.sn-health-archived-section {
+  margin-top: 8px;
+}
+
+.sn-health-archived-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.sn-health-archived-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--sn-border);
+}
+
+.sn-health-archived-row:last-child {
+  border-bottom: none;
+}
+
+.sn-health-archived-row__name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sn-health-archived-row__badge {
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  color: var(--sn-text-dim);
+  flex-shrink: 0;
+}
+
+.sn-health-archived-row__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--sn-border);
+  background: none;
+  color: var(--sn-text-muted);
+  cursor: pointer;
+  transition: background var(--sn-transition-fast), color var(--sn-transition-fast);
+  flex-shrink: 0;
+}
+
+.sn-health-archived-row__action:hover {
+  background: var(--sn-bg-elev);
+  color: var(--sn-text);
+}
+
+.sn-health-archived-row__action--danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 

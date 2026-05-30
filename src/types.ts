@@ -46,6 +46,11 @@ export interface GenericTaskTodo extends TodoBase {
 
 export type Todo = MoneyReminderTodo | ShoppingItemTodo | GenericTaskTodo;
 
+// ─── Health Enums ────────────────────────────────────────────────────────────
+
+export type WorkoutType = 'Run' | 'Walk' | 'Cycle' | 'Gym' | 'Yoga' | 'Swim' | 'Other';
+export type IntensityLevel = 'Low' | 'Moderate' | 'High' | 'Max';
+
 // ─── Log Types ───────────────────────────────────────────────────────────────
 
 export type LogType = 'expense' | 'income' | 'generic-note' | 'health-log';
@@ -83,9 +88,20 @@ export interface GenericNoteLog extends LogBase {
 
 export interface HealthLog extends LogBase {
   logType: 'health-log';
-  workoutType?: string;
+  workoutType?: WorkoutType;
   mood?: number;
   weightKg?: number;
+  durationMin?: number;
+  durationSec?: number;
+  intensity?: IntensityLevel;
+  caloriesBurned?: number;
+  caloriesEstimated?: boolean;
+  distanceValue?: number;
+  distanceUnit?: 'km' | 'm';
+  sets?: number;
+  reps?: number;
+  sourceRoutineId?: string;
+  sourceTemplateIdx?: number;
 }
 
 export type Log = ExpenseLog | IncomeLog | GenericNoteLog | HealthLog;
@@ -130,6 +146,15 @@ export interface TemplateItem {
   todoType?: TodoType;
   scheduledTime?: string;
   estimatedDuration?: number;
+  // Health workout fields (ignored by generic routines)
+  isWorkout?: boolean;
+  workoutType?: WorkoutType;
+  targetDurationMin?: number;
+  targetIntensity?: IntensityLevel;
+  targetDistanceValue?: number;
+  targetDistanceUnit?: 'km' | 'm';
+  targetSets?: number;
+  targetReps?: number;
 }
 
 export interface RoutineGroup extends GroupBase {
@@ -140,6 +165,13 @@ export interface RoutineGroup extends GroupBase {
   lastSpawnedAt?: Timestamp;
   streakCount: number;
   deferUntil?: Timestamp; // if set and > now, routine is paused (skip spawn)
+  // Health routine fields (undefined/false = generic routine)
+  isHealthRoutine?: boolean;
+  dailyCalorieGoal?: number;
+  dailyDurationGoal?: number;
+  weeklySessionGoal?: number;
+  reminderEnabled?: boolean;
+  reminderMinutesBefore?: number;
 }
 
 /** A recurring single-item routine: spawns one todo on each due date. */
@@ -161,6 +193,20 @@ export interface RecurringTodoGroup extends GroupBase {
 
 export type Group = ShoppingListGroup | ProjectGroup | RoutineGroup | RecurringTodoGroup;
 
+// ─── Health Log Prefill ───────────────────────────────────────────────────────
+
+export interface HealthLogPrefill {
+  workoutType?: WorkoutType;
+  targetDurationMin?: number;
+  targetIntensity?: IntensityLevel;
+  targetDistanceValue?: number;
+  targetDistanceUnit?: 'km' | 'm';
+  targetSets?: number;
+  targetReps?: number;
+  sourceRoutineId?: string;
+  sourceTemplateIdx?: number;
+}
+
 // ─── UI Context ───────────────────────────────────────────────────────────────
 
 export type ComposeMode = 'todo' | 'log';
@@ -172,8 +218,10 @@ export interface UIContextType {
   composeLogType?: LogType;
   composeEntry?: Todo | Log;
   composeGroupId?: string;
+  composeHealthPrefill?: HealthLogPrefill;
   openComposeTodo: (todoType?: TodoType) => void;
   openComposeLog: (logType?: LogType) => void;
+  openComposeHealthLog: (prefill?: HealthLogPrefill) => void;
   openComposeForEdit: (entry: Todo | Log) => void;
   openComposeForGroup: (groupId: string, todoType?: TodoType) => void;
   closeCompose: () => void;
