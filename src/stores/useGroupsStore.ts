@@ -6,6 +6,7 @@ import {
   deleteGroup as fbDeleteGroup,
   subscribeToAllGroups,
 } from '../firebase/groupQueries';
+import { deletePendingTodosForGroup, deleteAllTodosForGroup } from '../firebase/todoQueries';
 import { cacheKey, readCache, writeCache } from '../utils';
 import { getCachedUid } from '../auth/AuthContext';
 import type { Unsubscribe } from 'firebase/firestore';
@@ -108,13 +109,27 @@ export const useGroupsStore = create<GroupsState>((set, get) => {
     },
 
     updateGroup: async (uid, groupId, partial) => {
+      const isArchiving = !!partial.archivedAt;
+
+      // Optimistic: update group state immediately
       set((s) => ({
         groups: s.groups.map((g) =>
           g.id !== groupId ? g : ({ ...g, ...partial } as Group),
         ),
       }));
+
+      // Optimistic: remove pending todos immediately when archiving
+      if (isArchiving) {
+        const { useTodosStore } = await import('./useTodosStore');
+        useTodosStore.getState().removePendingTodosForGroup(groupId);
+      }
+
       try {
         await fbUpdateGroup(uid, groupId, partial);
+        // Persist the todo cleanup to Firestore
+        if (isArchiving) {
+          deletePendingTodosForGroup(uid, groupId).catch(console.error);
+        }
       } catch (err) {
         console.error('updateGroup failed', err);
         throw err;
@@ -122,9 +137,16 @@ export const useGroupsStore = create<GroupsState>((set, get) => {
     },
 
     deleteGroup: async (uid, groupId) => {
+      // Optimistic: remove group immediately
       set((s) => ({ groups: s.groups.filter((g) => g.id !== groupId) }));
+      // Optimistic: remove ALL todos for this group (pending, deferred, done)
+      // so no orphaned todos linger in Today/Overdue after deletion
+      const { useTodosStore } = await import('./useTodosStore');
+      useTodosStore.getState().removeAllTodosForGroup(groupId);
       try {
         await fbDeleteGroup(uid, groupId);
+        // Persist: batch-delete all todos for this group from Firestore
+        deleteAllTodosForGroup(uid, groupId).catch(console.error);
       } catch (err) {
         console.error('deleteGroup failed', err);
         throw err;

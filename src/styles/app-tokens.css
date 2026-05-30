@@ -98,6 +98,8 @@
   --sn-btn-bg-hover: #2a2e48;
   /* Text on accent-colored button backgrounds */
   --sn-accent-text: #0d0e18;
+  /* Native input color-scheme — keeps browser UI chrome in sync with theme */
+  --sn-color-scheme: dark;
 }
 
 /* ── Light mode ─────────────────────────────────────────────────────────────── */
@@ -151,4 +153,6 @@
   --sn-btn-bg-hover: #f0f0f8;
   /* Text on accent-colored button backgrounds */
   --sn-accent-text: #ffffff;
+  /* Native input color-scheme */
+  --sn-color-scheme: light;
 }

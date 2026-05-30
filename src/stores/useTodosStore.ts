@@ -39,6 +39,11 @@ interface TodosState {
   deferTodo: (uid: string, todoId: string, newDate: Date) => Promise<void>;
   deferTodoPlusHours: (uid: string, todoId: string, hours: number) => Promise<void>;
   markPending: (uid: string, todoId: string) => Promise<void>;
+
+  // Internal — called by useGroupsStore when a group is archived
+  removePendingTodosForGroup: (groupId: string) => void;
+  // Internal — called by useGroupsStore when a group is permanently deleted
+  removeAllTodosForGroup: (groupId: string) => void;
 }
 
 export const useTodosStore = create<TodosState>((set, get) => {
@@ -245,6 +250,18 @@ export const useTodosStore = create<TodosState>((set, get) => {
       if (todo?.groupId) {
         recomputeGroupCounts(uid, todo.groupId).catch(console.error);
       }
+    },
+
+    removePendingTodosForGroup: (groupId) => {
+      set((s) => ({
+        todos: s.todos.filter((t) => !(t.groupId === groupId && t.status === 'pending')),
+      }));
+    },
+
+    removeAllTodosForGroup: (groupId) => {
+      set((s) => ({
+        todos: s.todos.filter((t) => t.groupId !== groupId),
+      }));
     },
   };
 });

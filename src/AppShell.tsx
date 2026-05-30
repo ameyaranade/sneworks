@@ -103,6 +103,9 @@ function AppShellInner() {
 
       <BottomNav />
 
+      {/* Portal target — sheets rendered here stay inside [data-theme] */}
+      <div id="sn-portal" />
+
       {composeOpen && (
         <ComposeSheet
           onClose={closeCompose}

@@ -4,6 +4,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
+  writeBatch,
   query,
   where,
   orderBy,
@@ -58,6 +60,28 @@ export async function updateTodo(
 
 export async function deleteTodo(uid: string, todoId: string): Promise<void> {
   await deleteDoc(todoDoc(uid, todoId));
+}
+
+/** Batch-delete all PENDING todos belonging to a group (called when group is archived). */
+export async function deletePendingTodosForGroup(uid: string, groupId: string): Promise<void> {
+  const snap = await getDocs(
+    query(todosCol(uid), where('groupId', '==', groupId), where('status', '==', 'pending')),
+  );
+  if (snap.empty) return;
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
+/** Batch-delete ALL todos belonging to a group (called when group is permanently deleted). */
+export async function deleteAllTodosForGroup(uid: string, groupId: string): Promise<void> {
+  const snap = await getDocs(
+    query(todosCol(uid), where('groupId', '==', groupId)),
+  );
+  if (snap.empty) return;
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────

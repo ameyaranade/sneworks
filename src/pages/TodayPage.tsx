@@ -97,15 +97,13 @@ function GroupedTodoBlock({ todoGroup, navigate, onEditRecurring }: GroupedTodoB
   const { group, groupId, todos } = todoGroup;
   const [expanded, setExpanded] = useState(false);
 
-  // Ungrouped items — plain flat list, no card wrapper
+  // Ungrouped items — headerless card
   if (!group) {
     return (
-      <div className="sn-today-group-block">
-        <div className="sn-todo-list">
-          {todos.map((t) => (
-            <TodoRow key={t.id} todo={t} />
-          ))}
-        </div>
+      <div className="sn-today-ungrouped-card">
+        {todos.map((t) => (
+          <TodoRow key={t.id} todo={t} />
+        ))}
       </div>
     );
   }
@@ -199,13 +197,14 @@ function buildGroupedTodos(
   const byGroup: Map<string | null, typeof todoList> = new Map();
 
   for (const t of todoList) {
-    const key = t.groupId ?? null;
+    // If groupId exists but the group is gone (deleted/archived), treat as ungrouped
+    const key = t.groupId && groupMap.has(t.groupId) ? t.groupId : null;
     if (!byGroup.has(key)) byGroup.set(key, []);
     byGroup.get(key)!.push(t);
   }
 
   const result: TodoGroup[] = [];
-  // Ungrouped first (no parent)
+  // Ungrouped first (no parent, or orphaned groupId)
   if (byGroup.has(null)) {
     result.push({ groupId: null, group: null, todos: byGroup.get(null)! });
   }
@@ -259,16 +258,29 @@ export default function TodayPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const doneToday = useMemo(() => getDoneTodayTodos(), [todos]);
 
-  // Group "up next" and "overdue" by their parent group
+  // Group "up next" and "overdue" by their parent group.
+  // Projects are already shown in the Projects section — exclude them here.
   const groupedUpNext = useMemo(
-    () => buildGroupedTodos(upNext, groupMap),
+    () => buildGroupedTodos(upNext, groupMap).filter((tg) => tg.group?.groupKind !== 'project'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [upNext, groupMap],
   );
   const groupedOverdue = useMemo(
-    () => buildGroupedTodos(overdue, groupMap),
+    () => buildGroupedTodos(overdue, groupMap).filter((tg) => tg.group?.groupKind !== 'project'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [overdue, groupMap],
+  );
+
+  // Counts after project todos are excluded from Up Next / Overdue
+  const upNextCount = useMemo(
+    () => groupedUpNext.reduce((acc, tg) => acc + tg.todos.length, 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groupedUpNext],
+  );
+  const overdueCount = useMemo(
+    () => groupedOverdue.reduce((acc, tg) => acc + tg.todos.length, 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groupedOverdue],
   );
 
   // Search: filter all pending/deferred todos by title
@@ -296,7 +308,7 @@ export default function TodayPage() {
     month: 'long',
   });
 
-  const isEmpty = loaded && overdue.length === 0 && upNext.length === 0 && doneToday.length === 0;
+  const isEmpty = loaded && overdueCount === 0 && upNextCount === 0 && doneToday.length === 0 && activeProjects.length === 0 && activeShoppingLists.length === 0;
 
   return (
     <div className="sn-today-page">
@@ -372,9 +384,9 @@ export default function TodayPage() {
             )}
 
             {/* ── Overdue ── */}
-            {overdue.length > 0 && (
+            {overdueCount > 0 && (
               <section className="sn-today-section">
-                <SectionHeader title="Overdue" count={overdue.length} danger />
+                <SectionHeader title="Overdue" count={overdueCount} danger />
                 {groupedOverdue.map((tg) => (
                   <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} onEditRecurring={openEditRecurring} />
                 ))}
@@ -382,9 +394,9 @@ export default function TodayPage() {
             )}
 
             {/* ── Up Next ── */}
-            {upNext.length > 0 && (
+            {upNextCount > 0 && (
               <section className="sn-today-section">
-                <SectionHeader title="Up next" count={upNext.length} />
+                <SectionHeader title="Up next" count={upNextCount} />
                 {groupedUpNext.map((tg) => (
                   <GroupedTodoBlock key={tg.groupId ?? 'ungrouped'} todoGroup={tg} navigate={navigate} onEditRecurring={openEditRecurring} />
                 ))}

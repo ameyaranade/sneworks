@@ -2,7 +2,9 @@
 .sn-hrd-page {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
   background: var(--sn-bg);
 }
 
@@ -33,9 +35,9 @@
 }
 
 .sn-hrd-action-btn--danger:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--sn-danger-soft);
+  color: var(--sn-danger);
+  border-color: color-mix(in srgb, var(--sn-danger) 35%, transparent);
 }
 
 /* Keep old name as alias */
@@ -61,14 +63,16 @@
 
 .sn-hrd-body {
   flex: 1;
-  padding: 12px 16px 40px;
+  padding: 12px 16px calc(var(--sn-nav-height) + 24px);
   display: flex;
   flex-direction: column;
   gap: 16px;
   max-width: 600px;
   width: 100%;
+  min-width: 0;
   margin: 0 auto;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ── Section ── */
@@ -105,8 +109,8 @@
   font-family: var(--sn-font-body);
   font-size: calc(12px * var(--sn-font-scale, 1));
   font-weight: 600;
-  color: #fb923c;
-  background: rgba(251, 146, 60, 0.12);
+  color: var(--sn-warning);
+  background: var(--sn-warn-soft);
   border-radius: 10px;
   padding: 2px 9px;
 }

@@ -367,6 +367,7 @@ function RecurringTodoCard({ group, onDelete, onEdit }: RecurringTodoCardProps) 
 export default function RoutinesPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<RecurringTodoGroup | null>(null);
+  const [confirmDeleteRecurringId, setConfirmDeleteRecurringId] = useState<string | null>(null);
   const [confirmDeleteArchivedId, setConfirmDeleteArchivedId] = useState<string | null>(null);
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -397,15 +398,17 @@ export default function RoutinesPage() {
     }
   }, [uid, updateGroup, showToast]);
 
-  const handleDeleteRecurring = useCallback(async (id: string) => {
-    if (!uid) return;
+  const handleDeleteRecurringConfirmed = useCallback(async () => {
+    const id = confirmDeleteRecurringId;
+    setConfirmDeleteRecurringId(null);
+    if (!id || !uid) return;
     try {
       await deleteGroup(uid, id);
       showToast('Deleted', 'success');
     } catch {
       showToast('Could not delete', 'error');
     }
-  }, [uid, deleteGroup, showToast]);
+  }, [confirmDeleteRecurringId, uid, deleteGroup, showToast]);
 
   const handleDeleteArchivedConfirmed = useCallback(async () => {
     const id = confirmDeleteArchivedId;
@@ -421,6 +424,16 @@ export default function RoutinesPage() {
 
   return (
     <>
+    {confirmDeleteRecurringId && (
+      <ConfirmSheet
+        title="Delete recurring todo?"
+        message="This recurring todo and its schedule will be permanently deleted."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteRecurringConfirmed}
+        onCancel={() => setConfirmDeleteRecurringId(null)}
+      />
+    )}
     {confirmDeleteArchivedId && (
       <ConfirmSheet
         title="Delete routine?"
@@ -467,7 +480,7 @@ export default function RoutinesPage() {
             </div>
             <div className="sn-routines-recurring-list">
               {recurringTodos.map((r) => (
-                <RecurringTodoCard key={r.id} group={r} onDelete={handleDeleteRecurring} onEdit={setEditingGroup} />
+                <RecurringTodoCard key={r.id} group={r} onDelete={setConfirmDeleteRecurringId} onEdit={setEditingGroup} />
               ))}
             </div>
           </div>

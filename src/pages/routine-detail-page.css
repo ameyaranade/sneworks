@@ -4,7 +4,7 @@
   flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 40px;
+  padding-bottom: calc(var(--sn-nav-height) + 24px);
 }
 
 .sn-rtn-detail-streak {

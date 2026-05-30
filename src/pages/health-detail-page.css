@@ -256,8 +256,8 @@
   font-family: var(--sn-font-body);
   font-size: calc(11px * var(--sn-font-scale, 1));
   font-weight: 600;
-  color: #fb923c;
-  background: rgba(251, 146, 60, 0.12);
+  color: var(--sn-warning);
+  background: var(--sn-warn-soft);
   border-radius: 10px;
   padding: 2px 8px;
 }
@@ -435,8 +435,8 @@
 }
 
 .sn-health-archived-row__action--danger:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--sn-danger-soft);
+  color: var(--sn-danger);
+  border-color: color-mix(in srgb, var(--sn-danger) 35%, transparent);
 }
 

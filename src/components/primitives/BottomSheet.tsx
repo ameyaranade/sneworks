@@ -1,4 +1,5 @@
 import { useEffect, useRef, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import './bottom-sheet.css';
 
 interface BottomSheetProps {
@@ -25,7 +26,11 @@ export default function BottomSheet({ onClose, children, title, className = '' }
     };
   }, [onClose]);
 
-  return (
+  // Portal into #sn-portal so the sheet stays inside [data-theme] (CSS vars work)
+  // but is a top-level sibling of page content (z-index works, no stacking-context traps).
+  const portalTarget = document.getElementById('sn-portal') ?? document.body;
+
+  return createPortal(
     <>
       <div className="sn-sheet-backdrop" onClick={onClose} aria-hidden="true" />
       <div
@@ -42,6 +47,7 @@ export default function BottomSheet({ onClose, children, title, className = '' }
           {children}
         </div>
       </div>
-    </>
+    </>,
+    portalTarget,
   );
 }

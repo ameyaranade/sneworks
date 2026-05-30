@@ -66,7 +66,7 @@
   font-size: calc(13px * var(--sn-font-scale, 1));
   outline: none;
   transition: border-color var(--sn-transition-fast);
-  color-scheme: dark;
+  color-scheme: var(--sn-color-scheme, light);
   box-sizing: border-box;
 }
 
