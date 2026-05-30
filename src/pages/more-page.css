@@ -52,7 +52,7 @@
   font-size: calc(10px * var(--sn-font-scale, 1));
   font-weight: 600;
   color: var(--sn-text-muted);
-  background: var(--sn-surface-2);
+  background: var(--sn-bg-elev);
   border-radius: 8px;
   padding: 1px 6px;
   margin-left: 2px;
@@ -483,7 +483,7 @@
 .sn-settings-error {
   font-family: var(--sn-font-body);
   font-size: calc(12px * var(--sn-font-scale, 1));
-  color: var(--sn-error);
+  color: var(--sn-danger);
   margin: -6px 0 4px;
   padding: 0 2px;
 }

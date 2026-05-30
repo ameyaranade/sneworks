@@ -261,7 +261,7 @@
 }
 
 .sn-rtn-detail-tmpl-remove:hover {
-  color: var(--sn-error);
+  color: var(--sn-danger);
 }
 
 /* ── Template add row ── */

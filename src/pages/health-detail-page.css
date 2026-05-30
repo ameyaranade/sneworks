@@ -274,7 +274,7 @@
 }
 
 .sn-health-routine-card--clickable:active {
-  background: var(--sn-surface-2);
+  background: var(--sn-bg-card-hover);
 }
 
 .sn-health-routine-card__archive-btn {
