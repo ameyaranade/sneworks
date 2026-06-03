@@ -1,0 +1,90 @@
+.sn-hprof-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: 88px;
+}
+
+.sn-hprof-form {
+  padding: 8px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ── Field wrapper ── */
+.sn-hprof-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sn-hprof-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--sn-text-muted);
+}
+
+/* ── Number input with unit ── */
+.sn-hprof-input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--sn-bg-input);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-input);
+  overflow: hidden;
+  transition: border-color var(--sn-transition-fast);
+}
+
+.sn-hprof-input-wrap:focus-within {
+  border-color: var(--sn-accent);
+}
+
+.sn-hprof-input {
+  flex: 1;
+  padding: 13px 14px;
+  background: transparent;
+  border: none;
+  color: var(--sn-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(15px * var(--sn-font-scale, 1));
+  outline: none;
+  min-width: 0;
+  color-scheme: var(--sn-color-scheme, light);
+}
+
+.sn-hprof-input::placeholder {
+  color: var(--sn-text-muted);
+}
+
+.sn-hprof-unit {
+  padding: 0 14px 0 6px;
+  color: var(--sn-text-muted);
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* ── Hint text ── */
+.sn-hprof-hint {
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Actions ── */
+.sn-hprof-actions {
+  display: flex;
+  gap: 10px;
+}

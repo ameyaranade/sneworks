@@ -16,7 +16,6 @@ import {
   collection,
   getDocs,
   writeBatch,
-  deleteDoc,
   doc,
   type Firestore,
 } from 'firebase/firestore';

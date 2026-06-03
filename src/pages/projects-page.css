@@ -194,6 +194,27 @@
   color: var(--sn-accent);
 }
 
+.sn-projects-archived-row__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--sn-border);
+  background: transparent;
+  color: var(--sn-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--sn-transition-fast), color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-projects-archived-row__delete:hover {
+  background: var(--sn-bg-card-hover);
+  color: var(--sn-danger);
+}
+
 /* ── New project sheet form ── */
 .sn-projects-sheet-form {
   display: flex;

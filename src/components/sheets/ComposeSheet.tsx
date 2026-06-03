@@ -7,6 +7,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { useAuth, getCachedUid } from '../../auth/AuthContext';
+import { getSettings, updateSettings } from '../../firebase/settingsQueries';
 import { useToast } from '../../shared/components/Toast';
 import { useTodosStore } from '../../stores/useTodosStore';
 import { useLogsStore } from '../../stores/useLogsStore';
@@ -892,14 +893,26 @@ function HealthLogForm({
   );
   const [saving, setSaving] = useState(false);
 
-  // Pre-fill weight from last log if not set
+  // Pre-fill weight: health profile first, then most-recent log as fallback
   useEffect(() => {
     if (weightKg || isEdit) return;
-    const lastWithWeight = [...logs]
-      .filter((l) => l.logType === 'health-log' && (l as HealthLog).weightKg != null)
-      .sort((a, b) => b.occurredAt.toMillis() - a.occurredAt.toMillis())[0] as HealthLog | undefined;
-    if (lastWithWeight?.weightKg != null) {
-      setWeightKg(String(lastWithWeight.weightKg));
+    const fallbackFromLogs = () => {
+      const last = [...logs]
+        .filter((l) => l.logType === 'health-log' && (l as HealthLog).weightKg != null)
+        .sort((a, b) => b.occurredAt.toMillis() - a.occurredAt.toMillis())[0] as HealthLog | undefined;
+      if (last?.weightKg != null) setWeightKg(String(last.weightKg));
+    };
+    const uid = getCachedUid();
+    if (uid) {
+      getSettings(uid).then((s) => {
+        if (s.healthWeightKg != null) {
+          setWeightKg(String(s.healthWeightKg));
+        } else {
+          fallbackFromLogs();
+        }
+      }).catch(fallbackFromLogs);
+    } else {
+      fallbackFromLogs();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1606,6 +1619,10 @@ export default function ComposeSheet({
           }
         }
         showToast('Workout logged', 'success');
+      }
+      // Silently keep health profile weight in sync
+      if (data.weightKg != null) {
+        updateSettings(uid, { healthWeightKg: data.weightKg }).catch(() => {});
       }
       onClose();
     } catch {

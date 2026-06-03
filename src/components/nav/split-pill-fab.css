@@ -32,7 +32,7 @@
 }
 
 .sn-split-pill__half:active {
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--sn-press-overlay);
 }
 
 .sn-split-pill__label {
@@ -47,6 +47,6 @@
 .sn-split-pill__divider {
   width: 1px;
   height: 24px;
-  background: rgba(10, 11, 16, 0.25);
+  background: var(--sn-divider-overlay);
   flex-shrink: 0;
 }

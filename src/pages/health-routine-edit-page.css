@@ -196,9 +196,9 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--sn-toggle-knob);
   transition: transform var(--sn-transition-fast);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: var(--sn-shadow-toggle);
 }
 
 .sn-hre-toggle--on .sn-hre-toggle-thumb {
@@ -391,7 +391,7 @@
   background: var(--sn-accent);
   cursor: pointer;
   border: 2px solid var(--sn-bg);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  box-shadow: var(--sn-shadow-toggle);
 }
 
 /* ── Intensity ── */

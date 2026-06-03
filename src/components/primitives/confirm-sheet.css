@@ -35,7 +35,7 @@
 
 .sn-confirm-cta--danger {
   background: var(--sn-danger, #ef4444);
-  color: #fff;
+  color: var(--sn-accent-text);
 }
 
 .sn-confirm-cta:active {

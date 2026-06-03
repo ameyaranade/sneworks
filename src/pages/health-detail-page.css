@@ -6,6 +6,56 @@
   padding-bottom: 88px;
 }
 
+/* ── Page header ── */
+.sn-health-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 12px;
+  flex-shrink: 0;
+}
+
+.sn-health-page-title {
+  font-family: var(--sn-font-display);
+  font-size: calc(22px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.sn-health-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--sn-bg-card);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-chip);
+  color: var(--sn-text-dim);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  padding: 6px 12px;
+  cursor: pointer;
+  min-height: 34px;
+  flex-shrink: 0;
+  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-health-profile-btn:active {
+  background: var(--sn-bg-card-hover);
+  border-color: var(--sn-border-strong);
+}
+
+/* Calls-to-action style when no profile set yet */
+.sn-health-profile-btn--setup {
+  border-style: dashed;
+  color: var(--sn-accent);
+  border-color: var(--sn-accent);
+  background: var(--sn-accent-glow);
+}
+
 /* ── Stats bar ── */
 .sn-health-stats {
   display: flex;

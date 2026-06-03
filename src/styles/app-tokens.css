@@ -41,6 +41,26 @@
 
   /* ── Font scale (overridden by data-font attribute) ── */
   --sn-font-scale: 1;
+
+  /* ── Toast notifications (glass-effect action button on colored backgrounds) ── */
+  --sn-toast-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --sn-toast-action-border: rgba(255, 255, 255, 0.4);
+  --sn-toast-action-hover: rgba(255, 255, 255, 0.18);
+
+  /* ── Overlay / scrim ── */
+  --sn-overlay: rgba(0, 0, 0, 0.6);
+
+  /* ── Small element shadows ── */
+  --sn-shadow-toggle: 0 1px 4px rgba(0, 0, 0, 0.25);
+
+  /* ── Press / active state on colored surfaces ── */
+  --sn-press-overlay: rgba(0, 0, 0, 0.12);
+
+  /* ── Divider on colored surfaces ── */
+  --sn-divider-overlay: rgba(0, 0, 0, 0.22);
+
+  /* ── Toggle knob (always white across themes) ── */
+  --sn-toggle-knob: #ffffff;
 }
 
 [data-font="small"]  { --sn-font-scale: 0.88; }

@@ -132,8 +132,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  background: var(--sn-toggle-knob);
+  box-shadow: var(--sn-shadow-toggle);
   transition: transform 0.2s ease;
 }
 

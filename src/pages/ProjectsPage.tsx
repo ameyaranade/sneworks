@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, FolderOpen, ChevronRight, RotateCcw } from 'lucide-react';
+import { Plus, FolderOpen, ChevronRight, RotateCcw, Trash2 } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import BottomSheet from '../components/primitives/BottomSheet';
+import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import EmptyState from '../components/primitives/EmptyState';
 import CollapsibleSection from '../components/primitives/CollapsibleSection';
 import ProgressBar from '../components/primitives/ProgressBar';
@@ -118,9 +119,10 @@ function ProjectCard({ group }: ProjectCardProps) {
 interface ArchivedProjectRowProps {
   group: Group;
   onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-function ArchivedProjectRow({ group, onRestore }: ArchivedProjectRowProps) {
+function ArchivedProjectRow({ group, onRestore, onDelete }: ArchivedProjectRowProps) {
   const navigate = useNavigate();
   return (
     <div className="sn-projects-archived-row">
@@ -144,6 +146,15 @@ function ArchivedProjectRow({ group, onRestore }: ArchivedProjectRowProps) {
       >
         <RotateCcw size={13} strokeWidth={2} />
       </button>
+      <button
+        type="button"
+        className="sn-projects-archived-row__delete"
+        onClick={() => onDelete(group.id!)}
+        aria-label="Delete project"
+        title="Delete"
+      >
+        <Trash2 size={13} strokeWidth={2} />
+      </button>
     </div>
   );
 }
@@ -152,6 +163,7 @@ function ArchivedProjectRow({ group, onRestore }: ArchivedProjectRowProps) {
 
 export default function ProjectsPage() {
   const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const { user } = useAuth();
   const { showToast } = useToast();
   const location = useLocation();
@@ -169,6 +181,7 @@ export default function ProjectsPage() {
   const getCompletedProjects = useGroupsStore((s) => s.getCompletedProjects);
   const getArchivedProjects = useGroupsStore((s) => s.getArchivedProjects);
   const updateGroup = useGroupsStore((s) => s.updateGroup);
+  const deleteGroup = useGroupsStore((s) => s.deleteGroup);
 
   const uid = user?.uid ?? getCachedUid();
 
@@ -188,6 +201,18 @@ export default function ProjectsPage() {
       showToast('Could not restore project', 'error');
     }
   }, [uid, updateGroup, showToast]);
+
+  const handleDeleteConfirmed = useCallback(async () => {
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+    if (!id || !uid) return;
+    try {
+      await deleteGroup(uid, id);
+      showToast('Project deleted', 'success');
+    } catch {
+      showToast('Could not delete project', 'error');
+    }
+  }, [confirmDeleteId, uid, deleteGroup, showToast]);
 
   return (
     <div className="sn-projects-page">
@@ -240,7 +265,7 @@ export default function ProjectsPage() {
           >
             <div className="sn-projects-archived-list">
               {archivedProjects.map((p) => (
-                <ArchivedProjectRow key={p.id} group={p} onRestore={handleRestore} />
+                <ArchivedProjectRow key={p.id} group={p} onRestore={handleRestore} onDelete={setConfirmDeleteId} />
               ))}
             </div>
           </CollapsibleSection>
@@ -248,6 +273,17 @@ export default function ProjectsPage() {
       </div>
 
       {newProjectOpen && <NewProjectSheet onClose={() => setNewProjectOpen(false)} />}
+
+      {confirmDeleteId && (
+        <ConfirmSheet
+          title="Delete project?"
+          message="This project, its sub-projects and all their tasks will be permanently deleted."
+          confirmLabel="Delete"
+          danger
+          onConfirm={handleDeleteConfirmed}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
     </div>
   );
 }

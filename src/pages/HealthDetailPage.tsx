@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback } from 'react';
-import { Trash2, Plus, Archive, RotateCcw } from 'lucide-react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { Trash2, Plus, Archive, RotateCcw, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
@@ -8,7 +8,6 @@ import { useLogsStore, type DayGroup } from '../stores/useLogsStore';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import { useUI } from '../context/UIContext';
 import SwipeableRow from '../components/swipe/SwipeableRow';
-import DetailPageHeader from '../components/primitives/DetailPageHeader';
 import EmptyState from '../components/primitives/EmptyState';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import CollapsibleSection from '../components/primitives/CollapsibleSection';
@@ -20,6 +19,7 @@ import {
   sumCalories,
   sumDuration,
 } from '../firebase/healthQueries';
+import { getSettings } from '../firebase/settingsQueries';
 import { recurrenceLabel } from '../firebase/routineSpawner';
 import '../components/health/health-components.css';
 import './health-detail-page.css';
@@ -241,6 +241,17 @@ export default function HealthDetailPage() {
 
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
   const [confirmDeleteArchivedId, setConfirmDeleteArchivedId] = useState<string | null>(null);
+  const [pendingDeleteLog, setPendingDeleteLog] = useState<Log | null>(null);
+  const [hasHealthProfile, setHasHealthProfile] = useState(false);
+
+  const uid = user?.uid ?? getCachedUid();
+
+  useEffect(() => {
+    if (!uid) return;
+    getSettings(uid).then((s) => {
+      setHasHealthProfile(s.healthWeightKg != null);
+    }).catch(() => {});
+  }, [uid]);
 
   // ── Health routines ──────────────────────────────────────────────────────────
   const healthRoutines = useMemo(
@@ -256,8 +267,6 @@ export default function HealthDetailPage() {
     ),
     [groups],
   );
-
-  const uid = user?.uid ?? getCachedUid();
 
   const handleArchiveRoutine = useCallback(async (id: string) => {
     if (!uid) return;
@@ -303,8 +312,10 @@ export default function HealthDetailPage() {
   const hasLogs = healthGroups.length > 0;
   const hasRoutines = healthRoutines.length > 0;
 
-  const handleDelete = async (log: Log) => {
-    if (!uid) return;
+  const handleConfirmDeleteLog = async () => {
+    const log = pendingDeleteLog;
+    setPendingDeleteLog(null);
+    if (!log || !uid) return;
     const deleted = await deleteLog(uid, log.id!);
     if (!deleted) return;
     showToast('Log deleted', 'info', {
@@ -340,8 +351,28 @@ export default function HealthDetailPage() {
         onCancel={() => setConfirmDeleteArchivedId(null)}
       />
     )}
+    {pendingDeleteLog && (
+      <ConfirmSheet
+        title="Delete log?"
+        message={`"${pendingDeleteLog.title}" will be permanently deleted.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleConfirmDeleteLog}
+        onCancel={() => setPendingDeleteLog(null)}
+      />
+    )}
     <div className="sn-health-page">
-      <DetailPageHeader onBack={() => navigate('/more')} title="Health" />
+      <div className="sn-health-page-header">
+        <h1 className="sn-health-page-title">Health</h1>
+        <button
+          type="button"
+          className={`sn-health-profile-btn${hasHealthProfile ? '' : ' sn-health-profile-btn--setup'}`}
+          onClick={() => navigate('/health/profile')}
+        >
+          <User size={13} strokeWidth={2} />
+          {hasHealthProfile ? 'Health Profile' : 'Setup Health Data'}
+        </button>
+      </div>
 
       {/* ── Stats bar ── */}
       {(hasLogs || loaded) && (
@@ -446,7 +477,7 @@ export default function HealthDetailPage() {
           </div>
           <div className="sn-health-list">
             {healthGroups.map((g) => (
-              <DaySection key={g.dateKey} group={g} onDelete={handleDelete} />
+              <DaySection key={g.dateKey} group={g} onDelete={setPendingDeleteLog} />
             ))}
           </div>
         </>

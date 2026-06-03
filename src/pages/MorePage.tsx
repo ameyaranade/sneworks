@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ShoppingCart, ChevronRight, FolderOpen, Settings, LogOut, Moon, Sun, Bell, Type, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, ShoppingCart, ChevronRight, FolderOpen, Settings, LogOut, Moon, Sun, Bell, Type, RotateCcw, Trash2, Download } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
@@ -9,6 +9,7 @@ import { useGroupsStore } from '../stores/useGroupsStore';
 import { useTodosStore } from '../stores/useTodosStore';
 import { useUI } from '../context/UIContext';
 import { subscribeToSettings, updateSettings, DEFAULT_SETTINGS } from '../firebase/settingsQueries';
+import { exportUserDataToFile, eraseAllUserData } from '../firebase/userDataRegistry';
 import type { AppSettings } from '../firebase/settingsQueries';
 import BottomSheet from '../components/primitives/BottomSheet';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
@@ -164,11 +165,15 @@ function ArchivedListRow({ group, onUnarchive, onDelete }: ArchivedListRowProps)
 
 function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const uid = user?.uid ?? getCachedUid();
   const [settings, setSettings] = useState<Partial<AppSettings>>(DEFAULT_SETTINGS);
   const [toggling, setToggling] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [erasing, setErasing] = useState(false);
+  const [confirmErase, setConfirmErase] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -218,9 +223,48 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
     navigate('/login');
   };
 
+  const handleExport = async () => {
+    if (!uid || exporting) return;
+    setExporting(true);
+    try {
+      await exportUserDataToFile(uid);
+      showToast('Projects exported', 'success');
+    } catch {
+      showToast('Could not export. Try again.', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleEraseConfirmed = async () => {
+    if (!uid || erasing) return;
+    setConfirmErase(false);
+    setErasing(true);
+    try {
+      await eraseAllUserData(uid);
+      onClose();
+      await signOut(auth);
+      navigate('/login');
+    } catch {
+      showToast('Could not delete data. Try again.', 'error');
+      setErasing(false);
+    }
+  };
+
   const fontScale = settings.sbFontScale ?? 'medium';
 
   return (
+    <>
+    {confirmErase && (
+      <ConfirmSheet
+        title="Delete all your data?"
+        message="Every todo, log, list, project and routine will be permanently deleted from your account. This cannot be undone. Export your projects first if you want a copy."
+        confirmLabel="Delete everything"
+        danger
+        onConfirm={handleEraseConfirmed}
+        onCancel={() => setConfirmErase(false)}
+      />
+    )}
     <BottomSheet onClose={onClose} title="Settings">
       <div className="sn-settings-sheet">
         {/* Dark mode toggle */}
@@ -278,6 +322,28 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
         {notifError && <p className="sn-settings-error">{notifError}</p>}
 
+        {/* Your data */}
+        <div className="sn-settings-divider" />
+        <span className="sn-settings-section-label">Your data</span>
+        <button
+          type="button"
+          className="sn-settings-data-btn"
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          <Download size={15} strokeWidth={2} />
+          {exporting ? 'Exporting…' : 'Export projects (JSON)'}
+        </button>
+        <button
+          type="button"
+          className="sn-settings-data-btn sn-settings-data-btn--danger"
+          onClick={() => setConfirmErase(true)}
+          disabled={erasing}
+        >
+          <Trash2 size={15} strokeWidth={2} />
+          {erasing ? 'Deleting…' : 'Delete all my data'}
+        </button>
+
         {/* Account */}
         <div className="sn-settings-divider" />
         {user && (
@@ -296,6 +362,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </BottomSheet>
+    </>
   );
 }
 

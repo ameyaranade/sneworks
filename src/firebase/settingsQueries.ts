@@ -4,6 +4,7 @@ import {
   getDoc,
   onSnapshot,
   serverTimestamp,
+  deleteField,
   Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -17,6 +18,8 @@ export interface AppSettings {
   fcmToken?: string;
   timezoneOffset?: number;
   sbFontScale?: 'small' | 'medium' | 'large';
+  // Personal health profile — used for calorie estimation
+  healthWeightKg?: number;
   updatedAt: Timestamp;
 }
 
@@ -51,4 +54,14 @@ export function subscribeToSettings(
   return onSnapshot(settingsDoc(uid), (snap) => {
     if (snap.exists()) cb(snap.data() as AppSettings);
   });
+}
+
+/** Write health profile weight; pass null to clear it from Firestore. */
+export async function updateHealthProfile(
+  uid: string,
+  profile: { healthWeightKg: number | null },
+): Promise<void> {
+  const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
+  payload.healthWeightKg = profile.healthWeightKg ?? deleteField();
+  await setDoc(settingsDoc(uid), payload, { merge: true });
 }

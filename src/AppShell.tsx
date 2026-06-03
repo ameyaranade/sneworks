@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
+import PageSkeleton from './components/primitives/PageSkeleton';
 import { useAuth, getCachedUid } from './auth/AuthContext';
 import { ToastProvider } from './shared/components/Toast';
 import { UIProvider, useUI } from './context/UIContext';
@@ -97,34 +98,38 @@ function AppShellInner() {
       data-theme={getInitialDark() ? 'dark' : 'light'}
       data-font={getInitialFontScale()}
     >
-      <div className="sn-content">
-        <Outlet />
-      </div>
+      <ToastProvider>
+        <div className="sn-content">
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </div>
 
-      <BottomNav />
+        <BottomNav />
 
-      {/* Portal target — sheets rendered here stay inside [data-theme] */}
-      <div id="sn-portal" />
+        {/* Portal target — sheets rendered here stay inside [data-theme] */}
+        <div id="sn-portal" />
 
-      {composeOpen && (
-        <ComposeSheet
-          onClose={closeCompose}
-          mode={composeMode}
-          editEntry={composeEntry}
-          preselectedTodoType={composeTodoType}
-          preselectedLogType={composeLogType}
-          preselectedGroupId={composeGroupId}
-          healthPrefill={composeHealthPrefill}
-        />
-      )}
+        {composeOpen && (
+          <ComposeSheet
+            onClose={closeCompose}
+            mode={composeMode}
+            editEntry={composeEntry}
+            preselectedTodoType={composeTodoType}
+            preselectedLogType={composeLogType}
+            preselectedGroupId={composeGroupId}
+            healthPrefill={composeHealthPrefill}
+          />
+        )}
 
-      {deferOpen && deferTodoId && (
-        <DeferSheet todoId={deferTodoId} onClose={closeDefer} />
-      )}
+        {deferOpen && deferTodoId && (
+          <DeferSheet todoId={deferTodoId} onClose={closeDefer} />
+        )}
 
-      {editRecurringGroup && (
-        <EditRecurringSheet group={editRecurringGroup} onClose={closeEditRecurring} />
-      )}
+        {editRecurringGroup && (
+          <EditRecurringSheet group={editRecurringGroup} onClose={closeEditRecurring} />
+        )}
+      </ToastProvider>
     </div>
   );
 }
@@ -132,9 +137,7 @@ function AppShellInner() {
 export default function AppShell() {
   return (
     <UIProvider>
-      <ToastProvider>
-        <AppShellInner />
-      </ToastProvider>
+      <AppShellInner />
     </UIProvider>
   );
 }

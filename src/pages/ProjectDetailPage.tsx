@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Archive, FolderOpen, ChevronRight, Plus, Copy } from 'lucide-react';
+import { Archive, FolderOpen, ChevronRight, Plus, Copy } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';

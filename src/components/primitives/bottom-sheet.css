@@ -1,7 +1,7 @@
 ﻿.sn-sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--sn-overlay);
   z-index: 200;
   animation: sb-backdrop-in 0.2s ease-out;
 }
