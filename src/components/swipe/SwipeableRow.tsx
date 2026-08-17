@@ -1,4 +1,4 @@
-import { ReactNode, useRef } from 'react';
+import { ReactNode, useRef, createContext, useContext } from 'react';
 import { motion, PanInfo, useMotionValue, animate } from 'framer-motion';
 import './swipeable-row.css';
 
@@ -7,6 +7,19 @@ export interface SwipeAction {
   className: string;
   onTrigger: () => void;
   icon?: ReactNode;
+}
+
+/**
+ * Lets a child affordance (SwipeGrip) drive the row without a drag gesture —
+ * tapping the grip reveals the left-swipe actions (or closes if already open).
+ */
+interface SwipeControls {
+  toggleActions: () => void;
+  hasActions: boolean;
+}
+const SwipeControlContext = createContext<SwipeControls | null>(null);
+export function useSwipeControls(): SwipeControls | null {
+  return useContext(SwipeControlContext);
 }
 
 interface SwipeableRowProps {
@@ -33,6 +46,16 @@ export default function SwipeableRow({
   const isDragging = useRef(false);
 
   const springBack = () => animate(x, 0, { type: 'spring', stiffness: 400, damping: 40 });
+
+  // Tap-to-reveal (SwipeGrip): open the left-swipe actions, or close if already open.
+  const toggleActions = () => {
+    if (leftActions.length === 0) return;
+    if (Math.abs(x.get()) > 1) {
+      springBack();
+    } else {
+      animate(x, -leftActions.length * ACTION_WIDTH, { type: 'spring', stiffness: 400, damping: 40 });
+    }
+  };
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     isDragging.current = false;
@@ -99,7 +122,9 @@ export default function SwipeableRow({
         onDragEnd={onDragEnd}
         onDragStart={() => { isDragging.current = true; }}
       >
-        {children}
+        <SwipeControlContext.Provider value={{ toggleActions, hasActions: leftActions.length > 0 }}>
+          {children}
+        </SwipeControlContext.Provider>
       </motion.div>
     </div>
   );

@@ -100,6 +100,7 @@
   --sn-gold: #e5c07b;
   --sn-gold-glow: rgba(229, 192, 123, 0.1);
   --sn-purple: #c5b4ff;
+  --sn-purple-glow: rgba(197, 180, 255, 0.14);
 
   /* Type stripe colors */
   --sn-stripe-shopping: var(--sn-accent);
@@ -155,6 +156,7 @@
   --sn-gold: #8a6500;
   --sn-gold-glow: rgba(138, 101, 0, 0.08);
   --sn-purple: #6535d6;
+  --sn-purple-glow: rgba(101, 53, 214, 0.1);
 
   /* Type stripe colors */
   --sn-stripe-shopping: var(--sn-accent);

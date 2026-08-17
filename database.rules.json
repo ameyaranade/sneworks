@@ -1,0 +1,20 @@
+{
+  /* Ephemeral shared-project presence only (docs/SHAREABLE_PROJECTS_SPEC.md D9).
+     Read is gated on auth (not project membership): RTDB rules can't cheaply
+     look up the Firestore `members` map, and the payload is low-sensitivity
+     (display name + heartbeat timestamp, no project content). Write is
+     self-scoped — a user may only write their own presence/{pid}/{uid} node. */
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "presence": {
+      "$pid": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['name', 'at']) && newData.child('at').isNumber()"
+        }
+      }
+    }
+  }
+}

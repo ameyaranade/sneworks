@@ -1,0 +1,70 @@
+.sn-pending-shares {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 16px 6px;
+}
+
+.sn-pending-share-card {
+  padding: 12px 14px;
+  background: var(--sn-accent-glow);
+  border: 1px solid color-mix(in srgb, var(--sn-accent) 30%, var(--sn-border));
+  border-radius: var(--sn-radius-card);
+  box-sizing: border-box;
+}
+
+.sn-pending-share-text {
+  margin: 0 0 10px;
+  font-family: var(--sn-font-body);
+  font-size: calc(12.5px * var(--sn-font-scale, 1));
+  line-height: 1.5;
+  color: var(--sn-text-dim);
+}
+
+.sn-pending-share-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sn-pending-share-decline,
+.sn-pending-share-accept {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--sn-radius-btn);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-pending-share-decline {
+  background: transparent;
+  border: 1px solid var(--sn-btn-border);
+  color: var(--sn-text-dim);
+}
+
+.sn-pending-share-accept {
+  background: var(--sn-accent);
+  border: none;
+  color: var(--sn-accent-text);
+}
+
+.sn-pending-share-decline:disabled,
+.sn-pending-share-accept:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sn-pending-share-seeall {
+  align-self: center;
+  background: transparent;
+  border: none;
+  color: var(--sn-accent);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  -webkit-tap-highlight-color: transparent;
+}

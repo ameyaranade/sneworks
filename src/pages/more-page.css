@@ -137,6 +137,13 @@
   gap: 3px;
 }
 
+.sn-more-group-card__name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .sn-more-group-card__name {
   font-family: var(--sn-font-body);
   font-size: calc(14px * var(--sn-font-scale, 1));
@@ -145,6 +152,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .sn-more-group-card__meta {
@@ -378,6 +386,20 @@
   color: var(--sn-text-muted);
 }
 
+.sn-more-invite-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--sn-radius-chip);
+  background: var(--sn-accent);
+  color: var(--sn-accent-text);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  font-weight: 600;
+}
+
 /* ── Settings sheet ── */
 .sn-settings-sheet {
   display: flex;
@@ -478,6 +500,49 @@
   background: var(--sn-bg-card-hover);
   border-color: var(--sn-border-strong);
   color: var(--sn-text-dim);
+}
+
+/* ── Theme mode segmented control (Light / System / Dark) ── */
+.sn-settings-theme-seg {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sn-settings-theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--sn-radius-chip);
+  border: 1px solid var(--sn-border);
+  background: var(--sn-bg-card);
+  color: var(--sn-text-muted);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast), color var(--sn-transition-fast);
+}
+
+.sn-settings-theme-btn--active {
+  background: var(--sn-accent);
+  border-color: var(--sn-accent);
+  color: var(--sn-accent-text);
+}
+
+.sn-settings-theme-btn:not(.sn-settings-theme-btn--active):hover {
+  background: var(--sn-bg-card-hover);
+  border-color: var(--sn-border-strong);
+  color: var(--sn-text-dim);
+}
+
+/* On narrow widths, collapse labels to icons so all three fit */
+@media (max-width: 380px) {
+  .sn-settings-theme-btn span { display: none; }
+  .sn-settings-theme-btn { padding: 0 9px; }
 }
 
 .sn-settings-error {

@@ -72,6 +72,54 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Subtitle row (shared badge inline) ── */
+.sn-gdp-subtitle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Permission-revoked state ── */
+.sn-gdp-gone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.sn-gdp-gone__title {
+  font-family: var(--sn-font-body);
+  font-size: calc(15px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-text);
+  margin: 0;
+}
+
+.sn-gdp-gone__sub {
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  margin: 0;
+}
+
+.sn-gdp-gone__home-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: var(--sn-accent);
+  color: var(--sn-accent-text);
+  border: none;
+  border-radius: var(--sn-radius-btn);
+  font-family: var(--sn-font-body);
+  font-size: calc(14px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ── Loading / empty ── */
 .sn-gdp-loading {
   padding: 40px 20px;
@@ -139,6 +187,11 @@
 
 .sn-shop-row--done {
   opacity: 0.45;
+}
+
+.sn-shop-row--remote-updated {
+  background: var(--sn-purple-glow);
+  transition: background 2s ease-out;
 }
 
 .sn-shop-checkbox {

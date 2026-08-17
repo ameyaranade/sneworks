@@ -18,6 +18,13 @@
   opacity: 0.5;
 }
 
+/* Shared-project remote-update affordance (spec §5.3) — briefly flags a row
+   changed by another member. Toggled by useSharedProjectTodos on snapshot diff. */
+.sn-todo-row--remote-updated {
+  background: var(--sn-accent-glow);
+  transition: background 0.4s ease;
+}
+
 /* ── Checkbox ── */
 .sn-todo-checkbox {
   width: 20px;
@@ -90,6 +97,33 @@
   text-overflow: ellipsis;
 }
 
+/* ── AI-assist outcome ── */
+.sn-todo-ai-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  margin-top: 2px;
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-accent-text, var(--sn-accent));
+  text-decoration: none;
+}
+.sn-todo-ai-link:hover {
+  text-decoration: underline;
+}
+.sn-todo-ai-pending,
+.sn-todo-ai-error {
+  margin-top: 2px;
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+}
+.sn-todo-ai-error {
+  color: var(--sn-warn, var(--sn-text-muted));
+}
+
 /* ── Meta ── */
 .sn-todo-meta {
   display: flex;
@@ -111,11 +145,4 @@
 
 .sn-todo-due--overdue {
   color: var(--sn-danger);
-}
-
-.sn-todo-type-icon {
-  color: var(--sn-text-muted);
-  display: flex;
-  align-items: center;
-  opacity: 0.6;
 }

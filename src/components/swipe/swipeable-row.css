@@ -94,3 +94,27 @@
   background: var(--sn-bg);
   will-change: transform;
 }
+
+/* ── Swipe grip affordance ──
+   Trailing-edge 6-dot handle signalling a row can be pulled to reveal actions.
+   Tappable (reveals the left-swipe actions); stretches full row height for a
+   comfortable tap target, glyph stays centered even inside flex-start rows. */
+.sn-swipe-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: none;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  color: var(--sn-text-muted);
+  opacity: 0.55;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--sn-transition-fast);
+}
+
+.sn-swipe-grip:active {
+  opacity: 0.85;
+}

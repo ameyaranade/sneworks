@@ -21,8 +21,12 @@
     <script>
       (function () {
         try {
-          if (localStorage.getItem('sneworks-dark') === '1')
-            document.body.dataset.theme = 'dark';
+          var mode = localStorage.getItem('sneworks-theme-mode') || 'system';
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.body.dataset.theme = dark ? 'dark' : 'light';
         } catch (_) {}
       })();
     </script>

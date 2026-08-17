@@ -27,8 +27,25 @@ describe('userDataRegistry coverage', () => {
     }
   });
 
-  it('only projects (the groups store) are exportable for now', () => {
-    const exportable = userDataRegistry.filter((s) => s.exportable).map((s) => s.collectionName);
-    expect(exportable).toEqual(['groups']);
+  it('only projects (groups + sharedProjects) are exportable for now', () => {
+    const exportable = userDataRegistry.filter((s) => s.exportable).map((s) => s.collectionName).sort();
+    expect(exportable).toEqual(['groups', 'sharedProjects']);
+  });
+
+  it('registers chatSessions (assistant history) with erase + cache-clear, not exportable', () => {
+    const chat = userDataRegistry.find((s) => s.collectionName === 'chatSessions');
+    expect(chat).toBeDefined();
+    expect(chat?.exportable).toBe(false);
+    expect(typeof chat?.eraseAll).toBe('function');
+    expect(typeof chat?.cacheKey).toBe('function');
+  });
+
+  it('registers sharedProjects (D8) with export + erase + cache-clear wired', () => {
+    const shared = userDataRegistry.find((s) => s.collectionName === 'sharedProjects');
+    expect(shared).toBeDefined();
+    expect(shared?.exportable).toBe(true);
+    expect(typeof shared?.exportAll).toBe('function');
+    expect(typeof shared?.eraseAll).toBe('function');
+    expect(typeof shared?.cacheKey).toBe('function');
   });
 });

@@ -33,6 +33,12 @@
   cursor: default;
 }
 
+/* Icon-only variant (e.g. shared-project manual refresh) */
+.sn-action-chip--ghost {
+  padding: 5px;
+  color: var(--sn-text-dim);
+}
+
 /* ── Section label (11px, uppercase, muted) ── */
 .sn-label-caps {
   font-family: var(--sn-font-body);

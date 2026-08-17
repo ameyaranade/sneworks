@@ -8,6 +8,8 @@ import {
 import { db } from './config';
 import { cacheKey } from '../utils';
 import { clearAllCache } from '../auth/AuthContext';
+import { eraseMySharedProjectData } from './sharedProjectQueries';
+import { eraseAllChatSessions } from './chatQueries';
 
 /**
  * The single source of truth for every Firestore store that holds user-created
@@ -18,8 +20,20 @@ import { clearAllCache } from '../auth/AuthContext';
  * `USER_DATA_COLLECTIONS` AND a registry entry below — the coverage test
  * (`userDataRegistry.test.ts`) fails if the two diverge, turning a forgotten
  * wiring into a red test instead of a missed checkbox.
+ *
+ * `sharedProjects` (docs/SHAREABLE_PROJECTS_SPEC.md D8/§8) is the one entry that
+ * isn't a `users/{uid}/<collection>` path — it's a single top-level collection
+ * holding every shared group (projects, sub-projects, shopping lists), scoped by
+ * the `members` map instead of a uid segment. Its erase/export logic differs
+ * (owner cascade vs member leave; membership mutation goes through the
+ * `eraseMySharedProjectData` Cloud Function) but it still MUST be registered
+ * here, or a member's shared-group data would silently escape export/erase.
+ *
+ * `invites` are intentionally NOT a separate registry entry: they're transient
+ * control records (not user content), fully resolved by `eraseMySharedProjectData`
+ * (revoke sent / decline received) as part of the sharedProjects erase path.
  */
-export const USER_DATA_COLLECTIONS = ['todos', 'logs', 'groups', 'settings'] as const;
+export const USER_DATA_COLLECTIONS = ['todos', 'logs', 'groups', 'settings', 'sharedProjects', 'chatSessions'] as const;
 export type UserDataCollection = (typeof USER_DATA_COLLECTIONS)[number];
 
 export interface UserDataStore {
@@ -62,6 +76,25 @@ async function exportProjects(uid: string): Promise<Record<string, unknown>[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// Shared groups the user is a member of — export stays projects-only (D4).
+// Shopping lists are not exported (same policy as personal lists).
+async function exportSharedProjects(uid: string): Promise<Record<string, unknown>[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'sharedProjects'),
+      where(`members.${uid}`, '==', true),
+      where('groupKind', '==', 'project'),
+    ),
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Owner erase cascades (deletes for every member); member-only erase just leaves.
+// See docs/SHAREABLE_PROJECTS_SPEC.md D8 — membership mutation is function-only.
+async function eraseSharedProjects(): Promise<void> {
+  await eraseMySharedProjectData();
+}
+
 export const userDataRegistry: UserDataStore[] = [
   {
     collectionName: 'todos',
@@ -93,6 +126,24 @@ export const userDataRegistry: UserDataStore[] = [
     exportable: false,
     eraseAll: (uid) => wipeCollection(uid, 'settings'),
   },
+  {
+    collectionName: 'sharedProjects',
+    label: 'Shared projects & lists',
+    cacheKey: (uid) => cacheKey(uid, 'sharedProjects'),
+    exportable: true,
+    exportAll: exportSharedProjects,
+    eraseAll: eraseSharedProjects,
+  },
+  {
+    // Chat agent history (functions/src/ai/assistantAgent.ts). Not exportable —
+    // it's transient conversation, not authored user content. Erase cascades
+    // into each session's messages/proposedActions subcollections.
+    collectionName: 'chatSessions',
+    label: 'Assistant chats',
+    cacheKey: (uid) => cacheKey(uid, 'chat'),
+    exportable: false,
+    eraseAll: eraseAllChatSessions,
+  },
 ];
 
 // ─── Export (projects only) ───────────────────────────────────────────────────
@@ -113,14 +164,31 @@ export async function buildUserDataExport(uid: string): Promise<UserDataExport> 
   const projects = projectArrays.flat();
 
   // A project export without its tasks is useless, so include the todos that
-  // belong to the exported projects.
-  const projectIds = new Set(projects.map((p) => p.id as string));
+  // belong to the exported projects. Personal project tasks live in the flat
+  // users/{uid}/todos collection; shared project tasks live in their own
+  // sharedProjects/{pid}/todos subcollection (see D8) — gather both.
+  const personalProjectIds = new Set(
+    projects.filter((p) => p.location !== 'shared').map((p) => p.id as string),
+  );
+  const sharedProjectIds = projects
+    .filter((p) => p.location === 'shared')
+    .map((p) => p.id as string);
+
   let projectTasks: Record<string, unknown>[] = [];
-  if (projectIds.size > 0) {
+  if (personalProjectIds.size > 0) {
     const todosSnap = await getDocs(collection(db, 'users', uid, 'todos'));
     projectTasks = todosSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((t) => projectIds.has((t as { groupId?: string }).groupId ?? ''));
+      .filter((t) => personalProjectIds.has((t as { groupId?: string }).groupId ?? ''));
+  }
+  if (sharedProjectIds.length > 0) {
+    const sharedTaskArrays = await Promise.all(
+      sharedProjectIds.map(async (pid) => {
+        const snap = await getDocs(collection(db, 'sharedProjects', pid, 'todos'));
+        return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      }),
+    );
+    projectTasks = [...projectTasks, ...sharedTaskArrays.flat()];
   }
 
   return {

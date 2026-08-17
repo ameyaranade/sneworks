@@ -1,69 +1,170 @@
-.login-page {
+/* Viewport-filling root outside the app shell — mirrors the .sn-shell
+   fixed/inset pattern (see Shell & Scroll) rather than viewport-height
+   units, which are reserved for scroll pages inside .sn-content. */
+.login-root {
+  position: fixed;
+  inset: 0;
+  background: var(--sn-bg);
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding-top: 64px;
+  padding: 24px;
+  font-family: var(--sn-font-body);
+  overflow-y: auto;
 }
 
-.login-card {
-  background: var(--bg-surface);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card-hover);
-  padding: 40px 36px;
+.login-content {
   width: 100%;
-  max-width: 380px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+/* ── Header ── */
+.login-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   text-align: center;
+  align-items: center;
+}
+
+.login-glyph {
+  font-size: 26px;
+  color: var(--sn-accent);
+  line-height: 1;
 }
 
 .login-title {
-  margin: 0 0 8px;
-  font-size: 28px;
-  color: var(--text-heading);
+  font-family: var(--sn-font-display);
+  font-size: 34px;
+  font-weight: 500;
+  color: var(--sn-text);
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.1;
 }
 
 .login-subtitle {
-  margin: 0 0 24px;
-  font-size: 14px;
-  color: var(--text-tertiary);
+  font-size: 15px;
+  color: var(--sn-text-dim);
+  margin: 0;
   line-height: 1.5;
+  max-width: 280px;
+}
+
+/* ── Fanned preview ── */
+.login-preview {
+  position: relative;
+  height: 320px;
+  margin: 8px 0 4px;
+  /* Clip the fan so the tall phones can't spill into the footer button */
+  overflow: hidden;
+}
+
+.login-phone {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 158px;
+  margin-left: -79px;
+  border-radius: 22px;
+  border: 1.5px solid var(--sn-border-strong);
+  background: var(--sn-bg-card);
+  overflow: hidden;
+  box-shadow: var(--sn-shadow-card);
+}
+
+.login-phone img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.login-phone--center {
+  z-index: 3;
+}
+
+.login-phone--left {
+  z-index: 1;
+  transform: translateX(-62%) translateY(30px) rotate(-13deg) scale(0.9);
+  transform-origin: top center;
+  opacity: 0.92;
+}
+
+.login-phone--right {
+  z-index: 2;
+  transform: translateX(62%) translateY(22px) rotate(13deg) scale(0.9);
+  transform-origin: top center;
+  opacity: 0.96;
+}
+
+/* Fade the bottom edge of the fan so phones read as "peeking up" */
+.login-preview::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  background: linear-gradient(to top, var(--sn-bg), transparent);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ── Footer ── */
+.login-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .login-error {
-  margin: 0 0 16px;
   font-size: 14px;
-  color: var(--color-expense);
-  background: var(--bg-danger-subtle);
+  color: var(--sn-danger);
+  background: var(--sn-danger-soft);
   padding: 10px 14px;
-  border-radius: 6px;
+  border-radius: var(--sn-radius-card-sm);
+  margin: 0;
+  text-align: center;
 }
 
-.btn-google {
+.login-btn-google {
+  min-height: 48px;
   width: 100%;
-  padding: 12px 20px;
+  background: var(--sn-bg-card);
+  border: 1px solid var(--sn-border-strong);
+  border-radius: var(--sn-radius-btn);
+  color: var(--sn-text);
   font-size: 15px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text-body);
+  font-weight: 500;
+  font-family: var(--sn-font-body);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: background-color 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--sn-transition-fast), border-color var(--sn-transition-fast);
 }
 
-.btn-google:hover:not(:disabled) {
-  background: var(--bg-muted);
-  box-shadow: var(--shadow-card);
+.login-btn-google:hover:not(:disabled) {
+  background: var(--sn-bg-card-hover);
 }
 
-.btn-google:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.login-btn-google:active:not(:disabled) {
+  opacity: 0.8;
 }
 
-.login-note {
-  margin: 20px 0 0;
-  font-size: 13px;
-  color: var(--text-faint);
+.login-btn-google:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Shorter viewports — tighten the fan so the button stays visible */
+@media (max-height: 720px) {
+  .login-preview { height: 280px; }
+  .login-phone { width: 138px; }
 }

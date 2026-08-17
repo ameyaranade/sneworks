@@ -400,6 +400,13 @@
   gap: 4px;
 }
 
+.sn-today-group-card__name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .sn-today-group-card__name {
   font-family: var(--sn-font-body);
   font-size: calc(13px * var(--sn-font-scale, 1));
@@ -408,6 +415,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .sn-today-group-card__count {

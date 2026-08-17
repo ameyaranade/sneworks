@@ -4,12 +4,15 @@ import { Plus, FolderOpen, ChevronRight, RotateCcw, Trash2 } from 'lucide-react'
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useGroupsStore } from '../stores/useGroupsStore';
+import { useSharedProjectsStore } from '../stores/useSharedProjectsStore';
+import { updateSharedProject, deleteSharedProject } from '../firebase/sharedProjectQueries';
 import BottomSheet from '../components/primitives/BottomSheet';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import EmptyState from '../components/primitives/EmptyState';
 import CollapsibleSection from '../components/primitives/CollapsibleSection';
 import ProgressBar from '../components/primitives/ProgressBar';
 import SheetFormActions from '../components/primitives/SheetFormActions';
+import SharedBadge from '../components/sharing/SharedBadge';
 import type { Group } from '../types';
 import './projects-page.css';
 
@@ -88,6 +91,8 @@ function ProjectCard({ group }: ProjectCardProps) {
   const pct = group.childCount > 0
     ? Math.round((group.doneCount / group.childCount) * 100)
     : 0;
+  const memberCount = (group as { memberCount?: number }).memberCount ?? 1;
+  const isShared = (group as { location?: string }).location === 'shared';
 
   return (
     <button
@@ -99,7 +104,10 @@ function ProjectCard({ group }: ProjectCardProps) {
         <FolderOpen size={16} strokeWidth={2} />
       </div>
       <div className="sn-projects-card__body">
-        <span className="sn-projects-card__name">{group.name}</span>
+        <span className="sn-projects-card__name-row">
+          <span className="sn-projects-card__name">{group.name}</span>
+          {isShared && memberCount > 1 && <SharedBadge memberCount={memberCount} />}
+        </span>
         <span className="sn-projects-card__meta">
           {group.childCount === 0
             ? 'No tasks'
@@ -124,6 +132,8 @@ interface ArchivedProjectRowProps {
 
 function ArchivedProjectRow({ group, onRestore, onDelete }: ArchivedProjectRowProps) {
   const navigate = useNavigate();
+  const memberCount = (group as { memberCount?: number }).memberCount ?? 1;
+  const isShared = (group as { location?: string }).location === 'shared';
   return (
     <div className="sn-projects-archived-row">
       <button
@@ -133,6 +143,7 @@ function ArchivedProjectRow({ group, onRestore, onDelete }: ArchivedProjectRowPr
       >
         <FolderOpen size={13} strokeWidth={2} className="sn-projects-archived-row__icon" />
         <span className="sn-projects-archived-row__name">{group.name}</span>
+        {isShared && memberCount > 1 && <SharedBadge memberCount={memberCount} />}
         <span className="sn-projects-archived-row__meta">
           {group.childCount > 0 ? `${group.doneCount}/${group.childCount}` : 'No tasks'}
         </span>
@@ -183,36 +194,73 @@ export default function ProjectsPage() {
   const updateGroup = useGroupsStore((s) => s.updateGroup);
   const deleteGroup = useGroupsStore((s) => s.deleteGroup);
 
+  const sharedProjects = useSharedProjectsStore((s) => s.sharedProjects);
+  const getActiveSharedProjects = useSharedProjectsStore((s) => s.getActiveSharedProjects);
+  const getCompletedSharedProjects = useSharedProjectsStore((s) => s.getCompletedSharedProjects);
+  const getArchivedSharedProjects = useSharedProjectsStore((s) => s.getArchivedSharedProjects);
+
   const uid = user?.uid ?? getCachedUid();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeProjects = useMemo(() => getActiveProjects(), [groups]);
+  const personalActive = useMemo(() => getActiveProjects(), [groups]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const completedProjects = useMemo(() => getCompletedProjects(), [groups]);
+  const personalCompleted = useMemo(() => getCompletedProjects(), [groups]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const archivedProjects = useMemo(() => getArchivedProjects(), [groups]);
+  const personalArchived = useMemo(() => getArchivedProjects(), [groups]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sharedActive = useMemo(() => getActiveSharedProjects(), [sharedProjects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sharedCompleted = useMemo(() => getCompletedSharedProjects(), [sharedProjects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sharedArchived = useMemo(() => getArchivedSharedProjects(), [sharedProjects]);
+
+  const activeProjects = useMemo(() => [...personalActive, ...sharedActive], [personalActive, sharedActive]);
+  const completedProjects = useMemo(
+    () => [...personalCompleted, ...sharedCompleted],
+    [personalCompleted, sharedCompleted],
+  );
+  const archivedProjects = useMemo(
+    () => [...personalArchived, ...sharedArchived],
+    [personalArchived, sharedArchived],
+  );
+
+  const isSharedId = useCallback(
+    (id: string) => sharedProjects.some((g) => g.id === id),
+    [sharedProjects],
+  );
 
   const handleRestore = useCallback(async (id: string) => {
     if (!uid) return;
     try {
-      await updateGroup(uid, id, { archivedAt: undefined });
+      if (isSharedId(id)) {
+        await updateSharedProject(id, { archivedAt: undefined });
+      } else {
+        await updateGroup(uid, id, { archivedAt: undefined });
+      }
       showToast('Project restored', 'success');
     } catch {
       showToast('Could not restore project', 'error');
     }
-  }, [uid, updateGroup, showToast]);
+  }, [uid, updateGroup, showToast, isSharedId]);
 
   const handleDeleteConfirmed = useCallback(async () => {
     const id = confirmDeleteId;
     setConfirmDeleteId(null);
     if (!id || !uid) return;
     try {
-      await deleteGroup(uid, id);
+      if (isSharedId(id)) {
+        // Owner-only — the callable rejects non-owners with a clear error toast.
+        await deleteSharedProject(id);
+      } else {
+        await deleteGroup(uid, id);
+      }
       showToast('Project deleted', 'success');
-    } catch {
-      showToast('Could not delete project', 'error');
+    } catch (err) {
+      const msg = (err as { message?: string } | undefined)?.message;
+      showToast(msg && msg.length < 120 ? msg : 'Could not delete project', 'error');
     }
-  }, [confirmDeleteId, uid, deleteGroup, showToast]);
+  }, [confirmDeleteId, uid, deleteGroup, showToast, isSharedId]);
 
   return (
     <div className="sn-projects-page">

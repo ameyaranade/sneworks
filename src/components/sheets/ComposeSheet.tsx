@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -11,7 +11,9 @@ import { getSettings, updateSettings } from '../../firebase/settingsQueries';
 import { useToast } from '../../shared/components/Toast';
 import { useTodosStore } from '../../stores/useTodosStore';
 import { useLogsStore } from '../../stores/useLogsStore';
+import { useSharedProjectsStore } from '../../stores/useSharedProjectsStore';
 import { recomputeGroupCounts } from '../../firebase/groupQueries';
+import { updateSharedTodo } from '../../firebase/sharedProjectQueries';
 import type { Todo, TodoType, Log, LogType, ShoppingItemTodo, MoneyReminderTodo, ExpenseLog, IncomeLog, HealthLog, GenericNoteLog, HealthLogPrefill, WorkoutType, IntensityLevel } from '../../types';
 import { WORKOUT_TYPES, INTENSITY_LEVELS, INTENSITY_COLORS, calcCalories, showsDistance, showsSetsReps, distanceUnit as getDistUnit } from '../../constants/health';
 import { useGroupsStore } from '../../stores/useGroupsStore';
@@ -159,7 +161,7 @@ interface GenericTaskFormProps {
   initialTitle?: string;
   initialNotes?: string;
   initialDueAt?: Timestamp;
-  onSave: (data: { title: string; notes?: string; dueAt?: Timestamp; recurring: false }) => Promise<void>;
+  onSave: (data: { title: string; notes?: string; dueAt?: Timestamp; recurring: false; aiAssist: boolean }) => Promise<void>;
   onSaveRecurring: (data: { title: string; recurrence: string }) => Promise<void>;
   onCancel: () => void;
   isEdit: boolean;
@@ -175,6 +177,7 @@ function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, o
   const [recurFreq, setRecurFreq] = useState<RecurFreq>('daily');
   const [recurDayCode, setRecurDayCode] = useState('MON');
   const [recurDueDay, setRecurDueDay] = useState(1);
+  const [aiAssist, setAiAssist] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,7 +189,7 @@ function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, o
         await onSaveRecurring({ title: title.trim(), recurrence: buildRecurrence(recurFreq, recurDayCode, recurDueDay) });
       } else {
         const dueAt = dateStr ? buildTimestamp(dateStr, timeStr || undefined) : undefined;
-        await onSave({ title: title.trim(), notes: notes.trim() || undefined, dueAt, recurring: false });
+        await onSave({ title: title.trim(), notes: notes.trim() || undefined, dueAt, recurring: false, aiAssist });
       }
     } finally {
       setSaving(false);
@@ -274,6 +277,27 @@ function GenericTaskForm({ initialTitle = '', initialNotes = '', initialDueAt, o
               maxLength={500}
             />
           </div>
+
+          {/* AI assist — only offered on new tasks. When on, a Cloud Function lets
+              AI resolve any date in the text and create a calendar reminder. */}
+          {!isEdit && (
+            <div className="sn-compose-field">
+              <label className="sn-compose-recurring-row">
+                <span className="sn-compose-label" style={{ margin: 0 }}>AI assist</span>
+                <button
+                  type="button"
+                  className={`sn-settings-toggle${aiAssist ? ' sn-settings-toggle--on' : ''}`}
+                  onClick={() => setAiAssist((v) => !v)}
+                  aria-label="Toggle AI assist"
+                >
+                  <span className="sn-settings-toggle__knob" />
+                </button>
+              </label>
+              <p className="sn-compose-cal-hint">
+                Let AI read this task and schedule a calendar reminder for it.
+              </p>
+            </div>
+          )}
         </>
       )}
 
@@ -1301,11 +1325,24 @@ export default function ComposeSheet({
   const completeTodo = useTodosStore((s) => s.completeTodo);
   const addLog = useLogsStore((s) => s.addLog);
   const updateLog = useLogsStore((s) => s.updateLog);
+  const sharedProjects = useSharedProjectsStore((s) => s.sharedProjects);
 
   // Determine if editing
   const isEdit = !!editEntry;
   const editTodoType = editEntry && 'todoType' in editEntry ? editEntry.todoType : undefined;
   const editLogType = editEntry && 'logType' in editEntry ? editEntry.logType : undefined;
+
+  // When editing a todo that belongs to a SHARED group, its `groupId` is the shared
+  // project/list id (pid). Such items live in sharedProjects/{pid}/todos, not the
+  // personal collection — so their edits must route through updateSharedTodo, not
+  // the personal useTodosStore.updateTodo (which would target a non-existent doc and
+  // throw a Firestore not-found / permission error). See SHAREABLE_PROJECTS_SPEC §8.
+  const sharedPid = useMemo(() => {
+    if (!isEdit || !editEntry || !('todoType' in editEntry)) return undefined;
+    const gid = (editEntry as Todo).groupId;
+    if (!gid) return undefined;
+    return sharedProjects.some((g) => g.id === gid) ? gid : undefined;
+  }, [isEdit, editEntry, sharedProjects]);
 
   const [mode] = useState<Mode>(initialMode);
   const [step, setStep] = useState<Step>(
@@ -1338,12 +1375,17 @@ export default function ComposeSheet({
     if (!uid) { showToast('Not signed in. Please refresh.', 'error'); return; }
     try {
       if (isEdit && editEntry?.id) {
-        await updateTodo(uid, editEntry.id, {
+        const partial = {
           title: data.title,
           quantity: data.quantity,
           price: data.price,
           categoryTag: data.categoryTag,
-        } as Partial<ShoppingItemTodo>);
+        } as Partial<ShoppingItemTodo>;
+        if (sharedPid) {
+          await updateSharedTodo(sharedPid, editEntry.id, partial);
+        } else {
+          await updateTodo(uid, editEntry.id, partial);
+        }
         showToast('Updated', 'success');
       } else {
         await addTodo(uid, {
@@ -1367,18 +1409,23 @@ export default function ComposeSheet({
     }
   };
 
-  const handleSaveGenericTask = async (data: { title: string; notes?: string; dueAt?: Timestamp; recurring: false }) => {
+  const handleSaveGenericTask = async (data: { title: string; notes?: string; dueAt?: Timestamp; recurring: false; aiAssist: boolean }) => {
     // Use confirmed user uid, or fall back to optimistic cached uid (Firebase SDK
     // already holds a valid token from the previous session even before onAuthStateChanged fires).
     const uid = user?.uid ?? getCachedUid();
     if (!uid) { showToast('Not signed in. Please refresh.', 'error'); return; }
     try {
       if (isEdit && editEntry?.id) {
-        await updateTodo(uid, editEntry.id, {
+        const partial = {
           title: data.title,
           notes: data.notes,
           dueAt: data.dueAt,
-        });
+        };
+        if (sharedPid) {
+          await updateSharedTodo(sharedPid, editEntry.id, partial);
+        } else {
+          await updateTodo(uid, editEntry.id, partial);
+        }
         showToast('Updated', 'success');
       } else {
         await addTodo(uid, {
@@ -1388,8 +1435,9 @@ export default function ComposeSheet({
           dueAt: data.dueAt,
           status: 'pending',
           sortOrder: Date.now(),
+          aiAssist: data.aiAssist || undefined,
         } as Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>);
-        showToast('Task added', 'success');
+        showToast(data.aiAssist ? 'Task added — AI is scheduling a reminder' : 'Task added', 'success');
       }
       onClose();
     } catch {

@@ -1,0 +1,190 @@
+.sn-share-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sn-share-badge-row {
+  display: flex;
+}
+
+.sn-share-invite-row {
+  display: flex;
+  gap: 8px;
+}
+
+.sn-share-email-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--sn-bg-input);
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius-input);
+  color: var(--sn-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  outline: none;
+  color-scheme: var(--sn-color-scheme, light);
+  box-sizing: border-box;
+  transition: border-color var(--sn-transition-fast);
+}
+
+.sn-share-email-input:focus {
+  border-color: var(--sn-accent);
+}
+
+.sn-share-send-btn {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  background: var(--sn-accent);
+  border: none;
+  border-radius: var(--sn-radius-btn);
+  color: var(--sn-accent-text);
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--sn-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sn-share-send-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sn-share-hint {
+  margin: 0;
+  color: var(--sn-text-muted);
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+}
+
+.sn-share-divider {
+  height: 1px;
+  background: var(--sn-border);
+}
+
+.sn-share-section-label {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  color: var(--sn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.sn-share-people {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sn-share-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.sn-share-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--sn-accent-glow);
+  color: var(--sn-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sn-share-avatar--owner {
+  background: var(--sn-gold-glow);
+  color: var(--sn-gold);
+}
+
+.sn-share-avatar--pending {
+  background: var(--sn-bg-card);
+  color: var(--sn-text-muted);
+  border: 1px dashed var(--sn-border-strong);
+}
+
+.sn-share-person-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sn-share-person-name {
+  font-family: var(--sn-font-body);
+  font-size: calc(13px * var(--sn-font-scale, 1));
+  color: var(--sn-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sn-share-person-email {
+  font-family: var(--sn-font-body);
+  font-size: calc(11px * var(--sn-font-scale, 1));
+  color: var(--sn-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sn-share-tag {
+  padding: 3px 8px;
+  border-radius: var(--sn-radius-chip);
+  font-family: var(--sn-font-body);
+  font-size: calc(10px * var(--sn-font-scale, 1));
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sn-share-tag--owner {
+  background: var(--sn-gold-glow);
+  color: var(--sn-gold);
+}
+
+.sn-share-tag--pending {
+  background: var(--sn-accent-glow);
+  color: var(--sn-accent);
+}
+
+.sn-share-remove-btn,
+.sn-share-leave-btn {
+  flex-shrink: 0;
+  background: var(--sn-btn-bg);
+  border: 1px solid var(--sn-btn-border);
+  border-radius: var(--sn-radius-btn);
+  color: var(--sn-text-dim);
+  cursor: pointer;
+  min-height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--sn-transition-fast), border-color var(--sn-transition-fast);
+}
+
+.sn-share-leave-btn {
+  min-width: unset;
+  padding: 0 12px;
+  font-family: var(--sn-font-body);
+  font-size: calc(12px * var(--sn-font-scale, 1));
+  font-weight: 500;
+  color: var(--sn-danger);
+}
+
+.sn-share-remove-btn:hover,
+.sn-share-leave-btn:hover {
+  background: var(--sn-btn-bg-hover);
+  border-color: var(--sn-border-strong);
+}

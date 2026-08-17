@@ -22,7 +22,7 @@ The tenets:
 2. **All UX conforms to one design language** — `--sn-*` tokens + shared primitives only; no hardcoded colors and no one-off components. See [`docs/DESIGN_LANGUAGE.md`](docs/DESIGN_LANGUAGE.md); a new pattern updates it in the same change. Run `npm run check:ux` for the deterministic floor (tokens / viewport-height / color-scheme).
 3. **UX is tested as a state machine** — verify empty / cache-first-paint / loading / populated / boundary / error / optimistic-pending states **and the transitions between them**, not a single click-through. Record states/transitions in [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
 
-**Before changing shell layout, navigation, sheets/modals, z-index, scroll, or safe-area/keyboard handling, read [`docs/PRODUCT_DECISIONS.md`](docs/PRODUCT_DECISIONS.md)** — the log of deliberate cross-cutting calls (nav persistence, PWA/keyboard padding, modal z-index ladder, …). Honor each decision or amend its entry with a new rationale in the same change.
+**Before changing shell layout, navigation, sheets/modals, z-index, scroll, safe-area/keyboard handling, theming/tokens, or any pre-auth / first-paint surface, read [`docs/PRODUCT_DECISIONS.md`](docs/PRODUCT_DECISIONS.md)** — the log of deliberate cross-cutting calls (nav persistence, PWA/keyboard padding, modal z-index ladder, out-of-shell token/theme provisioning, 3-way theme model, …). Honor each decision or amend its entry with a new rationale in the same change.
 
 **Proactively capture new decisions:** when a durable cross-cutting call gets made during our work (an "always/never/from now on" rule, a structural layout/nav/modal/z-index/scroll/safe-area choice, a data-control call, a constraint workaround, or a reversal of a prior approach), use the **`decision-capture`** skill — draft the entry, confirm it with me, then append it to `docs/PRODUCT_DECISIONS.md`. Don't let a deliberate decision live only in chat.
 
@@ -52,7 +52,7 @@ and trivial, **or** capture it as a tracked cleanup task so it isn't lost.
 - **Project ID:** `sneworks-app`
 - **Console:** https://console.firebase.google.com/project/sneworks-app
 - **Services:** Hosting, Authentication (Google), Firestore, Cloud Functions
-- **Realtime Database:** lazy-initialized in config — not active
+- **Realtime Database:** active (`sneworks-app-default-rtdb`) — used **only** for ephemeral shared-project presence (`presence/{pid}/{uid}`, D9). Rules in `database.rules.json`; `prunePresence` scheduled fn sweeps stale entries. Gated client-side by `RTDB_ENABLED` in `config.ts`.
 - **Firestore collections (per user):** `users/{uid}/todos`, `users/{uid}/logs`, `users/{uid}/groups`, `users/{uid}/settings/preferences` (enumerated in `userDataRegistry.ts`)
 
 ### Firebase Setup (already done)
@@ -164,6 +164,7 @@ C:\coding\sneworks\
     src/index.ts             # Cloud Functions: sendReminders (scheduled), FCM
   docs/
     SANDBOX_PRODUCT_SPEC.md  # Full product spec (reference for feature context)
+    SHAREABLE_PROJECTS_SPEC.md # Shared/collaborative groups (projects + shopping lists) feature spec (D8–D12; §8 = lists)
   firebase.json              # Hosting SPA rewrite + Functions config
   .firebaserc                # project: sneworks-app
   package.json               # name: sneworks

@@ -1,14 +1,20 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ShoppingCart, ChevronRight, FolderOpen, Settings, LogOut, Moon, Sun, Bell, Type, RotateCcw, Trash2, Download } from 'lucide-react';
+import { Plus, ShoppingCart, ChevronRight, FolderOpen, Settings, LogOut, Moon, Sun, Monitor, Bell, Type, RotateCcw, Trash2, Download, Sparkles, Mail, Wand2 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useGroupsStore } from '../stores/useGroupsStore';
+import { useSharedProjectsStore } from '../stores/useSharedProjectsStore';
 import { useTodosStore } from '../stores/useTodosStore';
 import { useUI } from '../context/UIContext';
 import { subscribeToSettings, updateSettings, DEFAULT_SETTINGS } from '../firebase/settingsQueries';
+import {
+  subscribeToMyPendingInvites,
+  updateSharedProject as fbUpdateSharedGroup,
+  deleteSharedProject as callDeleteSharedGroup,
+} from '../firebase/sharedProjectQueries';
 import { exportUserDataToFile, eraseAllUserData } from '../firebase/userDataRegistry';
 import type { AppSettings } from '../firebase/settingsQueries';
 import BottomSheet from '../components/primitives/BottomSheet';
@@ -16,6 +22,7 @@ import ConfirmSheet from '../components/primitives/ConfirmSheet';
 import CollapsibleSection from '../components/primitives/CollapsibleSection';
 import ProgressBar from '../components/primitives/ProgressBar';
 import SheetFormActions from '../components/primitives/SheetFormActions';
+import SharedBadge from '../components/sharing/SharedBadge';
 import type { ShoppingListGroup, Group } from '../types';
 import './more-page.css';
 
@@ -109,7 +116,12 @@ function GroupCard({ group }: GroupCardProps) {
         <ShoppingCart size={16} strokeWidth={2} />
       </div>
       <div className="sn-more-group-card__body">
-        <span className="sn-more-group-card__name">{group.name}</span>
+        <span className="sn-more-group-card__name-row">
+          <span className="sn-more-group-card__name">{group.name}</span>
+          {group.location === 'shared' && (group.memberCount ?? 1) > 1 && (
+            <SharedBadge memberCount={group.memberCount ?? 1} />
+          )}
+        </span>
         <span className="sn-more-group-card__meta">
           {group.childCount === 0
             ? 'Empty'
@@ -180,9 +192,19 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
     return subscribeToSettings(uid, setSettings);
   }, [uid]);
 
-  const handleDarkMode = () => {
+  const handleThemeMode = (mode: 'light' | 'system' | 'dark') => {
     if (!uid) return;
-    updateSettings(uid, { darkMode: !settings.darkMode }).catch(console.error);
+    updateSettings(uid, { themeMode: mode }).catch(console.error);
+  };
+
+  const handleSummaryToggle = () => {
+    if (!uid) return;
+    updateSettings(uid, { summaryEnabled: !settings.summaryEnabled }).catch(console.error);
+  };
+
+  const handleAssistantToggle = () => {
+    if (!uid) return;
+    updateSettings(uid, { assistantEnabled: !settings.assistantEnabled }).catch(console.error);
   };
 
   const handleNotifications = async () => {
@@ -252,6 +274,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
   };
 
   const fontScale = settings.sbFontScale ?? 'medium';
+  const themeMode = settings.themeMode ?? 'system';
 
   return (
     <>
@@ -267,17 +290,64 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
     )}
     <BottomSheet onClose={onClose} title="Settings">
       <div className="sn-settings-sheet">
-        {/* Dark mode toggle */}
+        {/* Theme mode — Light / System / Dark */}
         <div className="sn-settings-row">
           <span className="sn-settings-row__icon">
-            {settings.darkMode ? <Moon size={16} strokeWidth={2} /> : <Sun size={16} strokeWidth={2} />}
+            {themeMode === 'dark'
+              ? <Moon size={16} strokeWidth={2} />
+              : themeMode === 'light'
+              ? <Sun size={16} strokeWidth={2} />
+              : <Monitor size={16} strokeWidth={2} />}
           </span>
-          <span className="sn-settings-row__label">Dark mode</span>
+          <span className="sn-settings-row__label">Theme</span>
+          <div className="sn-settings-theme-seg" role="group" aria-label="Theme">
+            {([
+              { value: 'light', label: 'Light', icon: <Sun size={14} strokeWidth={2} /> },
+              { value: 'system', label: 'System', icon: <Monitor size={14} strokeWidth={2} /> },
+              { value: 'dark', label: 'Dark', icon: <Moon size={14} strokeWidth={2} /> },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`sn-settings-theme-btn${themeMode === opt.value ? ' sn-settings-theme-btn--active' : ''}`}
+                onClick={() => handleThemeMode(opt.value)}
+                aria-pressed={themeMode === opt.value}
+                aria-label={opt.label}
+              >
+                {opt.icon}
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Daily summary toggle */}
+        <div className="sn-settings-row">
+          <span className="sn-settings-row__icon">
+            <Sparkles size={16} strokeWidth={2} />
+          </span>
+          <span className="sn-settings-row__label">Daily summary</span>
           <button
             type="button"
-            className={`sn-settings-toggle${settings.darkMode ? ' sn-settings-toggle--on' : ''}`}
-            onClick={handleDarkMode}
-            aria-label="Toggle dark mode"
+            className={`sn-settings-toggle${settings.summaryEnabled !== false ? ' sn-settings-toggle--on' : ''}`}
+            onClick={handleSummaryToggle}
+            aria-label="Toggle daily summary"
+          >
+            <span className="sn-settings-toggle__knob" />
+          </button>
+        </div>
+
+        {/* Assistant (chat agent) toggle — opt-in, off by default */}
+        <div className="sn-settings-row">
+          <span className="sn-settings-row__icon">
+            <Wand2 size={16} strokeWidth={2} />
+          </span>
+          <span className="sn-settings-row__label">Assistant (beta)</span>
+          <button
+            type="button"
+            className={`sn-settings-toggle${settings.assistantEnabled ? ' sn-settings-toggle--on' : ''}`}
+            onClick={handleAssistantToggle}
+            aria-label="Toggle assistant"
           >
             <span className="sn-settings-toggle__knob" />
           </button>
@@ -373,6 +443,8 @@ export default function MorePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmDeleteListId, setConfirmDeleteListId] = useState<string | null>(null);
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [pendingInviteCount, setPendingInviteCount] = useState(0);
+  const [assistantEnabled, setAssistantEnabled] = useState(false);
   const navigate = useNavigate();
   const { openComposeTodo } = useUI();
   const { user } = useAuth();
@@ -386,40 +458,78 @@ export default function MorePage() {
   const updateGroup = useGroupsStore((s) => s.updateGroup);
   const deleteGroup = useGroupsStore((s) => s.deleteGroup);
 
+  const sharedGroups = useSharedProjectsStore((s) => s.sharedProjects);
+  const getActiveSharedProjects = useSharedProjectsStore((s) => s.getActiveSharedProjects);
+  const getActiveSharedShoppingLists = useSharedProjectsStore((s) => s.getActiveSharedShoppingLists);
+  const getArchivedSharedShoppingLists = useSharedProjectsStore((s) => s.getArchivedSharedShoppingLists);
+
   const todos = useTodosStore((s) => s.todos);
   const getUngroupedShoppingItems = useTodosStore((s) => s.getUngroupedShoppingItems);
   const completeTodo = useTodosStore((s) => s.completeTodo);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeLists = useMemo(() => getActiveShoppingLists(), [groups]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeProjects = useMemo(() => getActiveProjects(), [groups]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const archivedLists = useMemo(() => getArchivedShoppingLists(), [groups]);
+  // Merge personal + shared shopping lists (shared lists live in sharedProjects).
+  const activeLists = useMemo(
+    () => [...getActiveShoppingLists(), ...getActiveSharedShoppingLists()],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, sharedGroups],
+  );
+  // Merge personal + shared projects so counts/list match ProjectsPage (D8).
+  const activeProjects = useMemo(
+    () => [...getActiveProjects(), ...getActiveSharedProjects()],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, sharedGroups],
+  );
+  const archivedLists = useMemo(
+    () => [...getArchivedShoppingLists(), ...getArchivedSharedShoppingLists()],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, sharedGroups],
+  );
 
   const handleUnarchiveList = useCallback(async (id: string) => {
     if (!uid) return;
     try {
-      await updateGroup(uid, id, { archivedAt: undefined });
+      const isShared = sharedGroups.some((g) => g.id === id);
+      if (isShared) {
+        await fbUpdateSharedGroup(id, { archivedAt: undefined });
+      } else {
+        await updateGroup(uid, id, { archivedAt: undefined });
+      }
       showToast('List restored', 'success');
     } catch {
       showToast('Could not restore list', 'error');
     }
-  }, [uid, updateGroup, showToast]);
+  }, [uid, sharedGroups, updateGroup, showToast]);
 
   const handleDeleteListConfirmed = useCallback(async () => {
     const id = confirmDeleteListId;
     setConfirmDeleteListId(null);
     if (!id || !uid) return;
     try {
-      await deleteGroup(uid, id);
+      const isShared = sharedGroups.some((g) => g.id === id);
+      if (isShared) {
+        await callDeleteSharedGroup(id);
+      } else {
+        await deleteGroup(uid, id);
+      }
       showToast('List deleted', 'success');
     } catch {
       showToast('Could not delete list', 'error');
     }
-  }, [confirmDeleteListId, uid, deleteGroup, showToast]);
+  }, [confirmDeleteListId, uid, sharedGroups, deleteGroup, showToast]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const ungroupedItems = useMemo(() => getUngroupedShoppingItems(), [todos]);
+
+  useEffect(() => {
+    const email = user?.email;
+    if (!email) return;
+    return subscribeToMyPendingInvites(email, (invites) => setPendingInviteCount(invites.length));
+  }, [user?.email]);
+
+  // Assistant entry point is gated on the opt-in setting (off by default).
+  useEffect(() => {
+    if (!uid) return;
+    return subscribeToSettings(uid, (s) => setAssistantEnabled(s.assistantEnabled === true));
+  }, [uid]);
 
   const handleCheckUngrouped = async (todoId: string) => {
     if (!uid) return;
@@ -602,7 +712,13 @@ export default function MorePage() {
                       <FolderOpen size={16} strokeWidth={2} />
                     </div>
                     <div className="sn-more-group-card__body">
-                      <span className="sn-more-group-card__name">{p.name}</span>
+                      <span className="sn-more-group-card__name-row">
+                        <span className="sn-more-group-card__name">{p.name}</span>
+                        {(p as { location?: string }).location === 'shared'
+                          && ((p as { memberCount?: number }).memberCount ?? 1) > 1 && (
+                          <SharedBadge memberCount={(p as { memberCount?: number }).memberCount ?? 1} />
+                        )}
+                      </span>
                       <span className="sn-more-group-card__meta">
                         {p.childCount === 0 ? 'No tasks' : `${p.doneCount}/${p.childCount} done`}
                       </span>
@@ -616,6 +732,39 @@ export default function MorePage() {
           </div>
         )}
       </section>
+
+      {/* ── Invites ── */}
+      <section className="sn-more-section sn-more-section--settings">
+        <button
+          type="button"
+          className="sn-more-settings-btn"
+          onClick={() => navigate('/invites')}
+        >
+          <span className="sn-more-settings-btn__icon">
+            <Mail size={15} strokeWidth={2} />
+          </span>
+          Invites
+          {pendingInviteCount > 0 && (
+            <span className="sn-more-invite-badge">{pendingInviteCount}</span>
+          )}
+        </button>
+      </section>
+
+      {/* ── Assistant (gated on opt-in setting) ── */}
+      {assistantEnabled && (
+        <section className="sn-more-section sn-more-section--settings">
+          <button
+            type="button"
+            className="sn-more-settings-btn"
+            onClick={() => navigate('/assistant')}
+          >
+            <span className="sn-more-settings-btn__icon">
+              <Wand2 size={15} strokeWidth={2} />
+            </span>
+            Assistant
+          </button>
+        </section>
+      )}
 
       {/* ── Settings ── */}
       <section className="sn-more-section sn-more-section--settings">

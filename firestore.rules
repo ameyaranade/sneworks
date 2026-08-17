@@ -4,5 +4,54 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+    // AI-assist fields on users/{uid}/todos (aiProcessedAt / aiResult / aiError)
+    // are written by the processAiTask Cloud Function via the Admin SDK, which
+    // bypasses these rules. They are intentionally NOT rules-locked here: the
+    // recursive owner rule above already scopes every todo to its owner, so the
+    // only party who could set them from the client is the owner — spoofing data
+    // on their own task, no cross-user exposure. (Contrast sharedProjects below,
+    // where multi-user docs make field-locking load-bearing.) A per-field lock
+    // would require replacing the owner catch-all with per-subcollection rules,
+    // for no security gain. See docs/PRODUCT_DECISIONS.md.
+
+    // Chat-agent docs (users/{uid}/chatSessions/**, incl. messages/proposedActions)
+    // are covered by the recursive owner rule above — no separate rule needed. The
+    // assistant/toolActivity/processedAt fields are written by the assistantAgent
+    // Cloud Function via the Admin SDK (bypasses rules); same single-owner reasoning
+    // as the AI-assist fields above — no cross-user exposure. (D14 convention.)
+
+    // ── Shared groups (one top-level sharedProjects collection; covers projects
+    //    and shopping lists; docs/SHAREABLE_PROJECTS_SPEC.md §8).
+    // `members` map is the ACL. Only Cloud Functions (Admin SDK, bypasses rules)
+    // may add/remove members or change ownerUid — client updates must leave
+    // both fields untouched.
+    match /sharedProjects/{gid} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.members;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.ownerUid
+        && request.auth.uid in request.resource.data.members;
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.members
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.memberNames == resource.data.memberNames;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+
+      match /todos/{tid} {
+        allow read, write: if request.auth != null && request.auth.uid in
+          get(/databases/$(database)/documents/sharedProjects/$(gid)).data.members;
+      }
+    }
+
+    // ── Invites (D8) — membership mutation is function-only. Reads are limited to
+    // the two parties: the invitee (by verified email, for the pending-share
+    // banner) and the inviter (by uid, so the owner's ShareSheet can list + revoke
+    // outstanding invites). All writes go through the callable functions.
+    match /invites/{inviteId} {
+      allow read: if request.auth != null
+        && (request.auth.token.email.lower() == resource.data.invitedEmail
+            || request.auth.uid == resource.data.invitedBy);
+      allow write: if false;
+    }
   }
 }

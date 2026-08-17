@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { CheckSquare, IndianRupee, ShoppingCart, Clock } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Clock, CalendarCheck } from 'lucide-react';
 import type { Todo } from '../../types';
 import { formatDueLabel } from '../../utils';
 import SwipeableRow, { SwipeAction } from '../swipe/SwipeableRow';
+import SwipeGrip from '../swipe/SwipeGrip';
 import { useTodosStore } from '../../stores/useTodosStore';
 import { tomorrowAt9 } from '../../stores/useTodosStore';
 import { useUI } from '../../context/UIContext';
@@ -11,30 +13,55 @@ import { useToast } from '../../shared/components/Toast';
 import ConfirmSheet from '../primitives/ConfirmSheet';
 import './todo-row.css';
 
+/**
+ * Action surface TodoRow needs. Defaults to useTodosStore (personal todos);
+ * ProjectDetailPage injects a shared-project-backed implementation
+ * (useSharedProjectTodos) when rendering a shared project's task list —
+ * see docs/SHAREABLE_PROJECTS_SPEC.md.
+ */
+export interface TodoRowActions {
+  completeTodo: (uid: string, id: string) => Promise<void>;
+  skipTodo: (uid: string, id: string) => Promise<void>;
+  deleteTodo: (uid: string, id: string) => Promise<Todo | undefined>;
+  restoreTodo: (uid: string, todo: Todo) => Promise<string>;
+  markPending: (uid: string, id: string) => Promise<void>;
+  deferTodo: (uid: string, id: string, newDate: Date) => Promise<void>;
+  deferTodoPlusHours: (uid: string, id: string, hours: number) => Promise<void>;
+}
+
 interface TodoRowProps {
   todo: Todo;
+  /** Overrides the default personal-store actions (shared-project task lists). */
+  actions?: TodoRowActions;
+  /** Fired with the todo id when its edit sheet is about to open, null when it's known to close (presence). */
+  onEditingChange?: (todoId: string | null) => void;
+  /** Extra content rendered under the title — used for the shared-project "X is editing…" indicator. */
+  belowTitle?: ReactNode;
+  /** True for a few seconds after another member's write lands (spec §5.3 remote-update affordance). */
+  remoteUpdated?: boolean;
 }
 
-function TodoTypeIcon({ todoType }: { todoType: Todo['todoType'] }) {
-  switch (todoType) {
-    case 'money-reminder': return <IndianRupee size={13} strokeWidth={2} />;
-    case 'shopping-item': return <ShoppingCart size={13} strokeWidth={2} />;
-    case 'generic-task': return <CheckSquare size={13} strokeWidth={2} />;
-  }
-}
-
-export default function TodoRow({ todo }: TodoRowProps) {
+export default function TodoRow({ todo, actions, onEditingChange, belowTitle, remoteUpdated }: TodoRowProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { openComposeForEdit, openDefer } = useUI();
 
-  const completeTodo = useTodosStore((s) => s.completeTodo);
-  const skipTodo = useTodosStore((s) => s.skipTodo);
-  const deleteTodo = useTodosStore((s) => s.deleteTodo);
-  const restoreTodo = useTodosStore((s) => s.restoreTodo);
-  const markPending = useTodosStore((s) => s.markPending);
-  const deferTodo = useTodosStore((s) => s.deferTodo);
-  const deferTodoPlusHours = useTodosStore((s) => s.deferTodoPlusHours);
+  // Hooks always run (rules of hooks) — `actions` (shared projects) overrides the default.
+  const storeCompleteTodo = useTodosStore((s) => s.completeTodo);
+  const storeSkipTodo = useTodosStore((s) => s.skipTodo);
+  const storeDeleteTodo = useTodosStore((s) => s.deleteTodo);
+  const storeRestoreTodo = useTodosStore((s) => s.restoreTodo);
+  const storeMarkPending = useTodosStore((s) => s.markPending);
+  const storeDeferTodo = useTodosStore((s) => s.deferTodo);
+  const storeDeferTodoPlusHours = useTodosStore((s) => s.deferTodoPlusHours);
+
+  const completeTodo = actions?.completeTodo ?? storeCompleteTodo;
+  const skipTodo = actions?.skipTodo ?? storeSkipTodo;
+  const deleteTodo = actions?.deleteTodo ?? storeDeleteTodo;
+  const restoreTodo = actions?.restoreTodo ?? storeRestoreTodo;
+  const markPending = actions?.markPending ?? storeMarkPending;
+  const deferTodo = actions?.deferTodo ?? storeDeferTodo;
+  const deferTodoPlusHours = actions?.deferTodoPlusHours ?? storeDeferTodoPlusHours;
 
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -42,6 +69,8 @@ export default function TodoRow({ todo }: TodoRowProps) {
   if (!uid || !todo.id) return null;
   const id = todo.id;
   const isDone = todo.status === 'done' || todo.status === 'skipped';
+  // Done shopping items are the one non-swipeable case — no grip there (see below).
+  const swipeDisabled = isDone && todo.todoType === 'shopping-item';
   const isOverdue =
     (todo.status === 'pending' || todo.status === 'deferred') &&
     !!todo.dueAt &&
@@ -129,6 +158,11 @@ export default function TodoRow({ todo }: TodoRowProps) {
 
   // ── Swipe config ───────────────────────────────────────────────────────────
 
+  const handleOpenEdit = () => {
+    onEditingChange?.(id);
+    openComposeForEdit(todo);
+  };
+
   const rightActions: SwipeAction[] = isDone
     ? []
     : [
@@ -140,11 +174,11 @@ export default function TodoRow({ todo }: TodoRowProps) {
   const leftActions: SwipeAction[] = isDone
     ? [
         { label: 'Unmark', className: 'sn-swipe-action--unmark', onTrigger: handleUnmark },
-        { label: 'Edit', className: 'sn-swipe-action--edit', onTrigger: () => openComposeForEdit(todo) },
+        { label: 'Edit', className: 'sn-swipe-action--edit', onTrigger: handleOpenEdit },
         { label: 'Delete', className: 'sn-swipe-action--delete', onTrigger: () => setConfirmDelete(true) },
       ]
     : [
-        { label: 'Edit', className: 'sn-swipe-action--edit', onTrigger: () => openComposeForEdit(todo) },
+        { label: 'Edit', className: 'sn-swipe-action--edit', onTrigger: handleOpenEdit },
         { label: 'Skip', className: 'sn-swipe-action--skip', onTrigger: handleSkip },
         { label: 'Delete', className: 'sn-swipe-action--delete', onTrigger: () => setConfirmDelete(true) },
       ];
@@ -172,13 +206,14 @@ export default function TodoRow({ todo }: TodoRowProps) {
     <SwipeableRow
       leftActions={leftActions}
       rightActions={rightActions}
-      disabled={isDone && todo.todoType === 'shopping-item'}
+      disabled={swipeDisabled}
     >
       <div
         className={[
           'sn-todo-row',
           isDone ? 'sn-todo-row--done' : '',
           isOverdue ? 'sn-todo-row--overdue' : '',
+          remoteUpdated ? 'sn-todo-row--remote-updated' : '',
         ].filter(Boolean).join(' ')}
       >
         {/* Checkbox */}
@@ -196,7 +231,7 @@ export default function TodoRow({ todo }: TodoRowProps) {
         </button>
 
         {/* Body */}
-        <div className="sn-todo-body" onClick={() => openComposeForEdit(todo)} role="button" tabIndex={0}>
+        <div className="sn-todo-body" onClick={handleOpenEdit} role="button" tabIndex={0}>
           {breadcrumb && (
             <span className="sn-todo-breadcrumb">{breadcrumb}</span>
           )}
@@ -206,20 +241,38 @@ export default function TodoRow({ todo }: TodoRowProps) {
           {todo.notes && !isDone && (
             <span className="sn-todo-notes">{todo.notes}</span>
           )}
+          {/* AI-assist outcome (functions/src/ai/processAiTask.ts) */}
+          {todo.aiResult?.htmlLink ? (
+            <a
+              className="sn-todo-ai-link"
+              href={todo.aiResult.htmlLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CalendarCheck size={11} strokeWidth={2} />
+              Calendar reminder created
+            </a>
+          ) : todo.aiAssist && !todo.aiProcessedAt ? (
+            <span className="sn-todo-ai-pending">AI scheduling reminder…</span>
+          ) : todo.aiError && todo.aiProcessedAt ? (
+            <span className="sn-todo-ai-error">AI: {todo.aiError}</span>
+          ) : null}
+          {belowTitle}
         </div>
 
         {/* Right meta */}
-        <div className="sn-todo-meta">
-          {dueLabel && !isDone && (
+        {dueLabel && !isDone && (
+          <div className="sn-todo-meta">
             <span className={`sn-todo-due${isOverdue ? ' sn-todo-due--overdue' : ''}`}>
               <Clock size={10} strokeWidth={2} />
               {dueLabel}
             </span>
-          )}
-          <span className="sn-todo-type-icon">
-            <TodoTypeIcon todoType={todo.todoType} />
-          </span>
-        </div>
+          </div>
+        )}
+
+        {/* Swipe affordance — only when the row is actually swipeable */}
+        {!swipeDisabled && <SwipeGrip />}
       </div>
     </SwipeableRow>
     </>

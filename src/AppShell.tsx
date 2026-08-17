@@ -1,4 +1,4 @@
-import { useEffect, useRef, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import PageSkeleton from './components/primitives/PageSkeleton';
 import { useAuth, getCachedUid } from './auth/AuthContext';
@@ -7,9 +7,12 @@ import { UIProvider, useUI } from './context/UIContext';
 import { useTodosStore } from './stores/useTodosStore';
 import { useGroupsStore } from './stores/useGroupsStore';
 import { useLogsStore } from './stores/useLogsStore';
+import { useSharedProjectsStore } from './stores/useSharedProjectsStore';
 import { spawnDueRoutines, spawnDueRecurringTodos } from './firebase/routineSpawner';
-import { subscribeToSettings } from './firebase/settingsQueries';
+import { subscribeToSettings, updateSettings } from './firebase/settingsQueries';
+import { resolveTheme, getStoredThemeMode, storeThemeMode, onSystemThemeChange, type ThemeMode } from './theme';
 import BottomNav from './components/nav/BottomNav';
+import OnboardingSheet from './components/sheets/OnboardingSheet';
 import ComposeSheet from './components/sheets/ComposeSheet';
 import DeferSheet from './components/sheets/DeferSheet';
 import EditRecurringSheet from './components/sheets/EditRecurringSheet';
@@ -17,9 +20,9 @@ import './app-shell.css';
 import './styles/app-tokens.css';
 import './styles/app-shared.css';
 
-// Read the persisted dark-mode hint written by TrackerProvider on login
-function getInitialDark(): boolean {
-  try { return localStorage.getItem('sneworks-dark') === '1'; } catch { return true; }
+// Resolve the persisted theme mode to a concrete theme for first paint.
+function getInitialTheme(): 'dark' | 'light' {
+  return resolveTheme(getStoredThemeMode());
 }
 
 function getInitialFontScale(): string {
@@ -31,6 +34,7 @@ function AppShellInner() {
   const initTodos = useTodosStore((s) => s.init);
   const initGroups = useGroupsStore((s) => s.init);
   const initLogs = useLogsStore((s) => s.init);
+  const initSharedProjects = useSharedProjectsStore((s) => s.init);
   const initRanRef = useRef(false);
 
   const {
@@ -51,12 +55,13 @@ function AppShellInner() {
       initTodos(uid),
       initGroups(uid),
       initLogs(uid),
+      initSharedProjects(uid),
     ];
     return () => {
       unsubs.forEach((u) => u());
       initRanRef.current = false;
     };
-  }, [user, initTodos, initGroups, initLogs]);
+  }, [user, initTodos, initGroups, initLogs, initSharedProjects]);
 
   // ── Spawn due routines once per session ─────────────────────────────────────
   const spawnRanRef = useRef(false);
@@ -68,25 +73,54 @@ function AppShellInner() {
     spawnDueRecurringTodos(user.uid).catch(console.error);
   }, [user, groupsLoaded]);
 
-  // ── Dark mode — subscribe to the same settings doc as Tracker ───────────────
+  // ── Onboarding — show once for users who haven't seen it ────────────────────
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const onboardingCheckedRef = useRef(false);
+
+  const handleOnboardingDone = async () => {
+    setShowOnboarding(false);
+    const uid = user?.uid ?? getCachedUid();
+    if (uid) {
+      updateSettings(uid, { onboardingDone: true }).catch(console.error);
+    }
+  };
+
+  // ── Theme — resolve mode (dark/light/system) and apply [data-theme] ──────────
   const themeRef = useRef<HTMLDivElement>(null);
+  const themeModeRef = useRef<ThemeMode>(getStoredThemeMode());
   const cachedUid = user?.uid ?? getCachedUid();
 
   // Seed from localStorage immediately so first paint is correct
   useEffect(() => {
     if (!themeRef.current) return;
-    themeRef.current.dataset.theme = getInitialDark() ? 'dark' : 'light';
+    themeRef.current.dataset.theme = getInitialTheme();
+  }, []);
+
+  // When in 'system' mode, follow live OS theme changes
+  useEffect(() => {
+    return onSystemThemeChange(() => {
+      if (themeModeRef.current === 'system' && themeRef.current) {
+        themeRef.current.dataset.theme = resolveTheme('system');
+      }
+    });
   }, []);
 
   useEffect(() => {
     if (!cachedUid) return;
     const unsub = subscribeToSettings(cachedUid, (s) => {
       if (!themeRef.current) return;
-      themeRef.current.dataset.theme = s.darkMode ? 'dark' : 'light';
-      try { localStorage.setItem('sneworks-dark', s.darkMode ? '1' : '0'); } catch (_) {}
+      const mode: ThemeMode = s.themeMode ?? 'system';
+      themeModeRef.current = mode;
+      storeThemeMode(mode);
+      themeRef.current.dataset.theme = resolveTheme(mode);
       const scale = s.sbFontScale ?? 'medium';
       themeRef.current.dataset.font = scale;
       try { localStorage.setItem('sneworks-font-scale', scale); } catch (_) {}
+
+      if (!onboardingCheckedRef.current) {
+        onboardingCheckedRef.current = true;
+        if (!s.onboardingDone) setShowOnboarding(true);
+      }
     });
     return unsub;
   }, [cachedUid]);
@@ -95,7 +129,7 @@ function AppShellInner() {
     <div
       ref={themeRef}
       className="sn-shell"
-      data-theme={getInitialDark() ? 'dark' : 'light'}
+      data-theme={getInitialTheme()}
       data-font={getInitialFontScale()}
     >
       <ToastProvider>
@@ -109,6 +143,10 @@ function AppShellInner() {
 
         {/* Portal target — sheets rendered here stay inside [data-theme] */}
         <div id="sn-portal" />
+
+        {showOnboarding && cachedUid && (
+          <OnboardingSheet uid={cachedUid} onDone={handleOnboardingDone} />
+        )}
 
         {composeOpen && (
           <ComposeSheet

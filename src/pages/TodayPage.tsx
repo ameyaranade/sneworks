@@ -1,15 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, ChevronRight, Heart, ChevronDown, Clock, Repeat, FolderOpen, Search, X } from 'lucide-react';
 import { useTodosStore } from '../stores/useTodosStore';
 import { useGroupsStore } from '../stores/useGroupsStore';
+import { useSharedProjectsStore } from '../stores/useSharedProjectsStore';
 import { useLogsStore } from '../stores/useLogsStore';
 import { useUI } from '../context/UIContext';
+import { useAuth, getCachedUid } from '../auth/AuthContext';
+import { subscribeToSettings } from '../firebase/settingsQueries';
+import { generateDailySummary } from '../firebase/summaryQueries';
+import { cacheKey, readCache, writeCache, startOfDay } from '../utils';
 import TodoRow from '../components/rows/TodoRow';
 import EmptyState from '../components/primitives/EmptyState';
 import ProgressBar from '../components/primitives/ProgressBar';
+import DailySummaryCard from '../components/today/DailySummaryCard';
+import PendingSharesBanner from '../components/sharing/PendingSharesBanner';
+import SharedBadge from '../components/sharing/SharedBadge';
 import type { ShoppingListGroup, ProjectGroup, Group, Todo, RecurringTodoGroup } from '../types';
-import { startOfDay } from '../utils';
 import './today-page.css';
 
 function SectionHeader({ title, count, danger }: { title: string; count?: number; danger?: boolean }) {
@@ -38,6 +45,7 @@ function ActiveGroupCard({ group }: { group: ShoppingListGroup }) {
   const pct = group.childCount > 0
     ? Math.round((group.doneCount / group.childCount) * 100)
     : 0;
+  const isShared = group.location === 'shared';
   return (
     <button
       type="button"
@@ -48,7 +56,12 @@ function ActiveGroupCard({ group }: { group: ShoppingListGroup }) {
         <ShoppingCart size={14} strokeWidth={2} />
       </div>
       <div className="sn-today-group-card__body">
-        <span className="sn-today-group-card__name">{group.name}</span>
+        <span className="sn-today-group-card__name-row">
+          <span className="sn-today-group-card__name">{group.name}</span>
+          {isShared && (group.memberCount ?? 1) > 1 && (
+            <SharedBadge memberCount={group.memberCount ?? 1} />
+          )}
+        </span>
         <ProgressBar pct={pct} color="success" />
       </div>
       <span className="sn-today-group-card__count">
@@ -64,6 +77,7 @@ function ActiveProjectCard({ group }: { group: ProjectGroup }) {
   const pct = group.childCount > 0
     ? Math.round((group.doneCount / group.childCount) * 100)
     : 0;
+  const isShared = group.location === 'shared';
   return (
     <button
       type="button"
@@ -74,7 +88,12 @@ function ActiveProjectCard({ group }: { group: ProjectGroup }) {
         <FolderOpen size={14} strokeWidth={2} />
       </div>
       <div className="sn-today-group-card__body">
-        <span className="sn-today-group-card__name">{group.name}</span>
+        <span className="sn-today-group-card__name-row">
+          <span className="sn-today-group-card__name">{group.name}</span>
+          {isShared && (group.memberCount ?? 1) > 1 && (
+            <SharedBadge memberCount={group.memberCount ?? 1} />
+          )}
+        </span>
         <ProgressBar pct={pct} color="accent" />
       </div>
       <span className="sn-today-group-card__count">
@@ -217,12 +236,35 @@ function buildGroupedTodos(
   return result;
 }
 
+interface SummaryCache {
+  date: string;
+  text: string;
+  dismissed: boolean;
+}
+
 export default function TodayPage() {
   const navigate = useNavigate();
   const [doneExpanded, setDoneExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { openEditRecurring } = useUI();
+
+  // ── Daily summary ─────────────────────────────────────────────────────────
+  const { user } = useAuth();
+  const uid = user?.uid ?? null;
+  // Seed from a uid-scoped cache so the summary card never flashes before the
+  // settings snapshot lands. `null` = unknown (no cache yet) → render nothing
+  // until Firestore confirms the real value.
+  const [summaryEnabled, setSummaryEnabled] = useState<boolean | null>(() => {
+    const cu = getCachedUid();
+    if (!cu) return null;
+    const v = readCache<boolean>(cacheKey(cu, 'summary_enabled'));
+    return typeof v === 'boolean' ? v : null;
+  });
+  const [summaryText, setSummaryText] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryDismissed, setSummaryDismissed] = useState(false);
+  const summaryCalledRef = useRef(false);
   // Subscribe to `todos` so the component re-renders on any state change.
   const todos = useTodosStore((s) => s.todos);
   const loaded = useTodosStore((s) => s.loaded);
@@ -234,9 +276,25 @@ export default function TodayPage() {
   const getActiveShoppingLists = useGroupsStore((s) => s.getActiveShoppingLists);
   const getActiveProjects = useGroupsStore((s) => s.getActiveProjects);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeShoppingLists = useMemo(() => getActiveShoppingLists(), [groups]);
+  const personalActiveProjects = useMemo(() => getActiveProjects(), [groups]);
+
+  const sharedProjects = useSharedProjectsStore((s) => s.sharedProjects);
+  const getActiveSharedProjects = useSharedProjectsStore((s) => s.getActiveSharedProjects);
+  const getActiveSharedShoppingLists = useSharedProjectsStore((s) => s.getActiveSharedShoppingLists);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeProjects = useMemo(() => getActiveProjects(), [groups]);
+  const activeSharedProjects = useMemo(() => getActiveSharedProjects(), [sharedProjects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activeSharedShoppingLists = useMemo(() => getActiveSharedShoppingLists(), [sharedProjects]);
+
+  const activeShoppingLists = useMemo(
+    () => [...getActiveShoppingLists(), ...activeSharedShoppingLists],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, activeSharedShoppingLists],
+  );
+  const activeProjects = useMemo(
+    () => [...personalActiveProjects, ...activeSharedProjects],
+    [personalActiveProjects, activeSharedProjects],
+  );
 
   // Build groupId → Group map for quick lookups
   const groupMap = useMemo(
@@ -301,6 +359,62 @@ export default function TodayPage() {
     [searchResults, groupMap],
   );
 
+  // Subscribe to summaryEnabled setting
+  useEffect(() => {
+    if (!uid) return;
+    return subscribeToSettings(uid, (s) => {
+      const enabled = s.summaryEnabled !== false;
+      setSummaryEnabled(enabled);
+      writeCache(cacheKey(uid, 'summary_enabled'), enabled);
+    });
+  }, [uid]);
+
+  // Generate summary once per day when todos are loaded — only if enabled.
+  useEffect(() => {
+    if (!uid || !loaded || summaryEnabled !== true) return;
+
+    // Read (or seed) cache
+    const key = cacheKey(uid, 'daily-summary');
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+    const cached = readCache<SummaryCache>(key);
+
+    if (cached && cached.date === todayStr) {
+      setSummaryText(cached.text);
+      setSummaryDismissed(cached.dismissed);
+      return;
+    }
+
+    // Guard: only call once per mount even if deps re-fire
+    if (summaryCalledRef.current) return;
+
+    // Client-side guard: skip if nothing actionable today
+    if (getOverdueTodos().length + getTodayTodos().length === 0) return;
+
+    summaryCalledRef.current = true;
+    setSummaryLoading(true);
+
+    generateDailySummary()
+      .then(({ text }) => {
+        setSummaryText(text);
+        setSummaryLoading(false);
+        if (text) {
+          writeCache(key, { date: todayStr, text, dismissed: false } satisfies SummaryCache);
+        }
+      })
+      .catch(() => {
+        setSummaryLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, loaded, summaryEnabled]);
+
+  const handleDismissSummary = () => {
+    if (!uid) return;
+    setSummaryDismissed(true);
+    const key = cacheKey(uid, 'daily-summary');
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    writeCache(key, { date: todayStr, text: summaryText, dismissed: true } satisfies SummaryCache);
+  };
+
   const today = new Date();
   const dateLabel = today.toLocaleDateString('en-IN', {
     weekday: 'long',
@@ -309,6 +423,7 @@ export default function TodayPage() {
   });
 
   const isEmpty = loaded && overdueCount === 0 && upNextCount === 0 && doneToday.length === 0 && activeProjects.length === 0 && activeShoppingLists.length === 0;
+  const showSummary = summaryEnabled === true && loaded && (summaryLoading || (summaryText && !summaryDismissed));
 
   return (
     <div className="sn-today-page">
@@ -381,6 +496,18 @@ export default function TodayPage() {
                   </>
                 )}
               </section>
+            )}
+
+            {/* ── Pending shares ── */}
+            {!searchOpen && <PendingSharesBanner />}
+
+            {/* ── Daily summary ── */}
+            {!searchOpen && showSummary && (
+              <DailySummaryCard
+                text={summaryText}
+                loading={summaryLoading}
+                onDismiss={handleDismissSummary}
+              />
             )}
 
             {/* ── Overdue ── */}

@@ -57,7 +57,7 @@ interactive element). Page bottom padding = `calc(var(--sn-nav-height) + 24px)`.
 - **Brand/accent:** `--sn-accent`, `--sn-accent-soft`, `--sn-accent-glow`,
   `--sn-accent-text` (text on accent fills).
 - **Status:** `--sn-success`/`-soft`, `--sn-danger`/`-soft`,
-  `--sn-warning`/`--sn-warn`/`-soft`, `--sn-gold`/`-glow`, `--sn-purple`.
+  `--sn-warning`/`--sn-warn`/`-soft`, `--sn-gold`/`-glow`, `--sn-purple`/`-glow`.
 - **Type stripes:** `--sn-stripe-shopping`, `--sn-stripe-project`,
   `--sn-stripe-routine`.
 - **Shadows:** `--sn-shadow-card`, `--sn-shadow-sheet`, `--sn-shadow-fab`,
@@ -87,10 +87,70 @@ layer and document it here — do not inline a one-off.
 | `SheetFormActions` | `components/primitives/SheetFormActions.tsx` | cancel/submit row inside sheets |
 | `Toast` (`useToast`) | `shared/components/Toast.tsx` | success/info/error + Undo action |
 | `SwipeableRow` | `components/swipe/SwipeableRow.tsx` | swipe gestures on list rows |
+| `SwipeGrip` | `components/swipe/SwipeGrip.tsx` | trailing-edge 6-dot handle marking a row swipeable |
 | `ComposeSheet` | `components/sheets/ComposeSheet.tsx` | universal create/edit for all todo + log types |
 
 Health-specific: `GoalRing`, `WeeklyBarChart`, `WorkoutCard`, `ActivityIcon`,
 `IntensityDot` in `components/health/`.
+
+Sharing-specific (see [`SHAREABLE_PROJECTS_SPEC.md`](SHAREABLE_PROJECTS_SPEC.md)):
+`ShareSheet`, `SharedBadge`, `PresenceAvatars` — reuse these before inlining any
+sharing UI.
+
+---
+
+## Collaboration patterns (shared projects)
+New reusable patterns introduced by shareable projects. Use these — do not inline
+one-off collaboration UI.
+
+- **Shared badge** — a people/users glyph (Lucide) chip shown on **every** surface
+  a project appears on (Today Projects section, ProjectsPage card, ProjectDetailPage
+  header) **whenever `memberCount > 1`**. It is persistent, not hover-only. Styling:
+  `--sn-accent` on `--sn-accent-glow`/chip radius; never hardcoded color.
+- **Presence indicator** — stacked member avatars (initials on `--sn-accent`/
+  `--sn-purple` tinted backgrounds, no emoji) + an "active" dot (`--sn-success`)
+  in the ProjectDetailPage header for members with a fresh presence heartbeat; a
+  per-row "X is editing…" micro-label when a member's heartbeat carries an
+  `editingTaskId`. Presence is ephemeral (RTDB) — the indicator clears when the
+  heartbeat goes stale or `onDisconnect` fires (no ghost avatars).
+- **Remote-update affordance** — when a remote edit lands via snapshot, flag the
+  changed row with a brief token-styled highlight (and optional "Updated by X"
+  micro-label). Must not shift layout, jump scroll, or steal local input focus.
+  A manual refresh control is the fallback when snapshots stall.
+
+These pair with the existing **Destructive = confirm + undo** rule: leave /
+unshare / remove-member / revoke-invite all go through `ConfirmSheet`.
+
+---
+
+## Assistant chat patterns (AssistantPage, `/assistant`)
+
+The in-app chat agent surface. Off by default — reachable only when
+`settings.assistantEnabled` is on (entry point in MorePage is gated). All tokens,
+no hardcoded color; page is a flex column filling `.sn-content` (fixed header →
+scrolling thread → pinned composer), so it obeys the "no `100dvh` on pages" rule.
+
+- **Message bubble** — `.sn-assistant-bubble`. User turns: `--sn-accent` fill /
+  `--sn-accent-text`, right-aligned, tucked bottom-right corner. Assistant turns:
+  `--sn-bg-card` + `--sn-border`, left-aligned, tucked bottom-left corner.
+  `white-space: pre-wrap`; font `calc(14px * var(--sn-font-scale))`.
+- **Tool-activity chip** — `.sn-assistant-tool-chip`, one per tool the agent ran,
+  rendered above the assistant bubble. Lucide `Wrench` + human summary on
+  `--sn-accent-glow` / chip radius. Error variant uses `--sn-danger-soft` /
+  `--sn-danger` with an `AlertTriangle`. These are read-only status, not buttons.
+- **Thinking indicator** — three `--sn-text-muted` dots bouncing in an
+  assistant-styled bubble while the agent works (local `thinking` flag + session
+  `status: 'running'`).
+- **Composer** — pinned bottom bar (`--sn-bg-elev`, top border), auto-height
+  textarea (`color-scheme: var(--sn-color-scheme)`, safe-area bottom padding) +
+  a square `--sn-accent` send button. Enter sends; Shift+Enter newlines.
+- **Approval card** — `.sn-assistant-approval`, rendered inline in the thread for
+  each **pending** `proposedAction` (destructive tool the agent proposed). Danger
+  framing (`--sn-danger-soft` bg / `--sn-danger` border + `ShieldAlert`), the
+  human summary, a "can't be undone" note, and Cancel / **Delete** buttons —
+  ConfirmSheet affordance parity (Delete = `--sn-danger` / `--sn-accent-text`, D5).
+  Approving/rejecting is a plain owner write to the proposal doc; the card leaves
+  the pending set when the `resumeAgent` function posts the outcome message.
 
 ---
 
@@ -102,6 +162,15 @@ Health-specific: `GoalRing`, `WeeklyBarChart`, `WorkoutCard`, `ActivityIcon`,
 - **Icons:** Lucide (`lucide-react`) or inline SVG. No other icon libraries.
 - **Affordance parity:** the same action looks identical everywhere (all delete
   buttons styled alike; all add entry points behave alike).
+- **Swipe grip:** any row wrapped in `SwipeableRow` shows the `SwipeGrip`
+  (Lucide `GripVertical`, 6 dots) flush at its **trailing edge** so the pull
+  gesture is discoverable — it replaces, not supplements, any decorative
+  trailing type-icon. Render it **only when the row is actually swipeable**
+  (omit it on disabled rows, e.g. done shopping items). It's a real button:
+  **tapping it reveals the left-swipe actions** (or closes them) via
+  `SwipeableRow`'s `useSwipeControls()` context, so actions are reachable
+  without a swipe (desktop / accessibility). The whole row also stays the drag
+  target; tinted `--sn-text-muted`.
 
 ---
 

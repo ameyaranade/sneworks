@@ -1,17 +1,26 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Archive } from 'lucide-react';
+import { Archive, Users, RefreshCw } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';
 import { useGroupsStore } from '../stores/useGroupsStore';
+import { useSharedProjectsStore } from '../stores/useSharedProjectsStore';
+import { useSharedProjectTodos } from '../stores/useSharedProjectTodos';
 import { recomputeGroupCounts } from '../firebase/groupQueries';
+import { updateSharedProject as fbUpdateSharedGroup } from '../firebase/sharedProjectQueries';
+import { startPresenceHeartbeat } from '../firebase/presence';
+import { RTDB_ENABLED } from '../firebase/config';
 import { useUI } from '../context/UIContext';
 import SwipeableRow, { SwipeAction } from '../components/swipe/SwipeableRow';
+import SwipeGrip from '../components/swipe/SwipeGrip';
 import DetailPageHeader from '../components/primitives/DetailPageHeader';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
+import ShareSheet from '../components/sheets/ShareSheet';
+import SharedBadge from '../components/sharing/SharedBadge';
+import PresenceAvatars, { usePresence } from '../components/sharing/PresenceAvatars';
 import { Timestamp } from 'firebase/firestore';
-import type { ShoppingItemTodo, Todo } from '../types';
+import type { ShoppingListGroup, ShoppingItemTodo, Todo } from '../types';
 import './group-detail-page.css';
 
 // ── Shopping item row ──────────────────────────────────────────────────────────
@@ -22,9 +31,10 @@ interface ShopRowProps {
   onToggle: (todoId: string, isDone: boolean) => void;
   onEdit: (todo: Todo) => void;
   onDelete: (todoId: string) => void;
+  remoteUpdated?: boolean;
 }
 
-function ShopRow({ todo, priceTracking, onToggle, onEdit, onDelete }: ShopRowProps) {
+function ShopRow({ todo, priceTracking, onToggle, onEdit, onDelete, remoteUpdated }: ShopRowProps) {
   const isDone = todo.status === 'done' || todo.status === 'skipped';
   const id = todo.id!;
 
@@ -35,7 +45,7 @@ function ShopRow({ todo, priceTracking, onToggle, onEdit, onDelete }: ShopRowPro
 
   return (
     <SwipeableRow leftActions={leftActions} rightActions={[]} disabled={false}>
-      <div className={`sn-shop-row${isDone ? ' sn-shop-row--done' : ''}`}>
+      <div className={`sn-shop-row${isDone ? ' sn-shop-row--done' : ''}${remoteUpdated ? ' sn-shop-row--remote-updated' : ''}`}>
         <button
           type="button"
           className={`sn-shop-checkbox${isDone ? ' sn-shop-checkbox--done' : ''}`}
@@ -64,6 +74,8 @@ function ShopRow({ todo, priceTracking, onToggle, onEdit, onDelete }: ShopRowPro
         {priceTracking && todo.price !== undefined && (
           <span className="sn-shop-row-price">₹{todo.price}</span>
         )}
+
+        <SwipeGrip />
       </div>
     </SwipeableRow>
   );
@@ -83,7 +95,11 @@ export default function GroupDetailPage() {
   // ── Store subscriptions ────────────────────────────────────────────────────
 
   const groups = useGroupsStore((s) => s.groups);
+  const groupsLoaded = useGroupsStore((s) => s.loaded);
   const updateGroup = useGroupsStore((s) => s.updateGroup);
+
+  const sharedGroups = useSharedProjectsStore((s) => s.sharedProjects);
+  const sharedGroupsLoaded = useSharedProjectsStore((s) => s.loaded);
 
   const todos = useTodosStore((s) => s.todos);
   const completeTodo = useTodosStore((s) => s.completeTodo);
@@ -93,24 +109,57 @@ export default function GroupDetailPage() {
   const addTodo = useTodosStore((s) => s.addTodo);
   const getTodosForGroup = useTodosStore((s) => s.getTodosForGroup);
 
+  // ── Personal vs shared detection ──────────────────────────────────────────
+
+  const personalGroup = useMemo(() => groups.find((g) => g.id === groupId), [groups, groupId]);
+  const sharedGroupDoc = useMemo(
+    () => sharedGroups.find((g) => g.id === groupId) as ShoppingListGroup | undefined,
+    [sharedGroups, groupId],
+  );
+  const group = (sharedGroupDoc ?? personalGroup) as ShoppingListGroup | undefined;
+  const isShared = !!sharedGroupDoc;
+  const memberCount = isShared ? (sharedGroupDoc?.memberCount ?? 1) : 1;
+
+  // Tracks whether the group was ever resolved as *shared* — lets the guard
+  // distinguish "access revoked" from "migrating personal→shared" (D12).
+  // A personal group disappearing doesn't mean revoked access; only a shared
+  // group disappearing does.
+  const hadSharedAccessRef = useRef(false);
+  useEffect(() => {
+    if (sharedGroupDoc) hadSharedAccessRef.current = true;
+  }, [sharedGroupDoc]);
+
+  // ── Shared todos hook (only when shared) ──────────────────────────────────
+
+  const sharedTasksHook = useSharedProjectTodos(isShared ? groupId : undefined);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const allGroupItems = useMemo(() => getTodosForGroup(groupId ?? ''), [todos, groupId]);
+  const personalGroupItems = useMemo(() => getTodosForGroup(groupId ?? ''), [todos, groupId]);
+  const allGroupItems = isShared ? sharedTasksHook.todos : personalGroupItems;
 
-  const group = useMemo(() => groups.find((g) => g.id === groupId), [groups, groupId]);
-
-  // Sort: pending first, then done; each bucket by sortOrder
-  const sortedItems = useMemo(() => {
-    const pending = allGroupItems.filter((t) => t.status === 'pending' || t.status === 'deferred');
-    const done = allGroupItems.filter((t) => t.status === 'done' || t.status === 'skipped');
+  const shoppingItems = useMemo(() => {
+    const items = allGroupItems.filter((t): t is ShoppingItemTodo => t.todoType === 'shopping-item');
+    const pending = items.filter((t) => t.status === 'pending' || t.status === 'deferred');
+    const done = items.filter((t) => t.status === 'done' || t.status === 'skipped');
     return [
       ...pending.sort((a, b) => a.sortOrder - b.sortOrder),
       ...done.sort((a, b) => a.sortOrder - b.sortOrder),
     ];
   }, [allGroupItems]);
 
-  const shoppingItems = sortedItems.filter(
-    (t): t is ShoppingItemTodo => t.todoType === 'shopping-item',
-  );
+  // ── Presence (spec §5.2) — only for shared groups ─────────────────────────
+
+  const presence = usePresence(isShared ? groupId : undefined);
+
+  useEffect(() => {
+    if (!isShared || !groupId || !uid || !RTDB_ENABLED) return;
+    const name = user?.displayName ?? user?.email ?? 'Someone';
+    return startPresenceHeartbeat(groupId, uid, name);
+  }, [isShared, groupId, uid, user]);
+
+  // ── Share sheet ────────────────────────────────────────────────────────────
+
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   // ── Pending delete confirmation ───────────────────────────────────────────
 
@@ -120,22 +169,40 @@ export default function GroupDetailPage() {
     const todoId = pendingDeleteId;
     setPendingDeleteId(null);
     if (!todoId || !uid || !groupId) return;
-    const deleted = await deleteTodo(uid, todoId).catch(() => {
-      showToast('Could not delete. Try again.', 'error');
-      return undefined;
-    });
-    if (deleted) {
-      recomputeGroupCounts(uid, groupId).catch(console.error);
-      showToast('Deleted', 'info', {
-        action: {
-          label: 'Undo',
-          onClick: () =>
-            restoreTodo(uid, deleted).catch(() => showToast('Could not restore.', 'error')),
-        },
-        duration: 5000,
+
+    if (isShared) {
+      const deleted = await sharedTasksHook.deleteTodo(uid, todoId).catch(() => {
+        showToast('Could not delete. Try again.', 'error');
+        return undefined;
       });
+      if (deleted) {
+        showToast('Deleted', 'info', {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              sharedTasksHook.restoreTodo(uid, deleted).catch(() => showToast('Could not restore.', 'error')),
+          },
+          duration: 5000,
+        });
+      }
+    } else {
+      const deleted = await deleteTodo(uid, todoId).catch(() => {
+        showToast('Could not delete. Try again.', 'error');
+        return undefined;
+      });
+      if (deleted) {
+        recomputeGroupCounts(uid, groupId).catch(console.error);
+        showToast('Deleted', 'info', {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              restoreTodo(uid, deleted).catch(() => showToast('Could not restore.', 'error')),
+          },
+          duration: 5000,
+        });
+      }
     }
-  }, [pendingDeleteId, uid, groupId, deleteTodo, restoreTodo, showToast]);
+  }, [pendingDeleteId, uid, groupId, isShared, deleteTodo, restoreTodo, sharedTasksHook, showToast]);
 
   // ── Inline add ────────────────────────────────────────────────────────────
 
@@ -146,37 +213,50 @@ export default function GroupDetailPage() {
     if (!uid || !groupId || !newTitle.trim()) return;
     setAdding(true);
     try {
-      await addTodo(uid, {
+      const taskInput = {
         todoType: 'shopping-item',
         title: newTitle.trim(),
         groupId,
         status: 'pending',
         sortOrder: Date.now(),
-      } as Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>);
+      } as Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>;
+
+      if (isShared) {
+        await sharedTasksHook.addTodo(uid, taskInput);
+      } else {
+        await addTodo(uid, taskInput);
+        recomputeGroupCounts(uid, groupId).catch(console.error);
+      }
       setNewTitle('');
-      recomputeGroupCounts(uid, groupId).catch(console.error);
     } catch {
       showToast('Could not add item. Try again.', 'error');
     } finally {
       setAdding(false);
     }
-  }, [uid, groupId, newTitle, addTodo, showToast]);
+  }, [uid, groupId, newTitle, isShared, addTodo, sharedTasksHook, showToast]);
 
   // ── Item actions ──────────────────────────────────────────────────────────
 
   const handleToggle = useCallback(async (todoId: string, isDone: boolean) => {
     if (!uid || !groupId) return;
     try {
-      if (isDone) {
-        await markPending(uid, todoId);
+      if (isShared) {
+        if (isDone) {
+          await sharedTasksHook.markPending(uid, todoId);
+        } else {
+          await sharedTasksHook.completeTodo(uid, todoId);
+        }
       } else {
-        await completeTodo(uid, todoId);
+        if (isDone) {
+          await markPending(uid, todoId);
+        } else {
+          await completeTodo(uid, todoId);
+        }
       }
-      // recomputeGroupCounts is called inside completeTodo/markPending for grouped items
     } catch {
       showToast('Could not update item.', 'error');
     }
-  }, [uid, groupId, completeTodo, markPending, showToast]);
+  }, [uid, groupId, isShared, completeTodo, markPending, sharedTasksHook, showToast]);
 
   const handleDelete = useCallback((todoId: string) => {
     setPendingDeleteId(todoId);
@@ -187,20 +267,47 @@ export default function GroupDetailPage() {
   const handleArchive = useCallback(async () => {
     if (!uid || !groupId) return;
     try {
-      await updateGroup(uid, groupId, { archivedAt: Timestamp.now() });
+      if (isShared) {
+        await fbUpdateSharedGroup(groupId, { archivedAt: Timestamp.now() });
+      } else {
+        await updateGroup(uid, groupId, { archivedAt: Timestamp.now() });
+      }
       showToast('List archived', 'info');
       navigate('/more');
     } catch {
       showToast('Could not archive. Try again.', 'error');
     }
-  }, [uid, groupId, updateGroup, showToast, navigate]);
+  }, [uid, groupId, isShared, updateGroup, showToast, navigate]);
 
-  // ── Guard ──────────────────────────────────────────────────────────────────
+  // ── Guards ─────────────────────────────────────────────────────────────────
 
   if (!groupId || !uid) return null;
 
-  // Group not found (might still be loading from Firestore)
   if (!group) {
+    if (hadSharedAccessRef.current) {
+      return (
+        <div className="sn-gdp">
+          <DetailPageHeader onBack={() => navigate('/more')} title="" />
+          <div className="sn-gdp-gone">
+            <p className="sn-gdp-gone__title">You no longer have access to this list.</p>
+            <p className="sn-gdp-gone__sub">The owner may have removed you or deleted it.</p>
+            <button type="button" className="sn-gdp-gone__home-btn" onClick={() => navigate('/more')}>
+              Go back
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (groupsLoaded && sharedGroupsLoaded) {
+      return (
+        <div className="sn-gdp">
+          <DetailPageHeader onBack={() => navigate('/more')} title="" />
+          <div className="sn-gdp-loading">Not found.</div>
+        </div>
+      );
+    }
+
     return (
       <div className="sn-gdp">
         <DetailPageHeader onBack={() => navigate('/more')} title="" />
@@ -210,9 +317,9 @@ export default function GroupDetailPage() {
   }
 
   const isShopping = group.groupKind === 'shopping-list';
-  const priceTracking = isShopping && (group as { priceTrackingEnabled?: boolean }).priceTrackingEnabled === true;
+  const priceTracking = isShopping && group.priceTrackingEnabled === true;
   const progress = group.childCount > 0 ? group.doneCount / group.childCount : 0;
-  const totalSpent = isShopping ? (group as { totalSpent?: number }).totalSpent ?? 0 : 0;
+  const totalSpent = isShopping ? group.totalSpent ?? 0 : 0;
 
   return (
     <>
@@ -231,17 +338,49 @@ export default function GroupDetailPage() {
       <DetailPageHeader
         onBack={() => navigate('/more')}
         title={group.name}
-        subtitle={group.childCount > 0 ? `${group.doneCount}/${group.childCount} done` : undefined}
+        subtitle={
+          isShared && memberCount > 1 ? (
+            <span className="sn-gdp-subtitle-row">
+              {group.childCount > 0 ? `${group.doneCount}/${group.childCount} done` : null}
+              <SharedBadge memberCount={memberCount} />
+            </span>
+          ) : (
+            group.childCount > 0 ? `${group.doneCount}/${group.childCount} done` : undefined
+          )
+        }
         rightSlot={
-          <button
-            type="button"
-            className="sn-gdp-archive-btn"
-            onClick={handleArchive}
-            aria-label="Archive list"
-            title="Archive list"
-          >
-            <Archive size={16} strokeWidth={2} />
-          </button>
+          <>
+            {isShared && <PresenceAvatars presence={presence} selfUid={uid ?? ''} />}
+            <button
+              type="button"
+              className="sn-gdp-archive-btn"
+              onClick={() => setShareSheetOpen(true)}
+              aria-label="Share list"
+              title="Share list"
+            >
+              <Users size={16} strokeWidth={2} />
+            </button>
+            {isShared && (
+              <button
+                type="button"
+                className="sn-gdp-archive-btn"
+                onClick={sharedTasksHook.refresh}
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RefreshCw size={15} strokeWidth={2} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="sn-gdp-archive-btn"
+              onClick={handleArchive}
+              aria-label="Archive list"
+              title="Archive list"
+            >
+              <Archive size={16} strokeWidth={2} />
+            </button>
+          </>
         }
       />
 
@@ -294,6 +433,7 @@ export default function GroupDetailPage() {
               onToggle={handleToggle}
               onEdit={openComposeForEdit}
               onDelete={handleDelete}
+              remoteUpdated={isShared && !!item.id && sharedTasksHook.remoteUpdatedIds.has(item.id)}
             />
           ))
         )}
@@ -307,6 +447,11 @@ export default function GroupDetailPage() {
         </div>
       )}
     </div>
+
+    {/* ── Share sheet ── */}
+    {shareSheetOpen && (
+      <ShareSheet project={group} onClose={() => setShareSheetOpen(false)} />
+    )}
     </>
   );
 }

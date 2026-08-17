@@ -1,11 +1,16 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Archive, FolderOpen, ChevronRight, Plus, Copy } from 'lucide-react';
+import { Archive, FolderOpen, ChevronRight, Plus, Copy, Users, RefreshCw } from 'lucide-react';
 import { useAuth, getCachedUid } from '../auth/AuthContext';
 import { useToast } from '../shared/components/Toast';
 import { useTodosStore } from '../stores/useTodosStore';
 import { useGroupsStore } from '../stores/useGroupsStore';
+import { useSharedProjectsStore } from '../stores/useSharedProjectsStore';
+import { useSharedProjectTodos } from '../stores/useSharedProjectTodos';
 import { recomputeGroupCounts } from '../firebase/groupQueries';
+import { addSharedSubProject, updateSharedProject as fbUpdateSharedProject } from '../firebase/sharedProjectQueries';
+import { startPresenceHeartbeat, setEditingTask } from '../firebase/presence';
+import { RTDB_ENABLED } from '../firebase/config';
 import { useUI } from '../context/UIContext';
 import BottomSheet from '../components/primitives/BottomSheet';
 import ConfirmSheet from '../components/primitives/ConfirmSheet';
@@ -13,19 +18,22 @@ import DetailPageHeader from '../components/primitives/DetailPageHeader';
 import ProgressBar from '../components/primitives/ProgressBar';
 import SheetFormActions from '../components/primitives/SheetFormActions';
 import TodoRow from '../components/rows/TodoRow';
+import ShareSheet from '../components/sheets/ShareSheet';
+import SharedBadge from '../components/sharing/SharedBadge';
+import PresenceAvatars, { usePresence, EditingIndicator } from '../components/sharing/PresenceAvatars';
 import { Timestamp } from 'firebase/firestore';
-import type { Group, Todo } from '../types';
+import type { Group, ProjectGroup, Todo } from '../types';
 import './project-detail-page.css';
 
 // ── New Sub-project Sheet ─────────────────────────────────────────────────────
 
 interface NewSubProjectSheetProps {
-  parentGroupId: string;
-  parentAncestorPath: string[];
+  parent: ProjectGroup;
+  isShared: boolean;
   onClose: () => void;
 }
 
-function NewSubProjectSheet({ parentGroupId, parentAncestorPath, onClose }: NewSubProjectSheetProps) {
+function NewSubProjectSheet({ parent, isShared, onClose }: NewSubProjectSheetProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const addGroup = useGroupsStore((s) => s.addGroup);
@@ -34,22 +42,28 @@ function NewSubProjectSheet({ parentGroupId, parentAncestorPath, onClose }: NewS
   const uid = user?.uid ?? getCachedUid();
 
   const handleCreate = async () => {
-    if (!uid || !name.trim()) return;
+    if (!uid || !name.trim() || !parent.id) return;
     setSaving(true);
     try {
-      await addGroup(uid, {
-        groupKind: 'project',
-        name: name.trim(),
-        ancestorPath: [...parentAncestorPath, parentGroupId],
-        parentGroupId,
-        showProgress: true,
-        showSumMoney: false,
-        childCount: 0,
-        doneCount: 0,
-        completed: false,
-      } as Parameters<typeof addGroup>[1]);
+      if (isShared) {
+        // Server-side count recompute handles this via the onSharedTaskWrite trigger's
+        // parent walk once the sub-project gets its first task; no client recompute needed.
+        await addSharedSubProject(parent, name.trim());
+      } else {
+        await addGroup(uid, {
+          groupKind: 'project',
+          name: name.trim(),
+          ancestorPath: [...parent.ancestorPath, parent.id],
+          parentGroupId: parent.id,
+          showProgress: true,
+          showSumMoney: false,
+          childCount: 0,
+          doneCount: 0,
+          completed: false,
+        } as Parameters<typeof addGroup>[1]);
+        recomputeGroupCounts(uid, parent.id).catch(console.error);
+      }
       showToast('Sub-project created', 'success');
-      recomputeGroupCounts(uid, parentGroupId).catch(console.error);
       onClose();
     } catch {
       showToast('Could not create sub-project. Try again.', 'error');
@@ -130,25 +144,56 @@ export default function ProjectDetailPage() {
   const location = useLocation();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { openComposeForGroup } = useUI();
+  const { openComposeForGroup, composeOpen } = useUI();
 
   const uid = user?.uid ?? getCachedUid();
 
   // ── Store subscriptions ──────────────────────────────────────────────────
 
   const groups = useGroupsStore((s) => s.groups);
+  const groupsLoaded = useGroupsStore((s) => s.loaded);
   const updateGroup = useGroupsStore((s) => s.updateGroup);
   const getSubGroups = useGroupsStore((s) => s.getSubGroups);
+
+  const sharedProjects = useSharedProjectsStore((s) => s.sharedProjects);
+  const sharedProjectsLoaded = useSharedProjectsStore((s) => s.loaded);
+  const getSharedSubGroups = useSharedProjectsStore((s) => s.getSharedSubGroups);
 
   const todos = useTodosStore((s) => s.todos);
   const addTodo = useTodosStore((s) => s.addTodo);
   const getTodosForGroup = useTodosStore((s) => s.getTodosForGroup);
 
-  const project = useMemo(() => groups.find((g) => g.id === projectId), [groups, projectId]);
+  // A project is either personal (users/{uid}/groups) or shared (top-level
+  // sharedProjects/{pid}) — never both. See docs/SHAREABLE_PROJECTS_SPEC.md D8.
+  const personalProject = useMemo(() => groups.find((g) => g.id === projectId), [groups, projectId]);
+  const sharedProjectDoc = useMemo(
+    () => sharedProjects.find((g) => g.id === projectId) as ProjectGroup | undefined,
+    [sharedProjects, projectId],
+  );
+  const project = (sharedProjectDoc ?? personalProject) as ProjectGroup | undefined;
+  const isShared = !!sharedProjectDoc;
+  const isOwner = !isShared || sharedProjectDoc?.ownerUid === uid;
+  const memberCount = isShared ? sharedProjectDoc?.memberCount ?? 1 : 1;
+
+  // Tracks whether this view ever successfully resolved the project — lets the
+  // guard below distinguish "still loading" from "access was just revoked"
+  // (spec §5.3 permission-revoked state: owner removes a member mid-view).
+  const hadAccessRef = useRef(false);
+  useEffect(() => {
+    if (project) hadAccessRef.current = true;
+  }, [project]);
+
+  const sharedTasksHook = useSharedProjectTodos(isShared ? projectId : undefined);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const subGroups = useMemo(() => getSubGroups(projectId ?? ''), [groups, projectId]);
+  const personalSubGroups = useMemo(() => getSubGroups(projectId ?? ''), [groups, projectId]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const allGroupTasks = useMemo(() => getTodosForGroup(projectId ?? ''), [todos, projectId]);
+  const sharedSubGroups = useMemo(() => getSharedSubGroups(projectId ?? ''), [sharedProjects, projectId]);
+  const subGroups = isShared ? sharedSubGroups : personalSubGroups;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const personalGroupTasks = useMemo(() => getTodosForGroup(projectId ?? ''), [todos, projectId]);
+  const allGroupTasks = isShared ? sharedTasksHook.todos : personalGroupTasks;
 
   const sortedTasks = useMemo(() => {
     const pending = allGroupTasks.filter((t) => t.status === 'pending' || t.status === 'deferred');
@@ -158,6 +203,38 @@ export default function ProjectDetailPage() {
       ...done.sort((a, b) => (b.completedAt?.toMillis() ?? 0) - (a.completedAt?.toMillis() ?? 0)),
     ];
   }, [allGroupTasks]);
+
+  // ── Presence (spec §5.2) — only for shared projects, only once RTDB exists ──
+  const presence = usePresence(isShared ? projectId : undefined);
+  const editingTaskIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isShared || !projectId || !uid || !RTDB_ENABLED) return;
+    const name = user?.displayName ?? user?.email ?? 'Someone';
+    return startPresenceHeartbeat(projectId, uid, name);
+  }, [isShared, projectId, uid, user]);
+
+  // Clear the "editing" flag once the compose sheet (opened from a TodoRow) closes again.
+  useEffect(() => {
+    if (!isShared || !projectId || !uid || !RTDB_ENABLED) return;
+    if (!composeOpen && editingTaskIdRef.current) {
+      setEditingTask(projectId, uid, null);
+      editingTaskIdRef.current = null;
+    }
+  }, [composeOpen, isShared, projectId, uid]);
+
+  const handleEditingChange = useCallback(
+    (todoId: string | null) => {
+      if (!isShared || !projectId || !uid || !RTDB_ENABLED) return;
+      editingTaskIdRef.current = todoId;
+      setEditingTask(projectId, uid, todoId);
+    },
+    [isShared, projectId, uid],
+  );
+
+  // ── Sharing ────────────────────────────────────────────────────────────────
+
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   // ── New sub-project sheet ────────────────────────────────────────────────
 
@@ -174,28 +251,38 @@ export default function ProjectDetailPage() {
     if (!uid || !projectId || !newTaskTitle.trim()) return;
     setAddingTask(true);
     try {
-      await addTodo(uid, {
+      const taskInput = {
         todoType: 'generic-task',
         title: newTaskTitle.trim(),
         groupId: projectId,
         status: 'pending',
         sortOrder: Date.now(),
-      } as Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>);
+      } as Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>;
+      if (isShared) {
+        // Server-side recompute (onSharedTaskWrite Cloud Function) handles counts.
+        await sharedTasksHook.addTodo(uid, taskInput);
+      } else {
+        await addTodo(uid, taskInput);
+        recomputeGroupCounts(uid, projectId).catch(console.error);
+      }
       setNewTaskTitle('');
-      recomputeGroupCounts(uid, projectId).catch(console.error);
     } catch {
       showToast('Could not add task. Try again.', 'error');
     } finally {
       setAddingTask(false);
     }
-  }, [uid, projectId, newTaskTitle, addTodo, showToast]);
+  }, [uid, projectId, newTaskTitle, addTodo, showToast, isShared, sharedTasksHook]);
 
   // ── Archive ──────────────────────────────────────────────────────────────
 
   const handleArchive = useCallback(async () => {
     if (!uid || !projectId) return;
     try {
-      await updateGroup(uid, projectId, { archivedAt: Timestamp.now() });
+      if (isShared) {
+        await fbUpdateSharedProject(projectId, { archivedAt: Timestamp.now() });
+      } else {
+        await updateGroup(uid, projectId, { archivedAt: Timestamp.now() });
+      }
       showToast('Project archived', 'info');
       const backTo = project?.parentGroupId
         ? `/projects/${project.parentGroupId}`
@@ -204,7 +291,7 @@ export default function ProjectDetailPage() {
     } catch {
       showToast('Could not archive. Try again.', 'error');
     }
-  }, [uid, projectId, project, updateGroup, showToast, navigate]);
+  }, [uid, projectId, project, updateGroup, showToast, navigate, isShared]);
 
   // ── Back navigation ──────────────────────────────────────────────────────
 
@@ -224,6 +311,40 @@ export default function ProjectDetailPage() {
   if (!projectId || !uid) return null;
 
   if (!project) {
+    // Access was revoked (owner removed us / unshared / deleted) while we were
+    // viewing this project — distinct from the transient first-load state.
+    if (hadAccessRef.current) {
+      return (
+        <div className="sn-proj">
+          <DetailPageHeader onBack={() => navigate('/projects')} title="" />
+          <div className="sn-proj-gone">
+            <p className="sn-proj-gone__title">You no longer have access to this project.</p>
+            <p className="sn-proj-gone__sub">The owner may have removed you or deleted it.</p>
+            <button type="button" className="sn-proj-gone__home-btn" onClick={() => navigate('/projects')}>
+              Go to Projects
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Both stores have loaded and we still can't find it — genuinely not found,
+    // not still loading.
+    if (groupsLoaded && sharedProjectsLoaded) {
+      return (
+        <div className="sn-proj">
+          <DetailPageHeader onBack={() => navigate('/projects')} title="" />
+          <div className="sn-proj-gone">
+            <p className="sn-proj-gone__title">Project not found.</p>
+            <p className="sn-proj-gone__sub">It may have been deleted, or you don't have access.</p>
+            <button type="button" className="sn-proj-gone__home-btn" onClick={() => navigate('/projects')}>
+              Go to Projects
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="sn-proj">
         <DetailPageHeader onBack={() => navigate('/projects')} title="" />
@@ -287,14 +408,29 @@ export default function ProjectDetailPage() {
         onBack={handleBack}
         title={project.name}
         subtitle={
-          project.description
-            ? project.description
-            : totalItems > 0
-              ? `${doneItems}/${totalItems} done`
-              : undefined
+          project.description || totalItems > 0 || (isShared && memberCount > 1) ? (
+            <span className="sn-proj-subtitle-row">
+              {project.description
+                ? project.description
+                : totalItems > 0
+                  ? `${doneItems}/${totalItems} done`
+                  : null}
+              {isShared && memberCount > 1 && <SharedBadge memberCount={memberCount} />}
+            </span>
+          ) : undefined
         }
         rightSlot={
           <>
+            {isShared && <PresenceAvatars presence={presence} selfUid={uid} />}
+            <button
+              type="button"
+              className="sn-proj-archive-btn"
+              onClick={() => setShareSheetOpen(true)}
+              aria-label="Share project"
+              title="Share project"
+            >
+              <Users size={16} strokeWidth={2} />
+            </button>
             <button
               type="button"
               className="sn-proj-archive-btn"
@@ -347,14 +483,16 @@ export default function ProjectDetailPage() {
                   <span className="sn-proj-section-count">{subGroups.length}</span>
                 )}
               </span>
-              <button
-                type="button"
-                className="sn-action-chip"
-                onClick={() => setSubProjectSheetOpen(true)}
-              >
-                <Plus size={13} strokeWidth={2.5} />
-                Add
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  className="sn-action-chip"
+                  onClick={() => setSubProjectSheetOpen(true)}
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Add
+                </button>
+              )}
             </div>
 
             {subGroups.length === 0 ? (
@@ -378,14 +516,27 @@ export default function ProjectDetailPage() {
                 <span className="sn-proj-section-count">{allGroupTasks.length}</span>
               )}
             </span>
-            <button
-              type="button"
-              className="sn-action-chip"
-              onClick={() => openComposeForGroup(projectId, 'generic-task')}
-            >
-              <Plus size={13} strokeWidth={2.5} />
-              Add
-            </button>
+            <div className="sn-proj-section-actions">
+              {isShared && (
+                <button
+                  type="button"
+                  className="sn-action-chip sn-action-chip--ghost"
+                  onClick={sharedTasksHook.refresh}
+                  aria-label="Refresh tasks"
+                  title="Refresh"
+                >
+                  <RefreshCw size={13} strokeWidth={2.5} />
+                </button>
+              )}
+              <button
+                type="button"
+                className="sn-action-chip"
+                onClick={() => openComposeForGroup(projectId, 'generic-task')}
+              >
+                <Plus size={13} strokeWidth={2.5} />
+                Add
+              </button>
+            </div>
           </div>
 
           {/* Inline quick-add row */}
@@ -416,7 +567,18 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="sn-proj-task-list">
               {sortedTasks.map((t) => (
-                <TodoRow key={t.id} todo={t} />
+                <TodoRow
+                  key={t.id}
+                  todo={t}
+                  actions={isShared ? sharedTasksHook : undefined}
+                  onEditingChange={isShared ? handleEditingChange : undefined}
+                  remoteUpdated={isShared && !!t.id && sharedTasksHook.remoteUpdatedIds.has(t.id)}
+                  belowTitle={
+                    isShared && t.id ? (
+                      <EditingIndicator presence={presence} taskId={t.id} selfUid={uid} />
+                    ) : undefined
+                  }
+                />
               ))}
             </div>
           )}
@@ -426,10 +588,15 @@ export default function ProjectDetailPage() {
       {/* ── New sub-project sheet ── */}
       {subProjectSheetOpen && (
         <NewSubProjectSheet
-          parentGroupId={projectId}
-          parentAncestorPath={project.ancestorPath}
+          parent={project}
+          isShared={isShared}
           onClose={() => setSubProjectSheetOpen(false)}
         />
+      )}
+
+      {/* ── Share sheet ── */}
+      {shareSheetOpen && (
+        <ShareSheet project={project} onClose={() => setShareSheetOpen(false)} />
       )}
     </div>
     </>
