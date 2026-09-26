@@ -10,6 +10,7 @@
 // users/{uid}/logs, users/{uid}/groups. Every grouped write recomputes counts.
 import * as admin from 'firebase-admin';
 import { betaTool } from '@anthropic-ai/sdk/helpers/beta/json-schema';
+import { buildCalendarReminderTool, type CalendarToolConfig } from './calendarTool';
 
 type Firestore = admin.firestore.Firestore;
 const { Timestamp, FieldValue } = admin.firestore;
@@ -146,6 +147,9 @@ export function buildAgentTools(
   sid: string,
   activityLog: ToolActivity[],
   pendingProposals: PendingProposal[],
+  // Optional outbound connector: present only when the gcal MCP server is
+  // configured (CAL_MCP_URL). Reversible/low-blast → auto-executes (no gate).
+  calendar?: Omit<CalendarToolConfig, 'log'>,
 ) {
   const db = admin.firestore();
 
@@ -567,5 +571,11 @@ export function buildAgentTools(
         );
       },
     }),
+
+    // ── Outbound connectors ──────────────────────────────────────────────────
+    // Calendar (gcal MCP) is low-risk/reversible → auto. FUTURE high-risk outbound
+    // connectors (send email, post message, spend money) must instead route through
+    // `propose()` above so they inherit the same approval gate as deletes (D14/D15).
+    ...(calendar ? [buildCalendarReminderTool({ ...calendar, log })] : []),
   ];
 }

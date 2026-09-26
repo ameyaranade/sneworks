@@ -52,6 +52,10 @@ const params_1 = require("firebase-functions/params");
 const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
 const agentTools_1 = require("./agentTools");
 const anthropicKey = (0, params_1.defineSecret)('ANTHROPIC_API_KEY');
+// Calendar connector (Phase 4) — shared with processAiTask. When CAL_MCP_URL is
+// unset the calendar tool is simply not offered (graceful, no error).
+const calendarMcpToken = (0, params_1.defineSecret)('CALENDAR_MCP_TOKEN');
+const calMcpUrl = (0, params_1.defineString)('CAL_MCP_URL');
 // Cost-conscious default (matches generateDailySummary's tier). Swap to
 // 'claude-opus-5' here alone if stronger multi-step reasoning is needed.
 const AGENT_MODEL = 'claude-sonnet-5';
@@ -77,6 +81,9 @@ const SYSTEM_PROMPT = 'You are the built-in assistant for sneworks, a personal p
     'delete_group does NOT delete immediately — it shows the user an approval card, and the ' +
     'delete runs only if they approve. Propose a delete only when the user clearly asks to ' +
     'delete/remove something; after proposing, stop and let them confirm.\n' +
+    '- If the user asks to put something on their calendar / be reminded at a real date-time, ' +
+    'use create_calendar_reminder (this adds a Google Calendar event, separate from a todo). ' +
+    'It may be unavailable; if the tool isn\'t offered, say calendar reminders aren\'t set up.\n' +
     '- Keep replies short and concrete. Reference what you changed in plain language.\n' +
     '- Resolve relative dates ("tomorrow", "next Monday") against the current date given below, ' +
     'and pass absolute ISO dates to tools.';
@@ -95,9 +102,9 @@ async function checkAndIncrementRateLimit(db, uid, dateStr) {
 }
 exports.assistantAgent = (0, firestore_1.onDocumentCreated)({
     document: 'users/{uid}/chatSessions/{sid}/messages/{mid}',
-    secrets: [anthropicKey],
+    secrets: [anthropicKey, calendarMcpToken],
 }, async (event) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const snap = event.data;
     if (!snap)
         return;
@@ -154,13 +161,27 @@ exports.assistantAgent = (0, firestore_1.onDocumentCreated)({
         const activityLog = [];
         const pendingProposals = [];
         const anthropic = new sdk_1.default({ apiKey: anthropicKey.value() });
+        // Offer the calendar connector only when it's configured (CAL_MCP_URL set).
+        const mcpUrl = calMcpUrl.value();
+        const calendar = mcpUrl
+            ? {
+                apiKey: anthropicKey.value(),
+                mcpUrl,
+                mcpToken: calendarMcpToken.value(),
+                tz: TZ,
+                // DST-correct current UTC offset for TZ, e.g. "+05:30".
+                tzOffset: ((_d = new Intl.DateTimeFormat('en-US', { timeZone: TZ, timeZoneName: 'longOffset' })
+                    .formatToParts(new Date())
+                    .find((p) => p.type === 'timeZoneName')) === null || _d === void 0 ? void 0 : _d.value.replace('GMT', '')) || '+00:00',
+            }
+            : undefined;
         const runner = anthropic.beta.messages.toolRunner({
             model: AGENT_MODEL,
             max_tokens: MAX_TOKENS,
             max_iterations: MAX_ITERATIONS,
             system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
             messages: history,
-            tools: (0, agentTools_1.buildAgentTools)(uid, sid, activityLog, pendingProposals),
+            tools: (0, agentTools_1.buildAgentTools)(uid, sid, activityLog, pendingProposals, calendar),
         });
         const finalMessage = await runner.runUntilDone();
         if (pendingProposals.length > 0)

@@ -139,6 +139,7 @@ Gated on `settings.assistantEnabled`. Client appends user messages; the
 **Transitions**
 - [ ] send message → user bubble appears → thinking → assistant reply streams in via snapshot.
 - [ ] agent runs a low-risk tool (e.g. create_todo) → reply carries a tool chip; the created/updated todo appears on TodayPage (cross-surface, tenet-1 data reachable in UI).
+- [ ] calendar reminder (Phase 4) — "put X on my calendar tomorrow 3pm" → `create_calendar_reminder` chip ("Added … to your calendar"); a real Google Calendar event is created via the gcal MCP connector (auto, no gate — reversible). When `CAL_MCP_URL` is unset the tool isn't offered and the agent says calendar reminders aren't set up.
 - [ ] propose→approve→execute — "delete X" → approval card (no mutation) → Approve → `resumeAgent` deletes, posts a "Deleted …" chip+message, card clears, session→idle; the item is gone from its surface + counts recomputed.
 - [ ] propose→reject — "delete X" → Cancel → `resumeAgent` posts "Okay, I won't …", card clears, **nothing deleted**; session→idle.
 - [ ] gate integrity — the delete_* tool never mutates on its own (only `proposedActions` doc written); execution happens solely in `resumeAgent` after approval; redelivery is idempotent (`executedAt` guard).

@@ -9,11 +9,15 @@
 // no destructive actions (deletes are Phase 2, behind an approval gate).
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { defineSecret } from 'firebase-functions/params';
+import { defineSecret, defineString } from 'firebase-functions/params';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildAgentTools, type ToolActivity, type PendingProposal } from './agentTools';
 
 const anthropicKey = defineSecret('ANTHROPIC_API_KEY');
+// Calendar connector (Phase 4) — shared with processAiTask. When CAL_MCP_URL is
+// unset the calendar tool is simply not offered (graceful, no error).
+const calendarMcpToken = defineSecret('CALENDAR_MCP_TOKEN');
+const calMcpUrl = defineString('CAL_MCP_URL');
 
 // Cost-conscious default (matches generateDailySummary's tier). Swap to
 // 'claude-opus-5' here alone if stronger multi-step reasoning is needed.
@@ -43,6 +47,9 @@ const SYSTEM_PROMPT =
   'delete_group does NOT delete immediately — it shows the user an approval card, and the ' +
   'delete runs only if they approve. Propose a delete only when the user clearly asks to ' +
   'delete/remove something; after proposing, stop and let them confirm.\n' +
+  '- If the user asks to put something on their calendar / be reminded at a real date-time, ' +
+  'use create_calendar_reminder (this adds a Google Calendar event, separate from a todo). ' +
+  'It may be unavailable; if the tool isn\'t offered, say calendar reminders aren\'t set up.\n' +
   '- Keep replies short and concrete. Reference what you changed in plain language.\n' +
   '- Resolve relative dates ("tomorrow", "next Monday") against the current date given below, ' +
   'and pass absolute ISO dates to tools.';
@@ -69,7 +76,7 @@ async function checkAndIncrementRateLimit(db: admin.firestore.Firestore, uid: st
 export const assistantAgent = onDocumentCreated(
   {
     document: 'users/{uid}/chatSessions/{sid}/messages/{mid}',
-    secrets: [anthropicKey],
+    secrets: [anthropicKey, calendarMcpToken],
   },
   async (event) => {
     const snap = event.data;
@@ -138,13 +145,30 @@ export const assistantAgent = onDocumentCreated(
       const pendingProposals: PendingProposal[] = [];
       const anthropic = new Anthropic({ apiKey: anthropicKey.value() });
 
+      // Offer the calendar connector only when it's configured (CAL_MCP_URL set).
+      const mcpUrl = calMcpUrl.value();
+      const calendar = mcpUrl
+        ? {
+            apiKey: anthropicKey.value(),
+            mcpUrl,
+            mcpToken: calendarMcpToken.value(),
+            tz: TZ,
+            // DST-correct current UTC offset for TZ, e.g. "+05:30".
+            tzOffset:
+              new Intl.DateTimeFormat('en-US', { timeZone: TZ, timeZoneName: 'longOffset' })
+                .formatToParts(new Date())
+                .find((p) => p.type === 'timeZoneName')
+                ?.value.replace('GMT', '') || '+00:00',
+          }
+        : undefined;
+
       const runner = anthropic.beta.messages.toolRunner({
         model: AGENT_MODEL,
         max_tokens: MAX_TOKENS,
         max_iterations: MAX_ITERATIONS,
         system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
         messages: history,
-        tools: buildAgentTools(uid, sid, activityLog, pendingProposals),
+        tools: buildAgentTools(uid, sid, activityLog, pendingProposals, calendar),
       });
 
       const finalMessage = await runner.runUntilDone();

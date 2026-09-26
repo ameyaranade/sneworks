@@ -455,6 +455,33 @@ executor), `src/firebase/userDataRegistry.ts` (`chatSessions` registration),
 
 ---
 
+## D16 — Outbound connectors in the chat agent: MCP connectors encapsulated in a client tool; low-risk auto, high-risk gated
+**Decision:** The chat agent reaches outbound MCP connectors (starting with the
+`services/gcal-mcp` calendar server) through a **client-run `betaTool` whose
+`run()` makes its own nested Anthropic call with the MCP connector and owns the
+`pause_turn` loop** — *not* by adding `mcp_toolset` + `mcp_servers` to the main
+`toolRunner`. Calendar creation is reversible/low-blast, so it **auto-executes**
+(no gate); it is offered only when `CAL_MCP_URL` is configured, else silently
+omitted. Future **high-risk** outbound connectors (send email, post message,
+spend money) must instead route through `propose()` so they inherit the
+delete-style approval gate.
+**Why:** The SDK's `toolRunner` deliberately ignores MCP references (they run
+server-side) and breaks its loop on `pause_turn`, so it cannot drive an
+MCP-connector tool to completion — wiring the connector straight into the main
+runner would silently truncate the turn. Encapsulating the connector in one
+client tool (mirroring the proven `processAiTask` pattern) keeps the main loop
+all-client-tools and robust, with no new deps. Auto-vs-gate follows D14/D15's
+low-vs-high-stakes split.
+**How to apply:** Add a new low-risk connector as a client tool with its own
+connector call; gate any destructive / outbound-with-consequences connector
+through `propose()`. Don't add `mcp_toolset` to the main `toolRunner` expecting
+it to complete.
+**Anchor:** `functions/src/ai/calendarTool.ts`, `functions/src/ai/agentTools.ts`
+(calendar wiring + outbound-connector comment), `functions/src/ai/assistantAgent.ts`
+(connector config gate).
+
+---
+
 ## D17 — AI daily summary is opt-in (off by default); absent flag reads as OFF
 **Decision:** The Today-page AI daily summary (`generateDailySummary`, a paid
 Claude call per run) is **opt-in**. `summaryEnabled` is removed from

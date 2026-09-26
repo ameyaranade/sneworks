@@ -47,6 +47,7 @@ exports.buildAgentTools = buildAgentTools;
 // users/{uid}/logs, users/{uid}/groups. Every grouped write recomputes counts.
 const admin = __importStar(require("firebase-admin"));
 const json_schema_1 = require("@anthropic-ai/sdk/helpers/beta/json-schema");
+const calendarTool_1 = require("./calendarTool");
 const { Timestamp, FieldValue } = admin.firestore;
 // ─── Helpers ─────────────────────────────────────────────────────────────────────
 /** Firestore rejects `undefined` field values — strip them before writing. */
@@ -156,7 +157,10 @@ async function executeProposedAction(uid, tool, args) {
  * doc and push to `pendingProposals`, and never mutate until resumeAgent runs the
  * executor after the user approves (Phase 2 gate).
  */
-function buildAgentTools(uid, sid, activityLog, pendingProposals) {
+function buildAgentTools(uid, sid, activityLog, pendingProposals, 
+// Optional outbound connector: present only when the gcal MCP server is
+// configured (CAL_MCP_URL). Reversible/low-blast → auto-executes (no gate).
+calendar) {
     const db = admin.firestore();
     const log = (tool, summary, status = 'ok') => {
         activityLog.push({ tool, summary, status });
@@ -578,6 +582,11 @@ function buildAgentTools(uid, sid, activityLog, pendingProposals) {
                 return propose('delete_group', `Delete "${(_b = (_a = snap.data()) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : args.groupId}" and its ${count} item${count === 1 ? '' : 's'}`, { groupId: args.groupId });
             },
         }),
+        // ── Outbound connectors ──────────────────────────────────────────────────
+        // Calendar (gcal MCP) is low-risk/reversible → auto. FUTURE high-risk outbound
+        // connectors (send email, post message, spend money) must instead route through
+        // `propose()` above so they inherit the same approval gate as deletes (D14/D15).
+        ...(calendar ? [(0, calendarTool_1.buildCalendarReminderTool)(Object.assign(Object.assign({}, calendar), { log }))] : []),
     ];
 }
 //# sourceMappingURL=agentTools.js.map
