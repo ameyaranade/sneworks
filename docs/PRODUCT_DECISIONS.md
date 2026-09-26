@@ -455,6 +455,35 @@ executor), `src/firebase/userDataRegistry.ts` (`chatSessions` registration),
 
 ---
 
+## D17 — AI daily summary is opt-in (off by default); absent flag reads as OFF
+**Decision:** The Today-page AI daily summary (`generateDailySummary`, a paid
+Claude call per run) is **opt-in**. `summaryEnabled` is removed from
+`DEFAULT_SETTINGS`, and every read site treats an **absent** flag as **OFF**
+(`s.summaryEnabled === true`, not `!== false`) — client trigger
+([`TodayPage.tsx`](../src/pages/TodayPage.tsx) summary effect) and the MorePage
+toggle. This reverses the prior default, where `summaryEnabled: true` shipped in
+`DEFAULT_SETTINGS` and absent was read as ON.
+**Why:** The feature auto-fired on Today-page load (gated only by a per-browser
+localStorage day-cache), so it silently spent Claude calls for users who never
+asked for it — visible as `dailySummaryCounts/{date}.count` climbing daily with
+"no one using it." Worse, absent-as-ON meant every user whose settings doc
+predated the field was opted in without a write ever recording consent. An
+AI-spend feature must be explicit opt-in — same rule as the chat agent (D15) and
+AI-assist connectors (D14). Absent-as-OFF is the only interpretation that
+actually stops already-provisioned users, not just new signups.
+**How to apply:** Any feature that costs money per use (LLM call, outbound API)
+stays out of `DEFAULT_SETTINGS` and its gate reads `=== true`. Never default a
+paid/AI feature on, and never treat an absent flag as enabled. Mirrors the
+`assistantEnabled` convention.
+**Anchor:** [`src/firebase/settingsQueries.ts`](../src/firebase/settingsQueries.ts)
+(`summaryEnabled` doc-comment, removed from `DEFAULT_SETTINGS`),
+[`src/pages/TodayPage.tsx`](../src/pages/TodayPage.tsx) (summary effect gate),
+[`src/pages/MorePage.tsx`](../src/pages/MorePage.tsx) (toggle display),
+[`functions/src/index.ts`](../functions/src/index.ts) (`generateDailySummary`,
+`dailySummaryCounts` rate-limit counter).
+
+---
+
 ## How to add a decision
 When you make a deliberate cross-cutting call (something a future change could
 plausibly undo without realizing it was intentional), add an entry: state the

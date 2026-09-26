@@ -329,7 +329,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
           <span className="sn-settings-row__label">Daily summary</span>
           <button
             type="button"
-            className={`sn-settings-toggle${settings.summaryEnabled !== false ? ' sn-settings-toggle--on' : ''}`}
+            className={`sn-settings-toggle${settings.summaryEnabled === true ? ' sn-settings-toggle--on' : ''}`}
             onClick={handleSummaryToggle}
             aria-label="Toggle daily summary"
           >

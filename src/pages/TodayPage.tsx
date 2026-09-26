@@ -363,7 +363,7 @@ export default function TodayPage() {
   useEffect(() => {
     if (!uid) return;
     return subscribeToSettings(uid, (s) => {
-      const enabled = s.summaryEnabled !== false;
+      const enabled = s.summaryEnabled === true;
       setSummaryEnabled(enabled);
       writeCache(cacheKey(uid, 'summary_enabled'), enabled);
     });

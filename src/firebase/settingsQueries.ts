@@ -32,6 +32,10 @@ export interface AppSettings {
   sbFontScale?: 'small' | 'medium' | 'large';
   // Personal health profile — used for calorie estimation
   healthWeightKg?: number;
+  /** Opt-in gate for the AI daily summary on the Today page. Absent/false =
+   *  feature off and the client never calls `generateDailySummary` (no Claude
+   *  spend). Deliberately NOT in DEFAULT_SETTINGS (off by default) — absent is
+   *  treated as OFF at every read site. */
   summaryEnabled?: boolean;
   /** Opt-in gate for the in-app chat agent. Absent/false = feature hidden and the
    *  backend trigger no-ops. Deliberately NOT in DEFAULT_SETTINGS (off by default). */
@@ -48,7 +52,6 @@ export const DEFAULT_SETTINGS: Omit<AppSettings, 'updatedAt'> = {
   themeMode: 'system',
   notificationsEnabled: false,
   sbFontScale: 'medium',
-  summaryEnabled: true,
 };
 
 function settingsDoc(uid: string) {
