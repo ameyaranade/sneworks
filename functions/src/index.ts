@@ -157,11 +157,16 @@ function computeNextDueDate(item: FinanceReminder, localNow: Date): Date {
   }
 }
 
-// ─── Scheduled function — runs every 10 minutes ───
+// ─── Scheduled function — runs every 15 minutes ───
 
-export const sendReminders = onSchedule('every 5 minutes', async () => {
+export const sendReminders = onSchedule('every 15 minutes', async () => {
   const nowMs = Date.now();
-  const WINDOW_MS = 2 * 60 * 1000; // ±2-minute firing window
+  // ±8-min firing window. Must be ≥ half the schedule interval (15 min) so no
+  // due time-of-day falls in an uncovered gap between runs. Making it slightly
+  // wider than half trades a rare exact-boundary double-fire for guaranteed
+  // delivery — the right trade-off for reminders (a missed reminder is worse
+  // than a duplicated one). Keep in sync if the schedule interval changes.
+  const WINDOW_MS = 8 * 60 * 1000;
 
   // Fetch all users' settings docs (collection: users/{uid}/settings, doc: preferences)
   const settingsSnap = await db.collectionGroup('settings').get();
@@ -950,7 +955,13 @@ export const onSharedTaskWrite = onDocumentWritten('sharedProjects/{pid}/todos/{
 // accumulates stale data (keeps it effectively empty when nobody is active).
 const PRESENCE_STALE_MS = 2 * 60 * 1000;
 
-export const prunePresence = onSchedule('every 5 minutes', async () => {
+// Server-side kill switch for presence sweeping. Mirror of the client's
+// RTDB_ENABLED (config.ts): flip to false to make this sweep no-op instantly if
+// presence / RTDB is ever retired, without deleting the scheduled function.
+const PRESENCE_ENABLED = true;
+
+export const prunePresence = onSchedule('every 15 minutes', async () => {
+  if (!PRESENCE_ENABLED) return;
   const rtdb = admin.database();
   const rootRef = rtdb.ref('presence');
   const snap = await rootRef.get();

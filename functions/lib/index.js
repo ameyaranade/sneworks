@@ -145,11 +145,16 @@ function computeNextDueDate(item, localNow) {
             return today;
     }
 }
-// ─── Scheduled function — runs every 10 minutes ───
-exports.sendReminders = (0, scheduler_1.onSchedule)('every 5 minutes', async () => {
+// ─── Scheduled function — runs every 15 minutes ───
+exports.sendReminders = (0, scheduler_1.onSchedule)('every 15 minutes', async () => {
     var _a, _b;
     const nowMs = Date.now();
-    const WINDOW_MS = 2 * 60 * 1000; // ±2-minute firing window
+    // ±8-min firing window. Must be ≥ half the schedule interval (15 min) so no
+    // due time-of-day falls in an uncovered gap between runs. Making it slightly
+    // wider than half trades a rare exact-boundary double-fire for guaranteed
+    // delivery — the right trade-off for reminders (a missed reminder is worse
+    // than a duplicated one). Keep in sync if the schedule interval changes.
+    const WINDOW_MS = 8 * 60 * 1000;
     // Fetch all users' settings docs (collection: users/{uid}/settings, doc: preferences)
     const settingsSnap = await db.collectionGroup('settings').get();
     const perUserTasks = [];
@@ -852,8 +857,14 @@ exports.onSharedTaskWrite = (0, firestore_1.onDocumentWritten)('sharedProjects/{
 // staleness window, and removes now-empty project buckets, so RTDB never
 // accumulates stale data (keeps it effectively empty when nobody is active).
 const PRESENCE_STALE_MS = 2 * 60 * 1000;
-exports.prunePresence = (0, scheduler_1.onSchedule)('every 5 minutes', async () => {
+// Server-side kill switch for presence sweeping. Mirror of the client's
+// RTDB_ENABLED (config.ts): flip to false to make this sweep no-op instantly if
+// presence / RTDB is ever retired, without deleting the scheduled function.
+const PRESENCE_ENABLED = true;
+exports.prunePresence = (0, scheduler_1.onSchedule)('every 15 minutes', async () => {
     var _a;
+    if (!PRESENCE_ENABLED)
+        return;
     const rtdb = admin.database();
     const rootRef = rtdb.ref('presence');
     const snap = await rootRef.get();
